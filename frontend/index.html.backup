@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학급 관리 시스템 v2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- 헤더 -->
+        <header class="bg-blue-600 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <h1 class="text-3xl font-bold">
+                    <i class="fas fa-school mr-3"></i>
+                    학급 관리 시스템 v2.0
+                </h1>
+                <p class="text-blue-100 mt-2">MySQL 연동 · Excel 일괄등록 · AI 생기부</p>
+            </div>
+        </header>
+
+        <!-- 네비게이션 탭 -->
+        <nav class="bg-white shadow-md">
+            <div class="container mx-auto px-4">
+                <div class="flex space-x-4 overflow-x-auto">
+                    <button onclick="showTab('students')" class="tab-btn px-6 py-4 font-semibold text-blue-600 border-b-2 border-blue-600" data-tab="students">
+                        <i class="fas fa-user-graduate mr-2"></i>학생 관리
+                    </button>
+                    <button onclick="showTab('subjects')" class="tab-btn px-6 py-4 font-semibold text-gray-600 hover:text-blue-600" data-tab="subjects">
+                        <i class="fas fa-book mr-2"></i>과목 관리
+                    </button>
+                    <button onclick="showTab('counselings')" class="tab-btn px-6 py-4 font-semibold text-gray-600 hover:text-blue-600" data-tab="counselings">
+                        <i class="fas fa-comments mr-2"></i>상담 관리
+                    </button>
+                    <button onclick="showTab('ai-report')" class="tab-btn px-6 py-4 font-semibold text-gray-600 hover:text-blue-600" data-tab="ai-report">
+                        <i class="fas fa-robot mr-2"></i>AI 생기부
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="container mx-auto px-4 py-8">
+            <div id="app"></div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <script>
+        // API 베이스 URL
+        const API_BASE_URL = 'https://8000-i3oloko346uog7d7oo8v5-3844e1b6.sandbox.novita.ai';
+        
+        // 전역 상태
+        let currentTab = 'students';
+        let students = [];
+        let subjects = [];
+        let instructors = [];
+        let counselings = [];
+        
+        // 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStudents();
+            showTab('students');
+        });
+        
+        // 탭 전환
+        function showTab(tab) {
+            currentTab = tab;
+            
+            // 탭 버튼 활성화 상태 변경
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                const isActive = btn.getAttribute('data-tab') === tab;
+                btn.className = isActive 
+                    ? 'tab-btn px-6 py-4 font-semibold text-blue-600 border-b-2 border-blue-600'
+                    : 'tab-btn px-6 py-4 font-semibold text-gray-600 hover:text-blue-600';
+            });
+            
+            // 해당 탭 콘텐츠 로드
+            switch(tab) {
+                case 'students':
+                    loadStudents();
+                    break;
+                case 'subjects':
+                    loadSubjects();
+                    break;
+                case 'counselings':
+                    loadCounselings();
+                    break;
+                case 'ai-report':
+                    renderAIReport();
+                    break;
+            }
+        }
+        
+        // ==================== 학생 관리 ====================
+        async function loadStudents() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/students`);
+                students = response.data;
+                renderStudents();
+            } catch (error) {
+                console.error('학생 목록 로드 실패:', error);
+                alert('학생 목록을 불러오는데 실패했습니다.');
+            }
+        }
+        
+        function renderStudents() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            <i class="fas fa-user-graduate mr-2"></i>학생 목록 (총 ${students.length}명)
+                        </h2>
+                        <div class="space-x-2">
+                            <button onclick="showStudentForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-plus mr-2"></i>학생 추가
+                            </button>
+                            <button onclick="downloadTemplate()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-download mr-2"></i>Excel 템플릿
+                            </button>
+                            <button onclick="showExcelUpload()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-file-excel mr-2"></i>Excel 업로드
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="student-form" class="hidden mb-6 p-4 bg-gray-50 rounded-lg"></div>
+                    <div id="excel-upload" class="hidden mb-6 p-4 bg-purple-50 rounded-lg"></div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="px-4 py-2 text-left">학생코드</th>
+                                    <th class="px-4 py-2 text-left">이름</th>
+                                    <th class="px-4 py-2 text-left">생년월일</th>
+                                    <th class="px-4 py-2 text-left">성별</th>
+                                    <th class="px-4 py-2 text-left">연락처</th>
+                                    <th class="px-4 py-2 text-left">이메일</th>
+                                    <th class="px-4 py-2 text-left">캠퍼스</th>
+                                    <th class="px-4 py-2 text-left">작업</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${students.map(student => `
+                                    <tr class="border-b hover:bg-gray-50">
+                                        <td class="px-4 py-2 font-mono">${student.code}</td>
+                                        <td class="px-4 py-2 font-semibold">${student.name}</td>
+                                        <td class="px-4 py-2">${student.birth_date || '-'}</td>
+                                        <td class="px-4 py-2">${student.gender || '-'}</td>
+                                        <td class="px-4 py-2">${student.phone || '-'}</td>
+                                        <td class="px-4 py-2">${student.email || '-'}</td>
+                                        <td class="px-4 py-2">${student.campus || '-'}</td>
+                                        <td class="px-4 py-2">
+                                            <button onclick="viewStudent(${student.id})" class="text-blue-600 hover:text-blue-800 mr-2" title="상세보기">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button onclick="editStudent(${student.id})" class="text-green-600 hover:text-green-800 mr-2" title="수정">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button onclick="deleteStudent(${student.id})" class="text-red-600 hover:text-red-800" title="삭제">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+        
+        async function downloadTemplate() {
+            window.open(`${API_BASE_URL}/api/students/download-template`, '_blank');
+        }
+        
+        function showExcelUpload() {
+            const div = document.getElementById('excel-upload');
+            div.innerHTML = `
+                <h3 class="text-lg font-bold mb-4">Excel 파일 일괄 업로드</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">Excel 파일 선택</label>
+                        <input type="file" id="excel-file" accept=".xlsx,.xls" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div class="space-x-2">
+                        <button onclick="uploadExcel()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
+                            <i class="fas fa-upload mr-2"></i>업로드
+                        </button>
+                        <button onclick="hideExcelUpload()" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg">
+                            취소
+                        </button>
+                    </div>
+                </div>
+            `;
+            div.classList.remove('hidden');
+        }
+        
+        function hideExcelUpload() {
+            document.getElementById('excel-upload').classList.add('hidden');
+        }
+        
+        async function uploadExcel() {
+            const fileInput = document.getElementById('excel-file');
+            if (!fileInput.files[0]) {
+                alert('파일을 선택해주세요');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await axios.post(`${API_BASE_URL}/api/students/upload-excel`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                
+                alert(response.data.message);
+                if (response.data.errors.length > 0) {
+                    console.log('업로드 오류:', response.data.errors);
+                }
+                hideExcelUpload();
+                loadStudents();
+            } catch (error) {
+                console.error('Excel 업로드 실패:', error);
+                alert('Excel 파일 업로드에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+            }
+        }
+        
+        function showStudentForm(studentId = null) {
+            const student = studentId ? students.find(s => s.id === studentId) : null;
+            const formDiv = document.getElementById('student-form');
+            
+            formDiv.innerHTML = `
+                <h3 class="text-lg font-bold mb-4">${student ? '학생 정보 수정' : '새 학생 추가'}</h3>
+                <form onsubmit="saveStudent(event, ${studentId})">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">이름</label>
+                            <input type="text" name="name" value="${student?.name || ''}" required 
+                                   class="w-full px-3 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">생년월일 (YY.MM.DD)</label>
+                            <input type="text" name="birth_date" value="${student?.birth_date || ''}" 
+                                   placeholder="99.02.25"
+                                   class="w-full px-3 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">성별</label>
+                            <select name="gender" class="w-full px-3 py-2 border rounded-lg">
+                                <option value="">선택</option>
+                                <option value="남자" ${student?.gender === '남자' ? 'selected' : ''}>남자</option>
+                                <option value="여자" ${student?.gender === '여자' ? 'selected' : ''}>여자</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">연락처</label>
+                            <input type="tel" name="phone" value="${student?.phone || ''}" required 
+                                   class="w-full px-3 py-2 border rounded-lg">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-gray-700 mb-2">이메일</label>
+                            <input type="email" name="email" value="${student?.email || ''}" 
+                                   class="w-full px-3 py-2 border rounded-lg">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-gray-700 mb-2">주소</label>
+                            <input type="text" name="address" value="${student?.address || ''}" 
+                                   class="w-full px-3 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">관심분야</label>
+                            <input type="text" name="interests" value="${student?.interests || ''}" 
+                                   placeholder="로봇, AI"
+                                   class="w-full px-3 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">캠퍼스</label>
+                            <input type="text" name="campus" value="${student?.campus || ''}" 
+                                   class="w-full px-3 py-2 border rounded-lg">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-gray-700 mb-2">학력</label>
+                            <input type="text" name="education" value="${student?.education || ''}" 
+                                   placeholder="대학교/학년/학과"
+                                   class="w-full px-3 py-2 border rounded-lg">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-gray-700 mb-2">자기소개</label>
+                            <textarea name="introduction" rows="3" class="w-full px-3 py-2 border rounded-lg">${student?.introduction || ''}</textarea>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-gray-700 mb-2">비고</label>
+                            <textarea name="notes" rows="2" class="w-full px-3 py-2 border rounded-lg">${student?.notes || ''}</textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4 space-x-2">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                            <i class="fas fa-save mr-2"></i>저장
+                        </button>
+                        <button type="button" onclick="hideStudentForm()" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg">
+                            취소
+                        </button>
+                    </div>
+                </form>
+            `;
+            
+            formDiv.classList.remove('hidden');
+        }
+        
+        function hideStudentForm() {
+            document.getElementById('student-form').classList.add('hidden');
+        }
+        
+        async function saveStudent(event, studentId) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const data = {
+                name: formData.get('name'),
+                birth_date: formData.get('birth_date'),
+                gender: formData.get('gender'),
+                phone: formData.get('phone'),
+                email: formData.get('email'),
+                address: formData.get('address'),
+                interests: formData.get('interests'),
+                education: formData.get('education'),
+                introduction: formData.get('introduction'),
+                campus: formData.get('campus'),
+                notes: formData.get('notes')
+            };
+            
+            try {
+                if (studentId) {
+                    await axios.put(`${API_BASE_URL}/api/students/${studentId}`, data);
+                } else {
+                    await axios.post(`${API_BASE_URL}/api/students`, data);
+                }
+                hideStudentForm();
+                loadStudents();
+            } catch (error) {
+                console.error('학생 저장 실패:', error);
+                alert('학생 저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+            }
+        }
+        
+        function editStudent(id) {
+            showStudentForm(id);
+        }
+        
+        async function viewStudent(id) {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/students/${id}`);
+                const student = response.data;
+                
+                const info = `학생 정보
+
+이름: ${student.name}
+생년월일: ${student.birth_date}
+성별: ${student.gender}
+연락처: ${student.phone}
+이메일: ${student.email}
+주소: ${student.address || '-'}
+관심분야: ${student.interests || '-'}
+학력: ${student.education || '-'}
+자기소개: ${student.introduction || '-'}
+캠퍼스: ${student.campus || '-'}
+비고: ${student.notes || '-'}`;
+                
+                alert(info);
+            } catch (error) {
+                alert('학생 정보를 불러오는데 실패했습니다');
+            }
+        }
+        
+        async function deleteStudent(id) {
+            if (!confirm('정말 이 학생을 삭제하시겠습니까?')) return;
+            
+            try {
+                await axios.delete(`${API_BASE_URL}/api/students/${id}`);
+                loadStudents();
+            } catch (error) {
+                alert('학생 삭제에 실패했습니다');
+            }
+        }
+        
+        // ==================== 과목 관리 ====================
+        async function loadSubjects() {
+            try {
+                const [subjectsRes, instructorsRes] = await Promise.all([
+                    axios.get(`${API_BASE_URL}/api/subjects`),
+                    axios.get(`${API_BASE_URL}/api/instructors`)
+                ]);
+                subjects = subjectsRes.data;
+                instructors = instructorsRes.data;
+                renderSubjects();
+            } catch (error) {
+                console.error('과목 목록 로드 실패:', error);
+                alert('과목 목록을 불러오는데 실패했습니다.');
+            }
+        }
+        
+        function renderSubjects() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            <i class="fas fa-book mr-2"></i>과목 목록 (총 ${subjects.length}개)
+                        </h2>
+                        <button onclick="showSubjectForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                            <i class="fas fa-plus mr-2"></i>과목 추가
+                        </button>
+                    </div>
+                    
+                    <div id="subject-form" class="hidden mb-6 p-4 bg-gray-50 rounded-lg"></div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${subjects.map(subject => `
+                            <div class="border rounded-lg p-4 hover:shadow-lg transition-shadow">
+                                <div class="flex justify-between items-start mb-3">
+                                    <div>
+                                        <h3 class="text-xl font-bold text-blue-600">${subject.name}</h3>
+                                        <p class="text-gray-600 text-sm mt-1">
+                                            <i class="fas fa-user-tie mr-1"></i>${subject.instructor_name || '미정'}
+                                        </p>
+                                    </div>
+                                    <div class="space-x-2">
+                                        <button onclick="editSubject(${subject.id})" class="text-green-600 hover:text-green-800">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button onclick="deleteSubject(${subject.id})" class="text-red-600 hover:text-red-800">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="text-sm text-gray-600 space-y-1">
+                                    <p><i class="fas fa-calendar mr-2"></i>강의요일: ${subject.lecture_days || '미정'}</p>
+                                    <p><i class="fas fa-repeat mr-2"></i>빈도: ${subject.frequency || '매주'}</p>
+                                    <p><i class="fas fa-clock mr-2"></i>강의시수: ${subject.lecture_hours || 0}시간</p>
+                                </div>
+                                ${subject.description ? \`<p class="text-gray-500 text-xs mt-2">\${subject.description}</p>\` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function showSubjectForm(subjectId = null) {
+            const subject = subjectId ? subjects.find(s => s.id === subjectId) : null;
+            const formDiv = document.getElementById('subject-form');
+            
+            formDiv.innerHTML = \`
+                <h3 class="text-lg font-bold mb-4">\${subject ? '과목 수정' : '새 과목 추가'}</h3>
+                <form onsubmit="saveSubject(event, \${subjectId})">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">과목명</label>
+                            <input type="text" name="name" value="\${subject?.name || ''}" required 
+                                   class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">교수/강사</label>
+                            <select name="instructor_id" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">선택하세요</option>
+                                \${instructors.map(inst => \`
+                                    <option value="\${inst.id}" \${subject?.instructor_id === inst.id ? 'selected' : ''}>
+                                        \${inst.name}
+                                    </option>
+                                \`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">강의요일</label>
+                            <div class="flex space-x-2">
+                                <label><input type="checkbox" name="days" value="월" \${subject?.lecture_days?.includes('월') ? 'checked' : ''}> 월</label>
+                                <label><input type="checkbox" name="days" value="화" \${subject?.lecture_days?.includes('화') ? 'checked' : ''}> 화</label>
+                                <label><input type="checkbox" name="days" value="수" \${subject?.lecture_days?.includes('수') ? 'checked' : ''}> 수</label>
+                                <label><input type="checkbox" name="days" value="목" \${subject?.lecture_days?.includes('목') ? 'checked' : ''}> 목</label>
+                                <label><input type="checkbox" name="days" value="금" \${subject?.lecture_days?.includes('금') ? 'checked' : ''}> 금</label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">빈도</label>
+                            <select name="frequency" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="매주" \${subject?.frequency === '매주' ? 'selected' : ''}>매주</option>
+                                <option value="격주" \${subject?.frequency === '격주' ? 'selected' : ''}>격주</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">강의시수</label>
+                            <input type="number" name="lecture_hours" value="\${subject?.lecture_hours || 0}" min="0" 
+                                   class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-gray-700 mb-2">설명</label>
+                            <textarea name="description" rows="2" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">\${subject?.description || ''}</textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4 space-x-2">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                            <i class="fas fa-save mr-2"></i>저장
+                        </button>
+                        <button type="button" onclick="hideSubjectForm()" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg">
+                            취소
+                        </button>
+                    </div>
+                </form>
+            \`;
+            
+            formDiv.classList.remove('hidden');
+        }
+        
+        function hideSubjectForm() {
+            document.getElementById('subject-form').classList.add('hidden');
+        }
+        
+        async function saveSubject(event, subjectId) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            
+            // 강의요일 선택된 것들 합치기
+            const selectedDays = Array.from(event.target.querySelectorAll('input[name="days"]:checked'))
+                .map(cb => cb.value);
+            
+            const data = {
+                name: formData.get('name'),
+                instructor_id: formData.get('instructor_id') ? parseInt(formData.get('instructor_id')) : null,
+                lecture_days: selectedDays.join(','),
+                frequency: formData.get('frequency'),
+                lecture_hours: parseInt(formData.get('lecture_hours')) || 0,
+                description: formData.get('description')
+            };
+            
+            try {
+                if (subjectId) {
+                    await axios.put(\`\${API_BASE_URL}/api/subjects/\${subjectId}\`, data);
+                } else {
+                    await axios.post(\`\${API_BASE_URL}/api/subjects\`, data);
+                }
+                hideSubjectForm();
+                loadSubjects();
+            } catch (error) {
+                console.error('과목 저장 실패:', error);
+                alert('과목 저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+            }
+        }
+        
+        function editSubject(id) {
+            showSubjectForm(id);
+        }
+        
+        async function deleteSubject(id) {
+            if (!confirm('정말 이 과목을 삭제하시겠습니까?')) return;
+            
+            try {
+                await axios.delete(\`\${API_BASE_URL}/api/subjects/\${id}\`);
+                loadSubjects();
+            } catch (error) {
+                alert('과목 삭제에 실패했습니다');
+            }
+        }
+        
+        // ==================== 상담 관리 ====================
+        async function loadCounselings() {
+            try {
+                const [counselingsRes, studentsRes] = await Promise.all([
+                    axios.get(`${API_BASE_URL}/api/counselings`),
+                    axios.get(`${API_BASE_URL}/api/students`)
+                ]);
+                counselings = counselingsRes.data;
+                students = studentsRes.data;
+                renderCounselings();
+            } catch (error) {
+                console.error('상담 목록 로드 실패:', error);
+                alert('상담 목록을 불러오는데 실패했습니다.');
+            }
+        }
+        
+        function renderCounselings() {
+            const app = document.getElementById('app');
+            
+            // 월별, 학생별 필터
+            const months = [...new Set(counselings.map(c => c.counseling_date?.substring(0, 7)))].sort().reverse();
+            
+            app.innerHTML = \`
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            <i class="fas fa-comments mr-2"></i>상담 목록 (총 \${counselings.length}건)
+                        </h2>
+                        <button onclick="showCounselingForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                            <i class="fas fa-plus mr-2"></i>상담 추가
+                        </button>
+                    </div>
+                    
+                    <div class="mb-4 flex space-x-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">월별 필터</label>
+                            <select id="month-filter" onchange="filterCounselings()" class="px-3 py-2 border rounded-lg">
+                                <option value="">전체</option>
+                                \${months.map(m => \`<option value="\${m}">\${m}</option>\`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">학생별 필터</label>
+                            <select id="student-filter" onchange="filterCounselings()" class="px-3 py-2 border rounded-lg">
+                                <option value="">전체</option>
+                                \${students.map(s => \`<option value="\${s.id}">\${s.name} (\${s.code})</option>\`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="counseling-form" class="hidden mb-6 p-4 bg-gray-50 rounded-lg"></div>
+                    
+                    <div id="counseling-list" class="space-y-4">
+                        \${counselings.map(counseling => \`
+                            <div class="border rounded-lg p-4 hover:shadow-lg transition-shadow \${counseling.is_completed ? 'bg-green-50' : ''}">
+                                <div class="flex justify-between items-start mb-3">
+                                    <div>
+                                        <h3 class="text-xl font-bold text-blue-600">\${counseling.topic || counseling.main_topic || '상담'}</h3>
+                                        <p class="text-gray-600">
+                                            <i class="fas fa-user mr-2"></i>\${counseling.student_name} (\${counseling.student_code}) | 
+                                            \${counseling.counseling_date?.substring(0, 10) || counseling.consultation_date?.substring(0, 10)}
+                                        </p>
+                                        \${counseling.counseling_type || counseling.consultation_type ? \`
+                                        <span class="inline-block px-2 py-1 text-xs rounded mt-2 bg-blue-100 text-blue-800">
+                                            \${counseling.counseling_type || counseling.consultation_type}
+                                        </span>
+                                        \` : ''}
+                                        \${counseling.is_completed ? '<span class="inline-block px-2 py-1 text-xs rounded mt-2 ml-2 bg-green-200 text-green-800">완료</span>' : ''}
+                                    </div>
+                                    <div class="space-x-2">
+                                        <button onclick="editCounseling(\${counseling.id})" class="text-green-600 hover:text-green-800">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button onclick="deleteCounseling(\${counseling.id})" class="text-red-600 hover:text-red-800">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="text-gray-700">
+                                    <p class="mb-2"><strong>상담 내용:</strong> \${counseling.content || '-'}</p>
+                                    \${counseling.follow_up ? \`<p class="text-blue-600"><strong>후속 조치:</strong> \${counseling.follow_up}</p>\` : ''}
+                                </div>
+                            </div>
+                        \`).join('')}
+                    </div>
+                </div>
+            \`;
+        }
+        
+        async function filterCounselings() {
+            const month = document.getElementById('month-filter').value;
+            const studentId = document.getElementById('student-filter').value;
+            
+            try {
+                let url = \`\${API_BASE_URL}/api/counselings?\`;
+                if (month) url += \`month=\${month}&\`;
+                if (studentId) url += \`student_id=\${studentId}&\`;
+                
+                const response = await axios.get(url);
+                counselings = response.data;
+                
+                // 리스트만 다시 렌더링
+                const listDiv = document.getElementById('counseling-list');
+                listDiv.innerHTML = counselings.map(counseling => \`
+                    <div class="border rounded-lg p-4 hover:shadow-lg transition-shadow \${counseling.is_completed ? 'bg-green-50' : ''}">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 class="text-xl font-bold text-blue-600">\${counseling.topic || counseling.main_topic || '상담'}</h3>
+                                <p class="text-gray-600">
+                                    <i class="fas fa-user mr-2"></i>\${counseling.student_name} (\${counseling.student_code}) | 
+                                    \${counseling.counseling_date?.substring(0, 10) || counseling.consultation_date?.substring(0, 10)}
+                                </p>
+                                \${counseling.counseling_type || counseling.consultation_type ? \`
+                                <span class="inline-block px-2 py-1 text-xs rounded mt-2 bg-blue-100 text-blue-800">
+                                    \${counseling.counseling_type || counseling.consultation_type}
+                                </span>
+                                \` : ''}
+                                \${counseling.is_completed ? '<span class="inline-block px-2 py-1 text-xs rounded mt-2 ml-2 bg-green-200 text-green-800">완료</span>' : ''}
+                            </div>
+                            <div class="space-x-2">
+                                <button onclick="editCounseling(\${counseling.id})" class="text-green-600 hover:text-green-800">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteCounseling(\${counseling.id})" class="text-red-600 hover:text-red-800">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="text-gray-700">
+                            <p class="mb-2"><strong>상담 내용:</strong> \${counseling.content || '-'}</p>
+                            \${counseling.follow_up ? \`<p class="text-blue-600"><strong>후속 조치:</strong> \${counseling.follow_up}</p>\` : ''}
+                        </div>
+                    </div>
+                \`).join('');
+            } catch (error) {
+                console.error('상담 필터링 실패:', error);
+            }
+        }
+        
+        function showCounselingForm(counselingId = null) {
+            const counseling = counselingId ? counselings.find(c => c.id === counselingId) : null;
+            const formDiv = document.getElementById('counseling-form');
+            
+            formDiv.innerHTML = \`
+                <h3 class="text-lg font-bold mb-4">\${counseling ? '상담 내용 수정' : '새 상담 추가'}</h3>
+                <form onsubmit="saveCounseling(event, \${counselingId})">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">학생</label>
+                            <select name="student_id" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">선택하세요</option>
+                                \${students.map(student => \`
+                                    <option value="\${student.id}" \${counseling?.student_id === student.id ? 'selected' : ''}>
+                                        \${student.name} (\${student.code})
+                                    </option>
+                                \`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">상담 날짜</label>
+                            <input type="date" name="counseling_date" value="\${counseling?.counseling_date?.substring(0, 10) || ''}" required 
+                                   class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">상담 유형</label>
+                            <select name="counseling_type" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="학업" \${counseling?.counseling_type === '학업' ? 'selected' : ''}>학업</option>
+                                <option value="생활" \${counseling?.counseling_type === '생활' ? 'selected' : ''}>생활</option>
+                                <option value="진로" \${counseling?.counseling_type === '진로' ? 'selected' : ''}>진로</option>
+                                <option value="기타" \${counseling?.counseling_type === '기타' ? 'selected' : ''}>기타</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">주제</label>
+                            <input type="text" name="topic" value="\${counseling?.topic || ''}" required 
+                                   class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-gray-700 mb-2">상담 내용</label>
+                            <textarea name="content" rows="4" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">\${counseling?.content || ''}</textarea>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-gray-700 mb-2">후속 조치</label>
+                            <textarea name="follow_up" rows="2" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">\${counseling?.follow_up || ''}</textarea>
+                        </div>
+                        <div>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="is_completed" \${counseling?.is_completed ? 'checked' : ''} class="mr-2">
+                                <span class="text-gray-700">완료됨</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mt-4 space-x-2">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                            <i class="fas fa-save mr-2"></i>저장
+                        </button>
+                        <button type="button" onclick="hideCounselingForm()" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg">
+                            취소
+                        </button>
+                    </div>
+                </form>
+            \`;
+            
+            formDiv.classList.remove('hidden');
+        }
+        
+        function hideCounselingForm() {
+            document.getElementById('counseling-form').classList.add('hidden');
+        }
+        
+        async function saveCounseling(event, counselingId) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const data = {
+                student_id: parseInt(formData.get('student_id')),
+                counseling_date: formData.get('counseling_date'),
+                counseling_type: formData.get('counseling_type'),
+                topic: formData.get('topic'),
+                content: formData.get('content'),
+                follow_up: formData.get('follow_up'),
+                is_completed: formData.get('is_completed') ? 1 : 0
+            };
+            
+            try {
+                if (counselingId) {
+                    await axios.put(\`\${API_BASE_URL}/api/counselings/\${counselingId}\`, data);
+                } else {
+                    await axios.post(\`\${API_BASE_URL}/api/counselings\`, data);
+                }
+                hideCounselingForm();
+                loadCounselings();
+            } catch (error) {
+                console.error('상담 저장 실패:', error);
+                alert('상담 저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+            }
+        }
+        
+        function editCounseling(id) {
+            showCounselingForm(id);
+        }
+        
+        async function deleteCounseling(id) {
+            if (!confirm('정말 이 상담 내용을 삭제하시겠습니까?')) return;
+            
+            try {
+                await axios.delete(\`\${API_BASE_URL}/api/counselings/\${id}\`);
+                loadCounselings();
+            } catch (error) {
+                alert('상담 삭제에 실패했습니다');
+            }
+        }
+        
+        // ==================== AI 생기부 ====================
+        function renderAIReport() {
+            const app = document.getElementById('app');
+            app.innerHTML = \`
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                        <i class="fas fa-robot mr-2"></i>AI 생활기록부 작성
+                    </h2>
+                    
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                        <p class="text-yellow-700">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            OpenAI API 키가 필요합니다. .env 파일에 OPENAI_API_KEY를 설정해주세요.
+                        </p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2 font-semibold">학생 선택</label>
+                            <select id="ai-student-select" class="w-full px-3 py-2 border rounded-lg">
+                                <option value="">학생을 선택하세요</option>
+                                \${students.map(s => \`<option value="\${s.id}">\${s.name} (\${s.code})</option>\`).join('')}
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 mb-2 font-semibold">맞춤형 지시사항</label>
+                            <textarea id="ai-instructions" rows="4" class="w-full px-3 py-2 border rounded-lg" 
+                                      placeholder="예: 긍정적이고 따뜻한 톤으로 작성해주세요. 학생의 성장 가능성을 강조해주세요."></textarea>
+                        </div>
+                        
+                        <button onclick="generateAIReport()" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold">
+                            <i class="fas fa-magic mr-2"></i>AI 생기부 작성
+                        </button>
+                    </div>
+                    
+                    <div id="ai-result" class="hidden mt-6 p-6 bg-blue-50 rounded-lg">
+                        <h3 class="text-xl font-bold mb-4">생성된 생활기록부</h3>
+                        <div id="ai-report-content" class="whitespace-pre-wrap text-gray-800"></div>
+                        <button onclick="copyAIReport()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                            <i class="fas fa-copy mr-2"></i>복사하기
+                        </button>
+                    </div>
+                </div>
+            \`;
+        }
+        
+        async function generateAIReport() {
+            const studentId = document.getElementById('ai-student-select').value;
+            const customInstructions = document.getElementById('ai-instructions').value;
+            
+            if (!studentId) {
+                alert('학생을 선택해주세요');
+                return;
+            }
+            
+            try {
+                document.querySelector('button[onclick="generateAIReport()"]').disabled = true;
+                document.querySelector('button[onclick="generateAIReport()"]').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>AI 생성 중...';
+                
+                const response = await axios.post(\`\${API_BASE_URL}/api/ai/generate-report\`, {
+                    student_id: parseInt(studentId),
+                    custom_instructions: customInstructions
+                });
+                
+                document.getElementById('ai-report-content').textContent = response.data.report;
+                document.getElementById('ai-result').classList.remove('hidden');
+                
+                document.querySelector('button[onclick="generateAIReport()"]').disabled = false;
+                document.querySelector('button[onclick="generateAIReport()"]').innerHTML = '<i class="fas fa-magic mr-2"></i>AI 생기부 작성';
+            } catch (error) {
+                console.error('AI 보고서 생성 실패:', error);
+                alert('AI 보고서 생성에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+                document.querySelector('button[onclick="generateAIReport()"]').disabled = false;
+                document.querySelector('button[onclick="generateAIReport()"]').innerHTML = '<i class="fas fa-magic mr-2"></i>AI 생기부 작성';
+            }
+        }
+        
+        function copyAIReport() {
+            const content = document.getElementById('ai-report-content').textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                alert('생기부가 클립보드에 복사되었습니다');
+            });
+        }
+    </script>
+</body>
+</html>

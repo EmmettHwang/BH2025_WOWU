@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>🎤 Web Speech API 테스트</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- 헤더 -->
+        <div class="bg-white rounded-lg shadow-lg p-8 mb-6">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-microphone text-red-500"></i>
+                Web Speech API 테스트
+            </h1>
+            <p class="text-gray-600">
+                브라우저 내장 음성 인식 기능을 테스트합니다. (무료, 서버 불필요)
+            </p>
+        </div>
+
+        <!-- 시스템 체크 -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-check-circle text-green-500"></i>
+                시스템 체크
+            </h2>
+            <div class="space-y-2 text-sm">
+                <div id="check-https" class="flex items-center">
+                    <span class="w-4 h-4 mr-2"></span>
+                    <span>HTTPS 확인 중...</span>
+                </div>
+                <div id="check-browser" class="flex items-center">
+                    <span class="w-4 h-4 mr-2"></span>
+                    <span>브라우저 지원 확인 중...</span>
+                </div>
+                <div id="check-secure" class="flex items-center">
+                    <span class="w-4 h-4 mr-2"></span>
+                    <span>Secure Context 확인 중...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 테스트 1: 기본 음성 인식 -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-microphone-alt text-blue-500"></i>
+                테스트 1: 기본 음성 인식
+            </h2>
+            <p class="text-gray-600 mb-4">버튼을 클릭하고 마이크에 대고 말해보세요.</p>
+            
+            <button 
+                id="btn-basic-test" 
+                class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition"
+                onclick="basicSpeechTest()">
+                <i class="fas fa-microphone mr-2"></i>
+                음성 인식 시작
+            </button>
+            
+            <div id="basic-result" class="mt-4 p-4 bg-gray-50 rounded-lg min-h-24">
+                <p class="text-gray-500 text-sm">인식 결과가 여기에 표시됩니다...</p>
+            </div>
+        </div>
+
+        <!-- 테스트 2: 검색창 음성 입력 -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-search text-green-500"></i>
+                테스트 2: 검색창 음성 입력
+            </h2>
+            <p class="text-gray-600 mb-4">마이크 버튼을 클릭하고 검색어를 말해보세요.</p>
+            
+            <div class="flex gap-2">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="검색어를 입력하거나 음성으로 말하세요...">
+                <button 
+                    class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition"
+                    onclick="voiceSearch('#search-input')">
+                    <i class="fas fa-microphone"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 테스트 3: 텍스트 영역 음성 입력 -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-comment-dots text-purple-500"></i>
+                테스트 3: 텍스트 영역 음성 입력
+            </h2>
+            <p class="text-gray-600 mb-4">마이크 버튼을 클릭하고 내용을 말해보세요.</p>
+            
+            <textarea 
+                id="memo-input" 
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 mb-2"
+                rows="5"
+                placeholder="메모를 입력하거나 음성으로 말하세요..."></textarea>
+            
+            <button 
+                class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-6 rounded-lg transition"
+                onclick="voiceInput('#memo-input')">
+                <i class="fas fa-microphone mr-2"></i>
+                음성으로 입력하기
+            </button>
+        </div>
+
+        <!-- 사용 가이드 -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-info-circle text-yellow-500"></i>
+                사용 가이드
+            </h2>
+            <ul class="space-y-2 text-sm text-gray-600">
+                <li><i class="fas fa-check text-green-500 mr-2"></i> HTTPS 환경에서만 작동합니다</li>
+                <li><i class="fas fa-check text-green-500 mr-2"></i> Chrome, Edge, Safari 브라우저 권장</li>
+                <li><i class="fas fa-check text-green-500 mr-2"></i> 마이크 권한을 허용해야 합니다</li>
+                <li><i class="fas fa-check text-green-500 mr-2"></i> 인터넷 연결이 필요합니다 (Google 서버 사용)</li>
+                <li><i class="fas fa-check text-green-500 mr-2"></i> 한 번에 약 60초까지 인식 가능</li>
+                <li><i class="fas fa-check text-green-500 mr-2"></i> 완전 무료 (브라우저 내장 API)</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- app.js 로드 -->
+    <script src="/app.js?v=2.0.69"></script>
+
+    <script>
+        // 시스템 체크
+        window.addEventListener('DOMContentLoaded', () => {
+            // HTTPS 체크
+            const httpsCheck = document.getElementById('check-https');
+            if (window.location.protocol === 'https:') {
+                httpsCheck.innerHTML = '<i class="fas fa-check-circle text-green-500 mr-2"></i><span>✅ HTTPS 환경</span>';
+            } else if (window.location.hostname === 'localhost') {
+                httpsCheck.innerHTML = '<i class="fas fa-info-circle text-blue-500 mr-2"></i><span>ℹ️ Localhost (개발 환경)</span>';
+            } else {
+                httpsCheck.innerHTML = '<i class="fas fa-times-circle text-red-500 mr-2"></i><span>❌ HTTP 환경 (음성 인식 불가)</span>';
+            }
+
+            // 브라우저 지원 체크
+            const browserCheck = document.getElementById('check-browser');
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                browserCheck.innerHTML = '<i class="fas fa-check-circle text-green-500 mr-2"></i><span>✅ Web Speech API 지원</span>';
+            } else {
+                browserCheck.innerHTML = '<i class="fas fa-times-circle text-red-500 mr-2"></i><span>❌ Web Speech API 미지원</span>';
+            }
+
+            // Secure Context 체크
+            const secureCheck = document.getElementById('check-secure');
+            if (window.isSecureContext) {
+                secureCheck.innerHTML = '<i class="fas fa-check-circle text-green-500 mr-2"></i><span>✅ Secure Context</span>';
+            } else {
+                secureCheck.innerHTML = '<i class="fas fa-times-circle text-red-500 mr-2"></i><span>❌ Insecure Context</span>';
+            }
+        });
+
+        // 기본 음성 인식 테스트
+        function basicSpeechTest() {
+            const resultDiv = document.getElementById('basic-result');
+            const btn = document.getElementById('btn-basic-test');
+            
+            // 버튼 비활성화
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>듣고 있습니다...';
+            btn.classList.add('opacity-75');
+            
+            resultDiv.innerHTML = '<p class="text-blue-600 text-sm"><i class="fas fa-microphone fa-pulse mr-2"></i>🎤 듣고 있습니다... 마이크에 대고 말해보세요!</p>';
+            
+            startSpeechRecognition(
+                // onResult
+                (transcript, confidence) => {
+                    resultDiv.innerHTML = `
+                        <div class="space-y-2">
+                            <p class="text-green-600 font-bold"><i class="fas fa-check-circle mr-2"></i>✅ 인식 성공!</p>
+                            <p class="text-lg font-semibold text-gray-800">"${transcript}"</p>
+                            <p class="text-sm text-gray-500">신뢰도: ${(confidence * 100).toFixed(1)}%</p>
+                        </div>
+                    `;
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-microphone mr-2"></i>음성 인식 시작';
+                    btn.classList.remove('opacity-75');
+                },
+                // onError
+                (errorMessage) => {
+                    resultDiv.innerHTML = `
+                        <div class="space-y-2">
+                            <p class="text-red-600 font-bold"><i class="fas fa-exclamation-circle mr-2"></i>❌ 오류 발생</p>
+                            <p class="text-sm text-gray-600">${errorMessage}</p>
+                        </div>
+                    `;
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-microphone mr-2"></i>음성 인식 시작';
+                    btn.classList.remove('opacity-75');
+                },
+                // onStart
+                () => {
+                    console.log('🎤 음성 인식 시작됨');
+                },
+                // onEnd
+                () => {
+                    if (btn.disabled) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-microphone mr-2"></i>음성 인식 시작';
+                        btn.classList.remove('opacity-75');
+                    }
+                }
+            );
+        }
+    </script>
+</body>
+</html>

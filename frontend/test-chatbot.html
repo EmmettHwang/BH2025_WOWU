@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>예진이 챗봇 테스트</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">예진이 챗봇 테스트 🐶</h1>
+        
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">API 테스트</h2>
+            <button id="testBtn" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600">
+                상담일지 작성법 테스트
+            </button>
+            <div id="result" class="mt-4 p-4 bg-gray-50 rounded-lg hidden">
+                <h3 class="font-bold mb-2">응답:</h3>
+                <pre id="response" class="whitespace-pre-wrap text-sm"></pre>
+            </div>
+            <div id="error" class="mt-4 p-4 bg-red-50 text-red-700 rounded-lg hidden">
+                <h3 class="font-bold mb-2">오류:</h3>
+                <pre id="errorMsg" class="whitespace-pre-wrap text-sm"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API_BASE_URL 설정
+        window.API_BASE_URL = window.location.protocol + '//' + window.location.hostname + ':8000';
+        console.log('API_BASE_URL:', window.API_BASE_URL);
+
+        document.getElementById('testBtn').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+            const responseEl = document.getElementById('response');
+            const errorEl = document.getElementById('errorMsg');
+            
+            // 초기화
+            resultDiv.classList.add('hidden');
+            errorDiv.classList.add('hidden');
+            
+            try {
+                console.log('API 호출 시작...');
+                
+                const response = await fetch(window.API_BASE_URL + '/api/aesong-chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        messages: [
+                            {
+                                role: 'system',
+                                content: '당신은 우송대학교의 귀여운 마스코트 예진이입니다. 짧고 친근하게 답변하세요.'
+                            },
+                            {
+                                role: 'user',
+                                content: '상담일지 작성법 알려줘'
+                            }
+                        ]
+                    })
+                });
+                
+                console.log('응답 상태:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`API 오류: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('응답 데이터:', data);
+                
+                responseEl.textContent = data.response;
+                resultDiv.classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('오류:', error);
+                errorEl.textContent = error.message + '\n\n스택:\n' + error.stack;
+                errorDiv.classList.remove('hidden');
+            }
+        });
+    </script>
+    
+    <!-- 예진이 AI 챗봇 -->
+    <script src="aesong-chatbot.js"></script>
+</body>
+</html>

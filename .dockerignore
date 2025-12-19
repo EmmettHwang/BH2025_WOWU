@@ -1,0 +1,40 @@
+# Git
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+
+# Node
+node_modules/
+.npm/
+
+# Logs
+*.log
+logs/
+
+# PM2
+.pm2/
+ecosystem*.config.cjs
+
+# Development
+.vscode/
+.idea/
+
+# Environment (주의: .env는 포함해야 함)
+.env.local
+.env.development
+
+# Temporary
+.DS_Store
+*.tmp
+*.swp
+
+# Build
+dist/
+.wrangler/
