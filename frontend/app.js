@@ -517,14 +517,19 @@ window.createFilePreviewItem = function(url, index, removeCallback) {
                          onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E📷%3C/text%3E%3C/svg%3E';">
                 </div>
                 <div class="flex-1 min-w-0">
-                    <button onclick="window.showFilePreview('${cleanUrl}', 'image')" 
-                            class="text-blue-600 hover:underline text-sm block text-left truncate w-full" title="${filename}">
-                        <i class="fas fa-eye mr-1"></i>${filename}
-                    </button>
-                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(cleanUrl)}" download="${filename}"
-                       class="text-gray-600 hover:underline text-xs block mt-1">
-                        <i class="fas fa-download mr-1"></i>다운로드
-                    </a>
+                    <p class="text-gray-800 text-sm truncate" title="${filename}">
+                        <i class="fas fa-image mr-1 text-blue-500"></i>${filename}
+                    </p>
+                    <div class="flex gap-2 mt-1">
+                        <button type="button" onclick="window.showFilePreview('${cleanUrl}', 'image')" 
+                                class="text-blue-600 hover:underline text-xs">
+                            <i class="fas fa-eye mr-1"></i>미리보기
+                        </button>
+                        <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(cleanUrl)}" download="${filename}"
+                           class="text-gray-600 hover:underline text-xs">
+                            <i class="fas fa-download mr-1"></i>다운로드
+                        </a>
+                    </div>
                 </div>
                 <button type="button" onclick="${removeCallback}(${index})" 
                         class="text-red-500 hover:text-red-700 px-2 flex-shrink-0">
@@ -572,18 +577,21 @@ window.createFilePreviewItem = function(url, index, removeCallback) {
                 <i class="fas ${icon} text-3xl ${iconColor}"></i>
             </div>
             <div class="flex-1 min-w-0">
-                ${previewAction ? `
-                    <button onclick="${previewAction}" 
-                            class="text-blue-600 hover:underline text-sm block text-left truncate w-full" title="${filename}">
-                        <i class="fas fa-eye mr-1"></i>${filename}
-                    </button>
-                ` : `
-                    <p class="text-sm truncate w-full" title="${filename}">${filename}</p>
-                `}
-                <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(cleanUrl)}" download="${filename}"
-                   class="text-gray-600 hover:underline text-xs block mt-1">
-                    <i class="fas fa-download mr-1"></i>다운로드
-                </a>
+                <p class="text-gray-800 text-sm truncate" title="${filename}">
+                    <i class="fas ${icon} mr-1 ${iconColor}"></i>${filename}
+                </p>
+                <div class="flex gap-2 mt-1">
+                    ${previewAction ? `
+                        <button type="button" onclick="${previewAction}" 
+                                class="text-blue-600 hover:underline text-xs">
+                            <i class="fas fa-eye mr-1"></i>미리보기
+                        </button>
+                    ` : ''}
+                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(cleanUrl)}" download="${filename}"
+                       class="text-gray-600 hover:underline text-xs">
+                        <i class="fas fa-download mr-1"></i>다운로드
+                    </a>
+                </div>
             </div>
             <button type="button" onclick="${removeCallback}(${index})" 
                     class="text-red-500 hover:text-red-700 px-2 flex-shrink-0">
