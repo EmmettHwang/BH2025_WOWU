@@ -17223,3 +17223,110 @@ console.log('예시:');
 console.log('  voiceSearch("#search-input")  // 검색창에 음성 입력');
 console.log('  voiceInput("#student-name")   // 학생 이름 필드에 음성 입력');
 
+// ========================================
+// 파일 다운로드 및 미리보기 함수
+// ========================================
+
+/**
+ * 파일 미리보기 모달 열기
+ * @param {string} fileUrl - FTP 파일 URL
+ * @param {string} filename - 파일명
+ */
+window.openFileModal = function(fileUrl, filename) {
+    try {
+        console.log('📂 파일 미리보기:', filename, fileUrl);
+        
+        // 파일 확장자 추출
+        const ext = filename.split('.').pop().toLowerCase();
+        
+        // 이미지 파일인 경우
+        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
+            const downloadUrl = `${API_BASE_URL}/api/download-image?url=${encodeURIComponent(fileUrl)}`;
+            
+            // 이미지 모달 생성
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="relative max-w-4xl max-h-[90vh] bg-white rounded-lg p-4">
+                    <button onclick="this.closest('.fixed').remove()" 
+                            class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl z-10">
+                        ✕
+                    </button>
+                    <div class="flex flex-col items-center">
+                        <h3 class="text-lg font-bold mb-2">${filename}</h3>
+                        <img src="${downloadUrl}" 
+                             alt="${filename}" 
+                             class="max-w-full max-h-[70vh] object-contain"
+                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3E이미지 로드 실패%3C/text%3E%3C/svg%3E'">
+                        <div class="mt-4 flex gap-2">
+                            <button onclick="window.downloadFile('${fileUrl}', '${filename}')" 
+                                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                <i class="fas fa-download mr-2"></i>다운로드
+                            </button>
+                            <button onclick="this.closest('.fixed').remove()" 
+                                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">
+                                닫기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // ESC 키로 닫기
+            const closeOnEsc = (e) => {
+                if (e.key === 'Escape') {
+                    modal.remove();
+                    document.removeEventListener('keydown', closeOnEsc);
+                }
+            };
+            document.addEventListener('keydown', closeOnEsc);
+            
+        } else if (ext === 'pdf') {
+            // PDF 파일인 경우
+            const downloadUrl = `${API_BASE_URL}/api/download-image?url=${encodeURIComponent(fileUrl)}`;
+            window.open(downloadUrl, '_blank');
+            
+        } else {
+            // 기타 파일은 바로 다운로드
+            window.downloadFile(fileUrl, filename);
+        }
+        
+    } catch (error) {
+        console.error('❌ 파일 미리보기 실패:', error);
+        showNotification('파일을 열 수 없습니다: ' + error.message, 'error');
+    }
+};
+
+/**
+ * 파일 다운로드
+ * @param {string} fileUrl - FTP 파일 URL
+ * @param {string} filename - 파일명
+ */
+window.downloadFile = function(fileUrl, filename) {
+    try {
+        console.log('📥 파일 다운로드:', filename, fileUrl);
+        
+        const downloadUrl = `${API_BASE_URL}/api/download-image?url=${encodeURIComponent(fileUrl)}`;
+        
+        // 임시 링크 생성하여 다운로드
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showNotification(`파일 다운로드 시작: ${filename}`, 'success');
+        
+    } catch (error) {
+        console.error('❌ 파일 다운로드 실패:', error);
+        showNotification('파일 다운로드 실패: ' + error.message, 'error');
+    }
+};
+
+console.log('✅ 파일 관리 함수 로드 완료');
+console.log('- window.openFileModal(url, filename)');
+console.log('- window.downloadFile(url, filename)');
+
