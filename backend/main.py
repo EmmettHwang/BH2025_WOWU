@@ -213,9 +213,9 @@ def upload_to_ftp(file_data: bytes, filename: str, category: str) -> str:
         
         # FTP 연결
         ftp = FTP()
+        ftp.encoding = 'utf-8'  # 한글 파일명 지원
         ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
         ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
-        ftp.encoding = 'utf-8'
         
         # 경로 이동
         target_path = FTP_PATHS.get(category)
@@ -266,9 +266,9 @@ async def upload_stream_to_ftp(file: UploadFile, filename: str, category: str) -
     try:
         # FTP 연결
         ftp = FTP()
+        ftp.encoding = 'utf-8'  # 한글 파일명 지원
         ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
         ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
-        ftp.encoding = 'utf-8'
         
         # 경로 이동
         target_path = FTP_PATHS.get(category)
@@ -4321,6 +4321,7 @@ async def download_image(url: str = Query(..., description="FTP URL to download"
         
         # FTP 연결 및 다운로드
         ftp = FTP()
+        ftp.encoding = 'utf-8'  # 한글 파일명 지원
         ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
         ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
         
@@ -4413,6 +4414,7 @@ async def get_thumbnail(url: str = Query(..., description="FTP URL")):
             
             # FTP 연결 및 다운로드
             ftp = FTP()
+            ftp.encoding = 'utf-8'  # 한글 파일명 지원
             ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
             ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
             
@@ -4976,6 +4978,7 @@ async def proxy_ftp_image(url: str):
         
         # FTP 연결
         ftp = FTP()
+        ftp.encoding = 'utf-8'  # 한글 파일명 지원
         ftp.connect(parsed.hostname or FTP_CONFIG['host'], parsed.port or FTP_CONFIG['port'])
         ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
         
