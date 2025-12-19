@@ -3232,10 +3232,12 @@ def generate_calculation_pdf(calculation_result: dict, course_code: str):
         else:
             font_name = 'Helvetica'
         
-        # PDF 파일 경로
+        # PDF 파일 경로 (크로스 플랫폼 지원)
+        import tempfile
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"course_calculation_{course_code}_{timestamp}.pdf"
-        pdf_path = os.path.join('/tmp', filename)
+        temp_dir = tempfile.gettempdir()
+        pdf_path = os.path.join(temp_dir, filename)
         
         # PDF 문서 생성
         doc = SimpleDocTemplate(pdf_path, pagesize=A4)
@@ -4334,8 +4336,10 @@ async def download_image(url: str = Query(..., description="FTP URL to download"
         file_data.seek(0)
         file_bytes = file_data.read()
         
-        # 임시 파일로 저장
-        temp_filename = f"/tmp/{filename}"
+        # 임시 파일로 저장 (크로스 플랫폼 지원)
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        temp_filename = os.path.join(temp_dir, filename)
         with open(temp_filename, 'wb') as f:
             f.write(file_bytes)
         
