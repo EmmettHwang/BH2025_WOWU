@@ -179,9 +179,12 @@ def create_thumbnail(file_data: bytes, filename: str) -> str:
         # 썸네일 크기 (최대 200x200)
         image.thumbnail((200, 200), Image.Resampling.LANCZOS)
         
-        # 썸네일 저장 경로
+        # 썸네일 저장 경로 (크로스 플랫폼 지원)
         thumb_filename = f"thumb_{filename}"
-        thumb_path = f"/home/user/webapp/backend/thumbnails/{thumb_filename}"
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        thumbnails_dir = os.path.join(backend_dir, 'thumbnails')
+        os.makedirs(thumbnails_dir, exist_ok=True)
+        thumb_path = os.path.join(thumbnails_dir, thumb_filename)
         
         # 썸네일 저장
         image.save(thumb_path, 'JPEG', quality=85, optimize=True)
@@ -4398,7 +4401,13 @@ async def get_thumbnail(url: str = Query(..., description="FTP URL")):
         # URL에서 파일명 추출
         filename = url.split('/')[-1]
         thumb_filename = f"thumb_{filename}"
-        thumb_path = f"/home/user/webapp/backend/thumbnails/{thumb_filename}"
+        # 크로스 플랫폼 지원 경로
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        thumbnails_dir = os.path.join(backend_dir, 'thumbnails')
+        thumb_path = os.path.join(thumbnails_dir, thumb_filename)
+        
+        # 썸네일 디렉토리 생성 (없으면)
+        os.makedirs(thumbnails_dir, exist_ok=True)
         
         # 썸네일이 있으면 반환
         if os.path.exists(thumb_path):
