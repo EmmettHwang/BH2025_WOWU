@@ -17291,9 +17291,63 @@ window.openFileModal = function(fileUrl, filename) {
             document.addEventListener('keydown', closeOnEsc);
             
         } else if (ext === 'pdf') {
-            // PDF 파일인 경우
+            // PDF 파일인 경우 - 모달로 표시
             const downloadUrl = `${API_BASE_URL}/api/download-image?url=${encodeURIComponent(fileUrl)}`;
-            window.open(downloadUrl, '_blank');
+            
+            // PDF 모달 생성
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="relative w-full max-w-6xl h-[90vh] bg-white rounded-lg flex flex-col">
+                    <div class="flex items-center justify-between p-4 border-b">
+                        <h3 class="text-lg font-bold text-gray-800">
+                            <i class="fas fa-file-pdf text-red-500 mr-2"></i>${filename}
+                        </h3>
+                        <button onclick="this.closest('.fixed').remove()" 
+                                class="text-gray-500 hover:text-gray-700 text-2xl w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100">
+                            ✕
+                        </button>
+                    </div>
+                    <div class="flex-1 overflow-hidden">
+                        <iframe src="${downloadUrl}" 
+                                class="w-full h-full border-0"
+                                title="${filename}">
+                        </iframe>
+                    </div>
+                    <div class="p-4 border-t flex gap-2 justify-end bg-gray-50">
+                        <button onclick="window.open('${downloadUrl}', '_blank')" 
+                                class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors">
+                            <i class="fas fa-external-link-alt mr-2"></i>새 탭에서 열기
+                        </button>
+                        <button onclick="window.downloadFile('${fileUrl}', '${filename}')" 
+                                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-download mr-2"></i>다운로드
+                        </button>
+                        <button onclick="this.closest('.fixed').remove()" 
+                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors">
+                            닫기
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // ESC 키로 닫기
+            const closeOnEsc = (e) => {
+                if (e.key === 'Escape') {
+                    modal.remove();
+                    document.removeEventListener('keydown', closeOnEsc);
+                }
+            };
+            document.addEventListener('keydown', closeOnEsc);
+            
+            // 모달 배경 클릭으로 닫기
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                    document.removeEventListener('keydown', closeOnEsc);
+                }
+            });
             
         } else {
             // 기타 파일은 바로 다운로드
