@@ -517,18 +517,18 @@ window.createFilePreviewItem = function(url, index, removeCallback) {
                          onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2240%22%3E📷%3C/text%3E%3C/svg%3E';">
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-gray-800 text-sm truncate" title="${filename}">
-                        <i class="fas fa-image mr-1 text-blue-500"></i>${filename}
+                    <p class="text-gray-800 text-sm font-medium truncate mb-2" title="${filename}">
+                        ${filename}
                     </p>
-                    <div class="flex gap-2 mt-1">
-                        <button type="button" onclick="window.showFilePreview('${cleanUrl}', 'image')" 
-                                class="text-blue-600 hover:underline text-xs">
+                    <div class="flex gap-2">
+                        <button type="button" onclick="window.openFileModal('${cleanUrl}', '${filename}')" 
+                                class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs font-medium transition-colors">
                             <i class="fas fa-eye mr-1"></i>미리보기
                         </button>
-                        <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(cleanUrl)}" download="${filename}"
-                           class="text-gray-600 hover:underline text-xs">
+                        <button type="button" onclick="window.downloadFile('${cleanUrl}', '${filename}')"
+                                class="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-medium transition-colors">
                             <i class="fas fa-download mr-1"></i>다운로드
-                        </a>
+                        </button>
                     </div>
                 </div>
                 <button type="button" onclick="${removeCallback}(${index})" 
@@ -577,20 +577,20 @@ window.createFilePreviewItem = function(url, index, removeCallback) {
                 <i class="fas ${icon} text-3xl ${iconColor}"></i>
             </div>
             <div class="flex-1 min-w-0">
-                <p class="text-gray-800 text-sm truncate" title="${filename}">
-                    <i class="fas ${icon} mr-1 ${iconColor}"></i>${filename}
+                <p class="text-gray-800 text-sm font-medium truncate mb-2" title="${filename}">
+                    ${filename}
                 </p>
-                <div class="flex gap-2 mt-1">
+                <div class="flex gap-2">
                     ${previewAction ? `
-                        <button type="button" onclick="${previewAction}" 
-                                class="text-blue-600 hover:underline text-xs">
+                        <button type="button" onclick="window.openFileModal('${cleanUrl}', '${filename}')" 
+                                class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs font-medium transition-colors">
                             <i class="fas fa-eye mr-1"></i>미리보기
                         </button>
                     ` : ''}
-                    <a href="${API_BASE_URL}/api/download-image?url=${encodeURIComponent(cleanUrl)}" download="${filename}"
-                       class="text-gray-600 hover:underline text-xs">
+                    <button type="button" onclick="window.downloadFile('${cleanUrl}', '${filename}')"
+                            class="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-medium transition-colors">
                         <i class="fas fa-download mr-1"></i>다운로드
-                    </a>
+                    </button>
                 </div>
             </div>
             <button type="button" onclick="${removeCallback}(${index})" 
