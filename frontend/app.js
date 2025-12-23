@@ -13740,7 +13740,9 @@ async function applyMenuPermissions() {
         
         menuButtons.forEach(button => {
             const menuId = button.getAttribute('data-tab');
-            const hasPermission = allowedMenus.includes(menuId);
+            
+            // aesong-3d-chat은 모든 강사에게 자동으로 허용 (백엔드 정책과 일치)
+            const hasPermission = allowedMenus.includes(menuId) || menuId === 'aesong-3d-chat';
             
             if (!hasPermission) {
                 // 권한 없음 - 비활성화 및 시각적 피드백
