@@ -16520,6 +16520,45 @@ function initSimple3DScene() {
         createCharacterSprite(character);
     };
     
+    // 마우스 상호작용 변수
+    let isDragging = false;
+    let previousMousePosition = { x: 0, y: 0 };
+    let rotation = { x: 0, y: 0 };
+    
+    // 마우스 이벤트 핸들러
+    canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+        canvas.style.cursor = 'grabbing';
+        console.log('🖱️ 마우스 드래그 시작');
+    });
+    
+    canvas.addEventListener('mousemove', (e) => {
+        if (isDragging && sprite) {
+            const deltaX = e.clientX - previousMousePosition.x;
+            const deltaY = e.clientY - previousMousePosition.y;
+            
+            rotation.y += deltaX * 0.01;
+            rotation.x += deltaY * 0.01;
+            
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        }
+    });
+    
+    canvas.addEventListener('mouseup', () => {
+        isDragging = false;
+        canvas.style.cursor = 'grab';
+        console.log('🖱️ 마우스 드래그 종료');
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+        isDragging = false;
+        canvas.style.cursor = 'grab';
+    });
+    
+    // 초기 커서 스타일
+    canvas.style.cursor = 'grab';
+    
     // 애니메이션
     const clock = new THREE.Clock();
     function animate() {
@@ -16527,15 +16566,21 @@ function initSimple3DScene() {
         
         const time = clock.getElapsedTime();
         
-        // 회전
-        sprite.material.rotation = Math.sin(time * 0.5) * 0.3;
-        
-        // 위아래 움직임
-        sprite.position.y = Math.sin(time) * 0.3;
-        
-        // 크기 변화
-        const scale = 2 + Math.sin(time * 0.5) * 0.2;
-        sprite.scale.set(scale, scale, 1);
+        if (sprite) {
+            // 마우스 드래그가 아닐 때만 자동 회전
+            if (!isDragging) {
+                sprite.material.rotation = Math.sin(time * 0.5) * 0.3 + rotation.y;
+            } else {
+                sprite.material.rotation = rotation.y;
+            }
+            
+            // 위아래 움직임
+            sprite.position.y = Math.sin(time) * 0.3;
+            
+            // 크기 변화
+            const scale = 2 + Math.sin(time * 0.5) * 0.2;
+            sprite.scale.set(scale, scale, 1);
+        }
         
         renderer.render(scene, camera);
     }
