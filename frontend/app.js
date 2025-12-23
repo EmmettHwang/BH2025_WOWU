@@ -16466,28 +16466,59 @@ function initSimple3DScene() {
     directionalLight.position.set(5, 10, 5);
     scene.add(directionalLight);
     
-    // 🐶 강아지 이모지를 텍스처로 사용 (임시)
-    const canvas2d = document.createElement('canvas');
-    canvas2d.width = 512;
-    canvas2d.height = 512;
-    const ctx = canvas2d.getContext('2d');
-    ctx.font = '400px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('🐶', 256, 256);
+    // 캐릭터 이모지 매핑
+    const characterEmojis = {
+        'aesong': '🐶',  // 예진이
+        'david': '👨‍💼', // 데이빗
+        'asol': '👨‍🏫'   // PM 정운표
+    };
     
-    const texture = new THREE.CanvasTexture(canvas2d);
+    let currentCharacter = 'aesong';
+    let sprite = null;
     
-    // Sprite 생성
-    const spriteMaterial = new THREE.SpriteMaterial({ 
-        map: texture,
-        transparent: true
-    });
-    const sprite = new THREE.Sprite(spriteMaterial);
-    sprite.scale.set(2, 2, 1);
-    scene.add(sprite);
+    // 캐릭터 생성 함수
+    function createCharacterSprite(character) {
+        const emoji = characterEmojis[character] || '🐶';
+        
+        const canvas2d = document.createElement('canvas');
+        canvas2d.width = 512;
+        canvas2d.height = 512;
+        const ctx = canvas2d.getContext('2d');
+        ctx.font = '400px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(emoji, 256, 256);
+        
+        const texture = new THREE.CanvasTexture(canvas2d);
+        
+        // 기존 스프라이트 제거
+        if (sprite) {
+            scene.remove(sprite);
+        }
+        
+        // 새 스프라이트 생성
+        const spriteMaterial = new THREE.SpriteMaterial({ 
+            map: texture,
+            transparent: true
+        });
+        sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(2, 2, 1);
+        scene.add(sprite);
+        
+        console.log('✅ 캐릭터 변경:', character, emoji);
+    }
+    
+    // 초기 캐릭터 생성
+    createCharacterSprite(currentCharacter);
     
     console.log('✅ 예진이 캐릭터 표시 완료');
+    
+    // 캐릭터 변경 함수를 전역으로 노출
+    window.changeAesongCharacter = function(character) {
+        console.log('🔄 캐릭터 변경 요청:', character);
+        currentCharacter = character;
+        createCharacterSprite(character);
+    };
     
     // 애니메이션
     const clock = new THREE.Clock();
