@@ -16418,6 +16418,75 @@ function renderAesong3DChat() {
     }, 100);
 }
 
+// 캐릭터 전환 함수
+window.switchCharacter = function(characterName) {
+    console.log('🎭 캐릭터 전환:', characterName);
+    
+    // 활성화 상태 업데이트
+    const options = document.querySelectorAll('.character-option');
+    options.forEach(option => {
+        if (option.dataset.character === characterName) {
+            option.classList.add('active');
+        } else {
+            option.classList.remove('active');
+        }
+    });
+    
+    // 3D 씬에 캐릭터 변경 알림 (모듈에서 처리)
+    if (window.changeAesongCharacter) {
+        window.changeAesongCharacter(characterName);
+    } else {
+        console.warn('⚠️ window.changeAesongCharacter 함수가 없습니다. 3D 모듈을 확인하세요.');
+    }
+};
+
+// 음성 녹음 토글 함수
+window.toggleVoiceRecording = function() {
+    console.log('🎤 음성 녹음 토글');
+    const voiceBtn = document.getElementById('voice-btn');
+    const statusText = document.getElementById('status-text');
+    
+    if (!voiceBtn) return;
+    
+    // 녹음 중인지 확인
+    const isRecording = voiceBtn.classList.contains('recording');
+    
+    if (isRecording) {
+        // 녹음 중지
+        voiceBtn.classList.remove('recording');
+        voiceBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+        if (statusText) {
+            statusText.textContent = 'AI가 응답 중...';
+            statusText.style.display = 'flex';
+        }
+        console.log('🛑 녹음 중지');
+        
+        // 음성 인식 처리 (모듈에서 처리)
+        if (window.stopAesongVoiceRecording) {
+            window.stopAesongVoiceRecording();
+        } else {
+            // 임시: 2초 후 상태 텍스트 숨김
+            setTimeout(() => {
+                if (statusText) statusText.style.display = 'none';
+            }, 2000);
+        }
+    } else {
+        // 녹음 시작
+        voiceBtn.classList.add('recording');
+        voiceBtn.innerHTML = '<i class="fas fa-stop"></i>';
+        if (statusText) {
+            statusText.textContent = '듣고 있어요...';
+            statusText.style.display = 'flex';
+        }
+        console.log('▶️ 녹음 시작');
+        
+        // 음성 인식 시작 (모듈에서 처리)
+        if (window.startAesongVoiceRecording) {
+            window.startAesongVoiceRecording();
+        }
+    }
+};
+
 // ==================== BGM 관련 기능 ====================
 let bgmPlayer = null;
 let currentBGMVideoId = null;
