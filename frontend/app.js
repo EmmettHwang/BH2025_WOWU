@@ -16891,6 +16891,8 @@ window.restoreBGMSettings = function() {
     const savedVolume = localStorage.getItem('bgm_volume') || '30';
     const wasPlaying = localStorage.getItem('bgm_is_playing') === 'true'; // BGM이 재생 중이었는지 확인
     
+    console.log('🔄 BGM 설정 복원:', { savedGenre, wasPlaying, currentBGMVideoId });
+    
     // 대시보드 BGM 컨트롤 복원
     const dashboardGenreSelect = document.getElementById('dashboard-bgm-genre');
     const dashboardVolumeSlider = document.getElementById('dashboard-bgm-volume');
@@ -16920,11 +16922,13 @@ window.restoreBGMSettings = function() {
     
     // BGM이 재생 중이었고, 장르가 선택되어 있고, 현재 BGM이 재생 중이 아닐 때만 재개
     if (wasPlaying && savedGenre && currentTab === 'dashboard' && !currentBGMVideoId) {
-        console.log('🔄 BGM 자동 재개:', savedGenre);
+        console.log('🔄 BGM 자동 재개 시도:', savedGenre);
         // 약간의 지연 후 BGM 재개 (YouTube API 로드 대기)
         setTimeout(() => {
             window.changeBGMGenre(savedGenre);
         }, 500);
+    } else {
+        console.log('⏭️ BGM 재개 건너뜀:', { wasPlaying, savedGenre, currentTab, currentBGMVideoId });
     }
 }
 
