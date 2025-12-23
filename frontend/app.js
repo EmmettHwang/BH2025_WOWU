@@ -16410,12 +16410,113 @@ function renderAesong3DChat() {
         </div>
     `;
     
-    // Three.js 3D 씬 초기화 (모듈에서 처리)
+    // 간단한 3D 씬 초기화 (Three.js CDN 필요)
     setTimeout(() => {
-        if (window.initAesong3DScene) {
-            window.initAesong3DScene();
+        if (typeof THREE === 'undefined') {
+            console.warn('⚠️ Three.js가 로드되지 않았습니다.');
+            // Three.js CDN 로드
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js';
+            script.onload = () => {
+                console.log('✅ Three.js 로드 완료');
+                initSimple3DScene();
+            };
+            document.head.appendChild(script);
+        } else {
+            initSimple3DScene();
         }
     }, 100);
+}
+
+// 간단한 3D 씬 초기화 함수
+function initSimple3DScene() {
+    const canvas = document.getElementById('aesong-canvas');
+    const container = document.getElementById('aesong-3d-container');
+    
+    if (!canvas || !THREE) {
+        console.error('Canvas 또는 Three.js가 없습니다.');
+        return;
+    }
+    
+    console.log('🎨 간단한 3D 씬 초기화...');
+    
+    // 씬 생성
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x667eea);
+    
+    // 카메라 설정
+    const camera = new THREE.PerspectiveCamera(
+        50,
+        container.clientWidth / container.clientHeight,
+        0.1,
+        1000
+    );
+    camera.position.z = 3;
+    
+    // 렌더러 설정
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    
+    // 조명 추가
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(5, 10, 5);
+    scene.add(directionalLight);
+    
+    // 🐶 강아지 이모지를 텍스처로 사용 (임시)
+    const canvas2d = document.createElement('canvas');
+    canvas2d.width = 512;
+    canvas2d.height = 512;
+    const ctx = canvas2d.getContext('2d');
+    ctx.font = '400px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🐶', 256, 256);
+    
+    const texture = new THREE.CanvasTexture(canvas2d);
+    
+    // Sprite 생성
+    const spriteMaterial = new THREE.SpriteMaterial({ 
+        map: texture,
+        transparent: true
+    });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.scale.set(2, 2, 1);
+    scene.add(sprite);
+    
+    console.log('✅ 예진이 캐릭터 표시 완료');
+    
+    // 애니메이션
+    const clock = new THREE.Clock();
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        const time = clock.getElapsedTime();
+        
+        // 회전
+        sprite.material.rotation = Math.sin(time * 0.5) * 0.3;
+        
+        // 위아래 움직임
+        sprite.position.y = Math.sin(time) * 0.3;
+        
+        // 크기 변화
+        const scale = 2 + Math.sin(time * 0.5) * 0.2;
+        sprite.scale.set(scale, scale, 1);
+        
+        renderer.render(scene, camera);
+    }
+    
+    animate();
+    
+    // 리사이즈 핸들러
+    window.addEventListener('resize', () => {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+    });
 }
 
 // 캐릭터 전환 함수
