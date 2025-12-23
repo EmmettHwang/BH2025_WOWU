@@ -16382,10 +16382,28 @@ function renderAesong3DChat() {
                     로딩 중...
                 </div>
                 
+                <!-- 채팅 메시지 영역 -->
+                <div id="aesong-chat-messages" style="position: absolute; bottom: 140px; left: 20px; right: 20px; max-height: 200px; overflow-y: auto; background: rgba(255, 255, 255, 0.95); border-radius: 12px; padding: 15px; display: none; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <div id="chat-message-list"></div>
+                </div>
+                
                 <div class="chat-controls">
-                    <button class="voice-btn" id="voice-btn" onclick="toggleVoiceRecording()">
+                    <button class="voice-btn" id="voice-btn" onclick="toggleVoiceRecording()" title="음성 입력">
                         <i class="fas fa-microphone"></i>
                     </button>
+                    <button class="text-chat-btn" id="text-chat-btn" onclick="window.toggleTextChat()" title="텍스트 채팅" style="margin-left: 10px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: white; border: none; box-shadow: 0 4px 15px rgba(52, 211, 153, 0.4); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: all 0.3s ease;">
+                        <i class="fas fa-keyboard"></i>
+                    </button>
+                </div>
+                
+                <!-- 텍스트 입력 영역 -->
+                <div id="text-chat-input-area" style="position: absolute; bottom: 20px; left: 20px; right: 20px; display: none;">
+                    <div style="display: flex; gap: 10px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                        <input type="text" id="text-chat-input" placeholder="메시지를 입력하세요..." style="flex: 1; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; outline: none;" onkeypress="if(event.key==='Enter') window.sendTextMessage()">
+                        <button onclick="window.sendTextMessage()" style="padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);">
+                            <i class="fas fa-paper-plane mr-2"></i>전송
+                        </button>
+                    </div>
                 </div>
             </div>
             
@@ -16729,6 +16747,123 @@ window.toggleVoiceRecording = function() {
         console.log('▶️ 녹음 시작');
         
         // 음성 인식 시작 (모듈에서 처리)
+        if (window.startAesongVoiceRecording) {
+            window.startAesongVoiceRecording();
+        }
+    }
+};
+
+// 텍스트 채팅 토글 함수
+window.toggleTextChat = function() {
+    const textInputArea = document.getElementById('text-chat-input-area');
+    const chatMessages = document.getElementById('aesong-chat-messages');
+    const textChatBtn = document.getElementById('text-chat-btn');
+    
+    if (textInputArea.style.display === 'none' || !textInputArea.style.display) {
+        textInputArea.style.display = 'block';
+        chatMessages.style.display = 'block';
+        textChatBtn.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+        document.getElementById('text-chat-input').focus();
+        console.log('💬 텍스트 채팅 열림');
+    } else {
+        textInputArea.style.display = 'none';
+        chatMessages.style.display = 'none';
+        textChatBtn.style.background = 'linear-gradient(135deg, #34d399 0%, #10b981 100%)';
+        console.log('💬 텍스트 채팅 닫힘');
+    }
+};
+
+// 메시지 전송 함수
+window.sendTextMessage = async function() {
+    const input = document.getElementById('text-chat-input');
+    const messageList = document.getElementById('chat-message-list');
+    const statusText = document.getElementById('status-text');
+    
+    const message = input.value.trim();
+    if (!message) return;
+    
+    console.log('💬 메시지 전송:', message);
+    
+    // 사용자 메시지 추가
+    addChatMessage('user', message);
+    input.value = '';
+    
+    // AI 응답 대기 표시
+    if (statusText) {
+        statusText.textContent = 'AI가 생각 중...';
+        statusText.style.display = 'flex';
+    }
+    
+    try {
+        // 백엔드 API 호출
+        const response = await fetch('/api/aesong-chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+                message: message,
+                model: 'gemini' // 또는 'groq'
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('AI 응답 실패');
+        }
+        
+        const data = await response.json();
+        
+        // AI 응답 추가
+        addChatMessage('ai', data.response);
+        
+        if (statusText) {
+            statusText.style.display = 'none';
+        }
+        
+        console.log('✅ AI 응답:', data.response);
+    } catch (error) {
+        console.error('❌ AI 응답 오류:', error);
+        addChatMessage('ai', '죄송합니다. 응답 중 오류가 발생했습니다. 😢');
+        
+        if (statusText) {
+            statusText.style.display = 'none';
+        }
+    }
+};
+
+// 채팅 메시지 추가 함수
+function addChatMessage(type, text) {
+    const messageList = document.getElementById('chat-message-list');
+    const messageDiv = document.createElement('div');
+    messageDiv.style.marginBottom = '10px';
+    messageDiv.style.display = 'flex';
+    messageDiv.style.alignItems = 'flex-start';
+    messageDiv.style.gap = '8px';
+    
+    if (type === 'user') {
+        messageDiv.innerHTML = `
+            <div style="flex: 1; text-align: right;">
+                <div style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 15px; border-radius: 12px; max-width: 80%; text-align: left; box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);">
+                    ${text}
+                </div>
+                <div style="font-size: 10px; color: #9ca3af; margin-top: 4px;">나</div>
+            </div>
+        `;
+    } else {
+        messageDiv.innerHTML = `
+            <div style="flex: 1;">
+                <div style="display: inline-block; background: #f3f4f6; color: #1f2937; padding: 10px 15px; border-radius: 12px; max-width: 80%; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);">
+                    ${text}
+                </div>
+                <div style="font-size: 10px; color: #9ca3af; margin-top: 4px;">예진이</div>
+            </div>
+        `;
+    }
+    
+    messageList.appendChild(messageDiv);
+    messageList.scrollTop = messageList.scrollHeight;
+}
         if (window.startAesongVoiceRecording) {
             window.startAesongVoiceRecording();
         }
