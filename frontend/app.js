@@ -16437,11 +16437,33 @@ function renderAesong3DChat() {
             script.src = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js';
             script.onload = () => {
                 console.log('✅ Three.js 로드 완료');
-                initSimple3DScene();
+                // GLTFLoader 로드
+                const loaderScript = document.createElement('script');
+                loaderScript.src = 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js';
+                loaderScript.onload = () => {
+                    console.log('✅ GLTFLoader 로드 완료');
+                    initSimple3DScene();
+                };
+                loaderScript.onerror = () => {
+                    console.error('❌ GLTFLoader 로드 실패');
+                    initSimple3DScene();
+                };
+                document.head.appendChild(loaderScript);
             };
             document.head.appendChild(script);
         } else {
-            initSimple3DScene();
+            // Three.js 이미 로드됨 - GLTFLoader 로드
+            const loaderScript = document.createElement('script');
+            loaderScript.src = 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js';
+            loaderScript.onload = () => {
+                console.log('✅ GLTFLoader 로드 완료');
+                initSimple3DScene();
+            };
+            loaderScript.onerror = () => {
+                console.error('❌ GLTFLoader 로드 실패');
+                initSimple3DScene();
+            };
+            document.head.appendChild(loaderScript);
         }
     }, 100);
 }
@@ -16495,15 +16517,79 @@ function initSimple3DScene() {
     let currentModel = null;
     let mixer = null;
     
-    // GLTFLoader 폴백 처리 - 우선 이모지로 표시
-    console.log('📦 3D 모델 대신 이모지 폴백 사용');
-    createFallbackSprite(currentCharacter);
+    // 초기 캐릭터 로드 (GLTFLoader가 준비되면 자동 로드)
+    setTimeout(() => {
+        if (typeof THREE !== 'undefined' && THREE.GLTFLoader) {
+            console.log('✅ GLTFLoader 사용 가능 - 3D 모델 로드');
+            loadCharacterModel(currentCharacter);
+        } else {
+            console.log('⚠️ GLTFLoader 없음 - 이모지 폴백');
+            createFallbackSprite(currentCharacter);
+        }
+    }, 500);
     
-    // 3D 모델 로드 함수 (현재 비활성화 - GLTFLoader 이슈)
+    // 3D 모델 로드 함수
     function loadCharacterModel(character) {
-        console.log('⚠️ 3D 모델 로드 기능은 현재 비활성화되었습니다');
-        console.log('🎨 이모지 폴백 사용:', character);
-        createFallbackSprite(character);
+        const modelPath = characterModels[character] || characterModels['aesong'];
+        
+        console.log('🔄 3D 모델 로드 시작:', modelPath);
+        
+        // 기존 모델 제거
+        if (currentModel) {
+            scene.remove(currentModel);
+            currentModel = null;
+        }
+        
+        // GLTFLoader 확인
+        if (!THREE.GLTFLoader) {
+            console.error('❌ GLTFLoader가 없습니다');
+            createFallbackSprite(character);
+            return;
+        }
+        
+        const loader = new THREE.GLTFLoader();
+        
+        loader.load(
+            modelPath,
+            (gltf) => {
+                currentModel = gltf.scene;
+                
+                // 모델 크기 조정
+                const box = new THREE.Box3().setFromObject(currentModel);
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const scale = 2 / maxDim;
+                currentModel.scale.set(scale, scale, scale);
+                
+                // 모델 중앙 정렬
+                const center = box.getCenter(new THREE.Vector3());
+                currentModel.position.sub(center.multiplyScalar(scale));
+                
+                scene.add(currentModel);
+                
+                // 애니메이션 믹서 설정
+                if (gltf.animations && gltf.animations.length > 0) {
+                    mixer = new THREE.AnimationMixer(currentModel);
+                    gltf.animations.forEach((clip) => {
+                        mixer.clipAction(clip).play();
+                    });
+                    console.log('🎬 애니메이션 재생:', gltf.animations.length, '개');
+                }
+                
+                console.log('✅ 3D 모델 로드 완료:', character);
+            },
+            (progress) => {
+                if (progress.total > 0) {
+                    const percent = (progress.loaded / progress.total * 100).toFixed(0);
+                    console.log('📦 로딩 중:', percent + '%');
+                }
+            },
+            (error) => {
+                console.error('❌ 3D 모델 로드 실패:', error);
+                console.log('⚠️ 이모지 폴백 사용');
+                createFallbackSprite(character);
+            }
+        );
     }
     
     // 폴백: 이모지 스프라이트 생성
@@ -16754,8 +16840,14 @@ window.sendTextMessage = async function() {
         
         const data = await response.json();
         
-        // AI 응답 추가
-        addChatMessage('ai', data.response);
+        // 에러 응답 확인
+        if (data.model === 'error') {
+            console.error('❌ AI 오류:', data.error);
+            addChatMessage('ai', `죄송합니다. AI 응답 중 오류가 발생했습니다.\n\n오류: ${data.error}\n\n💡 해결방법:\n1. backend/.env 파일에 GOOGLE_CLOUD_TTS_API_KEY 설정\n2. Gemini API 키 발급: https://console.cloud.google.com/\n3. 백엔드 재시작: pm2 restart backend-server`);
+        } else {
+            // AI 응답 추가
+            addChatMessage('ai', data.response);
+        }
         
         if (statusText) {
             statusText.style.display = 'none';
