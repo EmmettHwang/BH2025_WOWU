@@ -16466,19 +16466,96 @@ function initSimple3DScene() {
     directionalLight.position.set(5, 10, 5);
     scene.add(directionalLight);
     
-    // 캐릭터 이모지 매핑
-    const characterEmojis = {
-        'aesong': '🐶',  // 예진이
-        'david': '👨‍💼', // 데이빗
-        'asol': '👨‍🏫'   // PM 정운표
+    // 캐릭터 3D 모델 매핑
+    const characterModels = {
+        'aesong': '/AEsong.glb',    // 예진이
+        'david': '/David.glb',       // 데이빗
+        'asol': '/pmjung.glb'        // PM 정운표
     };
     
     let currentCharacter = 'aesong';
-    let sprite = null;
+    let currentModel = null;
+    let mixer = null;
     
-    // 캐릭터 생성 함수
-    function createCharacterSprite(character) {
-        const emoji = characterEmojis[character] || '🐶';
+    // GLTFLoader 동적 로드
+    const loaderScript = document.createElement('script');
+    loaderScript.src = 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js';
+    loaderScript.onload = () => {
+        console.log('✅ GLTFLoader 로드 완료');
+        loadCharacterModel(currentCharacter);
+    };
+    document.head.appendChild(loaderScript);
+    
+    // 3D 모델 로드 함수
+    function loadCharacterModel(character) {
+        const modelPath = characterModels[character] || characterModels['aesong'];
+        
+        console.log('🔄 3D 모델 로드 시작:', modelPath);
+        
+        // 기존 모델 제거
+        if (currentModel) {
+            scene.remove(currentModel);
+            currentModel = null;
+        }
+        
+        // GLTFLoader 사용
+        if (typeof THREE.GLTFLoader === 'undefined') {
+            console.error('❌ GLTFLoader가 로드되지 않았습니다.');
+            return;
+        }
+        
+        const loader = new THREE.GLTFLoader();
+        
+        loader.load(
+            modelPath,
+            (gltf) => {
+                currentModel = gltf.scene;
+                
+                // 모델 크기 조정
+                const box = new THREE.Box3().setFromObject(currentModel);
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const scale = 2 / maxDim;
+                currentModel.scale.set(scale, scale, scale);
+                
+                // 모델 중앙 정렬
+                const center = box.getCenter(new THREE.Vector3());
+                currentModel.position.sub(center.multiplyScalar(scale));
+                
+                scene.add(currentModel);
+                
+                // 애니메이션 믹서 설정
+                if (gltf.animations && gltf.animations.length > 0) {
+                    mixer = new THREE.AnimationMixer(currentModel);
+                    gltf.animations.forEach((clip) => {
+                        mixer.clipAction(clip).play();
+                    });
+                    console.log('🎬 애니메이션 재생:', gltf.animations.length, '개');
+                }
+                
+                console.log('✅ 3D 모델 로드 완료:', character);
+            },
+            (progress) => {
+                const percent = (progress.loaded / progress.total * 100).toFixed(0);
+                console.log('📦 로딩 중:', percent + '%');
+            },
+            (error) => {
+                console.error('❌ 3D 모델 로드 실패:', error);
+                console.log('⚠️ 이모지 폴백 사용');
+                // 폴백: 이모지 사용
+                createFallbackSprite(character);
+            }
+        );
+    }
+    
+    // 폴백: 이모지 스프라이트 생성
+    function createFallbackSprite(character) {
+        const emojis = {
+            'aesong': '🐶',
+            'david': '👨‍💼',
+            'asol': '👨‍🏫'
+        };
+        const emoji = emojis[character] || '🐶';
         
         const canvas2d = document.createElement('canvas');
         canvas2d.width = 512;
@@ -16490,34 +16567,27 @@ function initSimple3DScene() {
         ctx.fillText(emoji, 256, 256);
         
         const texture = new THREE.CanvasTexture(canvas2d);
-        
-        // 기존 스프라이트 제거
-        if (sprite) {
-            scene.remove(sprite);
-        }
-        
-        // 새 스프라이트 생성
         const spriteMaterial = new THREE.SpriteMaterial({ 
             map: texture,
             transparent: true
         });
-        sprite = new THREE.Sprite(spriteMaterial);
-        sprite.scale.set(2, 2, 1);
-        scene.add(sprite);
         
-        console.log('✅ 캐릭터 변경:', character, emoji);
+        if (currentModel) {
+            scene.remove(currentModel);
+        }
+        
+        currentModel = new THREE.Sprite(spriteMaterial);
+        currentModel.scale.set(2, 2, 1);
+        scene.add(currentModel);
+        
+        console.log('✅ 폴백 캐릭터 표시:', character, emoji);
     }
-    
-    // 초기 캐릭터 생성
-    createCharacterSprite(currentCharacter);
-    
-    console.log('✅ 예진이 캐릭터 표시 완료');
     
     // 캐릭터 변경 함수를 전역으로 노출
     window.changeAesongCharacter = function(character) {
         console.log('🔄 캐릭터 변경 요청:', character);
         currentCharacter = character;
-        createCharacterSprite(character);
+        loadCharacterModel(character);
     };
     
     // 마우스 상호작용 변수
@@ -16534,7 +16604,7 @@ function initSimple3DScene() {
     });
     
     canvas.addEventListener('mousemove', (e) => {
-        if (isDragging && sprite) {
+        if (isDragging && currentModel) {
             const deltaX = e.clientX - previousMousePosition.x;
             const deltaY = e.clientY - previousMousePosition.y;
             
@@ -16564,22 +16634,23 @@ function initSimple3DScene() {
     function animate() {
         requestAnimationFrame(animate);
         
-        const time = clock.getElapsedTime();
+        const delta = clock.getDelta();
         
-        if (sprite) {
-            // 마우스 드래그가 아닐 때만 자동 회전
-            if (!isDragging) {
-                sprite.material.rotation = Math.sin(time * 0.5) * 0.3 + rotation.y;
+        // 애니메이션 믹서 업데이트
+        if (mixer) {
+            mixer.update(delta);
+        }
+        
+        // 3D 모델 회전
+        if (currentModel) {
+            if (isDragging) {
+                // 마우스 드래그 회전
+                currentModel.rotation.y = rotation.y;
+                currentModel.rotation.x = rotation.x;
             } else {
-                sprite.material.rotation = rotation.y;
+                // 자동 회전
+                currentModel.rotation.y += 0.005;
             }
-            
-            // 위아래 움직임
-            sprite.position.y = Math.sin(time) * 0.3;
-            
-            // 크기 변화
-            const scale = 2 + Math.sin(time * 0.5) * 0.2;
-            sprite.scale.set(scale, scale, 1);
         }
         
         renderer.render(scene, camera);
