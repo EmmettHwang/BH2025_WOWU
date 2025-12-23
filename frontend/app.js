@@ -16704,6 +16704,7 @@ window.changeBGMGenre = function(genre) {
         if (dashboardSearchInput) dashboardSearchInput.classList.add('hidden');
     }
     
+    const previousGenre = localStorage.getItem('bgm_genre');
     localStorage.setItem('bgm_genre', genre);
     
     // 대시보드 장르 선택 동기화
@@ -16729,17 +16730,22 @@ window.changeBGMGenre = function(genre) {
             bgmPanel.classList.add('flex');
         }
         
-        // 이전 BGM 먼저 정지
-        console.log('⏹️ 이전 BGM 정지 중...');
-        stopBGM();
-        
-        // 새로운 BGM 검색 및 재생
-        window.searchYouTubeBGM();
-        
-        // 재생 버튼 아이콘 업데이트 (대시보드 BGM 컨트롤)
-        const dashboardPlayBtn = document.getElementById('dashboard-bgm-play-btn');
-        if (dashboardPlayBtn) {
-            dashboardPlayBtn.innerHTML = '<i class="fas fa-pause text-xs"></i>';
+        // 장르가 변경된 경우에만 BGM 재시작
+        if (previousGenre !== genre) {
+            // 이전 BGM 먼저 정지
+            console.log('⏹️ 이전 BGM 정지 중...');
+            stopBGM();
+            
+            // 새로운 BGM 검색 및 재생
+            window.searchYouTubeBGM();
+            
+            // 재생 버튼 아이콘 업데이트 (대시보드 BGM 컨트롤)
+            const dashboardPlayBtn = document.getElementById('dashboard-bgm-play-btn');
+            if (dashboardPlayBtn) {
+                dashboardPlayBtn.innerHTML = '<i class="fas fa-pause text-xs"></i>';
+            }
+        } else {
+            console.log('✅ 동일한 장르 - BGM 유지');
         }
     } else {
         // BGM 꺼짐 - 패널 숨김
@@ -16843,8 +16849,8 @@ window.restoreBGMSettings = function() {
         console.log('🎵 BGM 패널 항상 표시');
     }
     
-    // BGM이 재생 중이었고, 장르가 선택되어 있으면 자동으로 재개
-    if (wasPlaying && savedGenre && currentTab === 'dashboard') {
+    // BGM이 재생 중이었고, 장르가 선택되어 있고, 현재 BGM이 재생 중이 아닐 때만 재개
+    if (wasPlaying && savedGenre && currentTab === 'dashboard' && !currentBGMVideoId) {
         console.log('🔄 BGM 자동 재개:', savedGenre);
         // 약간의 지연 후 BGM 재개 (YouTube API 로드 대기)
         setTimeout(() => {
