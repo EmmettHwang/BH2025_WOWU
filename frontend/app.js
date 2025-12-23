@@ -16864,11 +16864,6 @@ function addChatMessage(type, text) {
     messageList.appendChild(messageDiv);
     messageList.scrollTop = messageList.scrollHeight;
 }
-        if (window.startAesongVoiceRecording) {
-            window.startAesongVoiceRecording();
-        }
-    }
-};
 
 // ==================== BGM 관련 기능 ====================
 let bgmPlayer = null;
