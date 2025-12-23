@@ -16495,75 +16495,15 @@ function initSimple3DScene() {
     let currentModel = null;
     let mixer = null;
     
-    // GLTFLoader 동적 로드
-    const loaderScript = document.createElement('script');
-    loaderScript.src = 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js';
-    loaderScript.onload = () => {
-        console.log('✅ GLTFLoader 로드 완료');
-        loadCharacterModel(currentCharacter);
-    };
-    document.head.appendChild(loaderScript);
+    // GLTFLoader 폴백 처리 - 우선 이모지로 표시
+    console.log('📦 3D 모델 대신 이모지 폴백 사용');
+    createFallbackSprite(currentCharacter);
     
-    // 3D 모델 로드 함수
+    // 3D 모델 로드 함수 (현재 비활성화 - GLTFLoader 이슈)
     function loadCharacterModel(character) {
-        const modelPath = characterModels[character] || characterModels['aesong'];
-        
-        console.log('🔄 3D 모델 로드 시작:', modelPath);
-        
-        // 기존 모델 제거
-        if (currentModel) {
-            scene.remove(currentModel);
-            currentModel = null;
-        }
-        
-        // GLTFLoader 사용
-        if (typeof THREE.GLTFLoader === 'undefined') {
-            console.error('❌ GLTFLoader가 로드되지 않았습니다.');
-            return;
-        }
-        
-        const loader = new THREE.GLTFLoader();
-        
-        loader.load(
-            modelPath,
-            (gltf) => {
-                currentModel = gltf.scene;
-                
-                // 모델 크기 조정
-                const box = new THREE.Box3().setFromObject(currentModel);
-                const size = box.getSize(new THREE.Vector3());
-                const maxDim = Math.max(size.x, size.y, size.z);
-                const scale = 2 / maxDim;
-                currentModel.scale.set(scale, scale, scale);
-                
-                // 모델 중앙 정렬
-                const center = box.getCenter(new THREE.Vector3());
-                currentModel.position.sub(center.multiplyScalar(scale));
-                
-                scene.add(currentModel);
-                
-                // 애니메이션 믹서 설정
-                if (gltf.animations && gltf.animations.length > 0) {
-                    mixer = new THREE.AnimationMixer(currentModel);
-                    gltf.animations.forEach((clip) => {
-                        mixer.clipAction(clip).play();
-                    });
-                    console.log('🎬 애니메이션 재생:', gltf.animations.length, '개');
-                }
-                
-                console.log('✅ 3D 모델 로드 완료:', character);
-            },
-            (progress) => {
-                const percent = (progress.loaded / progress.total * 100).toFixed(0);
-                console.log('📦 로딩 중:', percent + '%');
-            },
-            (error) => {
-                console.error('❌ 3D 모델 로드 실패:', error);
-                console.log('⚠️ 이모지 폴백 사용');
-                // 폴백: 이모지 사용
-                createFallbackSprite(character);
-            }
-        );
+        console.log('⚠️ 3D 모델 로드 기능은 현재 비활성화되었습니다');
+        console.log('🎨 이모지 폴백 사용:', character);
+        createFallbackSprite(character);
     }
     
     // 폴백: 이모지 스프라이트 생성
