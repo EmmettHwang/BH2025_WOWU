@@ -16376,6 +16376,20 @@ function renderAesong3DChat() {
                             <div class="text-xs text-gray-500">작은 사이즈 (1.5MB)</div>
                         </div>
                     </div>
+                    
+                    <!-- AI 모델 선택 추가 -->
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                        <div class="text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-brain mr-1"></i>AI 모델 선택
+                        </div>
+                        <select id="ai-model-select" onchange="window.changeAIModel(this.value)" style="width: 100%; padding: 8px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 13px; background: white; cursor: pointer;">
+                            <option value="groq">⚡ GROQ (무료, 빠름)</option>
+                            <option value="gemini">🤖 Gemini (Google)</option>
+                        </select>
+                        <div id="ai-model-status" style="margin-top: 5px; font-size: 11px; color: #10b981;">
+                            ✅ GROQ 사용 중
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="status-text" id="status-text" style="display: none;">
@@ -16799,6 +16813,22 @@ window.toggleTextChat = function() {
     }
 };
 
+// AI 모델 변경 함수
+window.changeAIModel = function(model) {
+    localStorage.setItem('ai_model', model);
+    const statusDiv = document.getElementById('ai-model-status');
+    
+    if (model === 'groq') {
+        statusDiv.textContent = '✅ GROQ 사용 중 (무료, 빠름)';
+        statusDiv.style.color = '#10b981';
+    } else {
+        statusDiv.textContent = '✅ Gemini 사용 중 (Google)';
+        statusDiv.style.color = '#3b82f6';
+    }
+    
+    console.log('🤖 AI 모델 변경:', model);
+};
+
 // 메시지 전송 함수
 window.sendTextMessage = async function() {
     const input = document.getElementById('text-chat-input');
@@ -16821,6 +16851,9 @@ window.sendTextMessage = async function() {
     }
     
     try {
+        // 선택된 AI 모델 가져오기
+        const selectedModel = localStorage.getItem('ai_model') || 'groq';
+        
         // 백엔드 API 호출
         const response = await fetch('/api/aesong-chat', {
             method: 'POST',
@@ -16830,7 +16863,7 @@ window.sendTextMessage = async function() {
             },
             body: JSON.stringify({
                 message: message,
-                model: 'gemini' // 또는 'groq'
+                model: selectedModel
             })
         });
         
