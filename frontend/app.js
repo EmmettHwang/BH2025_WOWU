@@ -16430,30 +16430,53 @@ function renderAesong3DChat() {
                 height: 70px;
                 border-radius: 50%;
                 border: none;
-                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
                 color: white;
                 font-size: 28px;
                 cursor: pointer;
-                box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+                box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
                 transition: all 0.3s ease;
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                position: relative;
             }
             
             .voice-btn:hover {
                 transform: scale(1.1);
-                box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+                box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
             }
             
             .voice-btn.recording {
-                background: linear-gradient(135deg, #ee5a6f 0%, #c44569 100%);
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
                 animation: pulse 1.5s ease-in-out infinite;
+                box-shadow: 0 4px 15px rgba(239, 68, 68, 0.6);
+            }
+            
+            .voice-btn.recording::after {
+                content: '';
+                position: absolute;
+                width: 90px;
+                height: 90px;
+                border: 3px solid rgba(239, 68, 68, 0.5);
+                border-radius: 50%;
+                animation: ripple 1.5s ease-out infinite;
             }
             
             @keyframes pulse {
                 0%, 100% { transform: scale(1); }
                 50% { transform: scale(1.1); }
+            }
+            
+            @keyframes ripple {
+                0% {
+                    transform: scale(0.8);
+                    opacity: 1;
+                }
+                100% {
+                    transform: scale(1.4);
+                    opacity: 0;
+                }
             }
             
             .status-text {
@@ -16515,8 +16538,7 @@ function renderAesong3DChat() {
                             🐶
                         </div>
                         <div>
-                            <div class="text-sm font-semibold">예진이</div>
-                            <div class="text-xs text-gray-500">작은 사이즈 (1.5MB)</div>
+                            <div class="text-sm font-semibold">예진이 <span class="text-xs text-gray-500 font-normal">(1.5MB)</span></div>
                         </div>
                     </div>
                     <div class="character-option" data-character="david" onclick="window.switchCharacter('david')">
@@ -16524,8 +16546,7 @@ function renderAesong3DChat() {
                             👨‍💻
                         </div>
                         <div>
-                            <div class="text-sm font-semibold">데이빗 (프로그래머)</div>
-                            <div class="text-xs text-gray-500">작은 사이즈 (1.3MB)</div>
+                            <div class="text-sm font-semibold">데이빗 <span class="text-xs text-gray-500 font-normal">(1.3MB)</span></div>
                         </div>
                     </div>
                     <div class="character-option" data-character="asol" onclick="window.switchCharacter('asol')">
@@ -16533,8 +16554,7 @@ function renderAesong3DChat() {
                             👨‍💼
                         </div>
                         <div>
-                            <div class="text-sm font-semibold">PM 정운표</div>
-                            <div class="text-xs text-gray-500">작은 사이즈 (1.5MB)</div>
+                            <div class="text-sm font-semibold">PM 정운표 <span class="text-xs text-gray-500 font-normal">(1.5MB)</span></div>
                         </div>
                     </div>
                     
@@ -16563,7 +16583,7 @@ function renderAesong3DChat() {
                 </div>
                 
                 <div class="chat-controls">
-                    <button class="voice-btn" id="voice-btn" onclick="toggleVoiceRecording()" title="음성 입력">
+                    <button class="voice-btn" id="voice-btn" onclick="toggleVoiceRecording()" title="클릭하여 음성 녹음 시작/중지">
                         <i class="fas fa-microphone"></i>
                     </button>
                     <button class="text-chat-btn" id="text-chat-btn" onclick="window.toggleTextChat()" title="텍스트 채팅" style="margin-left: 10px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #34d399 0%, #10b981 100%); color: white; border: none; box-shadow: 0 4px 15px rgba(52, 211, 153, 0.4); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: all 0.3s ease;">

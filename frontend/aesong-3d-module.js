@@ -209,13 +209,27 @@ function initSpeechRecognition() {
         updateStatusText('음성 인식 오류: ' + event.error);
         isRecording = false;
         const btn = document.getElementById('voice-btn');
-        if (btn) btn.classList.remove('recording');
+        const icon = btn ? btn.querySelector('i') : null;
+        if (btn) {
+            btn.classList.remove('recording');
+            btn.title = '클릭하여 음성 녹음 시작/중지';
+        }
+        if (icon) {
+            icon.className = 'fas fa-microphone';
+        }
     };
     
     recognition.onend = function() {
         isRecording = false;
         const btn = document.getElementById('voice-btn');
-        if (btn) btn.classList.remove('recording');
+        const icon = btn ? btn.querySelector('i') : null;
+        if (btn) {
+            btn.classList.remove('recording');
+            btn.title = '클릭하여 음성 녹음 시작/중지';
+        }
+        if (icon) {
+            icon.className = 'fas fa-microphone';
+        }
         const statusText = document.getElementById('status-text');
         if (statusText && statusText.textContent.includes('말씀하세요')) {
             updateStatusText('마이크 버튼을 눌러서 말해보세요');
@@ -235,16 +249,31 @@ export function toggleVoiceRecording() {
     }
     
     const btn = document.getElementById('voice-btn');
+    const icon = btn ? btn.querySelector('i') : null;
     
     if (isRecording) {
+        // 녹음 중지
         recognition.stop();
         isRecording = false;
-        if (btn) btn.classList.remove('recording');
+        if (btn) {
+            btn.classList.remove('recording');
+            btn.title = '클릭하여 음성 녹음 시작/중지';
+        }
+        if (icon) {
+            icon.className = 'fas fa-microphone';
+        }
         updateStatusText('녹음 중지');
     } else {
+        // 녹음 시작
         recognition.start();
         isRecording = true;
-        if (btn) btn.classList.add('recording');
+        if (btn) {
+            btn.classList.add('recording');
+            btn.title = '녹음 중... 클릭하여 중지';
+        }
+        if (icon) {
+            icon.className = 'fas fa-stop-circle';
+        }
         updateStatusText('말씀하세요...');
     }
 }
