@@ -11882,12 +11882,15 @@ function renderAITrainingLog() {
                     </p>
                 </div>
                 
-                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg mt-4">
+                <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg mt-4">
                     <label class="flex items-center cursor-pointer">
-                        <input type="checkbox" id="delete-before-create" class="mr-3 w-4 h-4">
-                        <span class="text-gray-700">
-                            <i class="fas fa-trash-restore mr-2 text-yellow-600"></i>
-                            <strong>기존 훈련일지 삭제 후 작성</strong> (이미 작성된 훈련일지가 있으면 삭제하고 새로 작성합니다)
+                        <input type="checkbox" id="delete-before-create" class="mr-3 w-5 h-5 text-red-600">
+                        <span class="text-gray-800">
+                            <i class="fas fa-exclamation-triangle mr-2 text-red-600"></i>
+                            <strong class="text-red-700">[필수] 기존 훈련일지 삭제 후 작성</strong>
+                            <span class="block text-sm text-gray-600 mt-1 ml-6">
+                                ⚠️ AI 작성을 위해 반드시 체크해야 합니다. 이미 작성된 훈련일지가 있으면 삭제하고 새로 작성합니다.
+                            </span>
                         </span>
                     </label>
                 </div>
@@ -12144,9 +12147,26 @@ window.generateAITrainingLogs = async function() {
     const prompt = document.getElementById('ai-prompt').value.trim();
     const deleteBeforeCreate = document.getElementById('delete-before-create').checked;
     
+    // 체크박스 필수 확인
+    if (!deleteBeforeCreate) {
+        window.showAlert('⚠️ AI 훈련일지 작성을 하려면 "기존 훈련일지 삭제 후 작성"을 반드시 체크해야 합니다.\n\n이미 작성된 훈련일지가 있는 경우 삭제하고 새로 작성됩니다.');
+        
+        // 체크박스 강조 효과
+        const checkbox = document.getElementById('delete-before-create');
+        const checkboxParent = checkbox.closest('.bg-yellow-50');
+        if (checkboxParent) {
+            checkboxParent.classList.add('animate-pulse', 'border-red-500', 'bg-red-50');
+            setTimeout(() => {
+                checkboxParent.classList.remove('animate-pulse', 'border-red-500', 'bg-red-50');
+            }, 2000);
+        }
+        
+        return;
+    }
+    
     const confirmed = await window.showConfirm(
         `선택된 ${selectedAITimetables.length}건의 훈련일지를 AI로 작성하시겠습니까?\n\n` +
-        (deleteBeforeCreate ? `⚠️ 기존 훈련일지가 있으면 삭제하고 새로 작성합니다.\n\n` : '') +
+        `⚠️ 기존 훈련일지가 있으면 삭제하고 새로 작성합니다.\n\n` +
         `이 작업은 몇 분이 소요될 수 있습니다.`
     );
     
