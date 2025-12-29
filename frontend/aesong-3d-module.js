@@ -161,6 +161,9 @@ function initSpeechRecognition() {
         const transcript = event.results[0][0].transcript;
         console.log('인식된 텍스트:', transcript);
         
+        // 사용자 메시지를 채팅창에 표시
+        addChatMessage('사용자', transcript);
+        
         // 받침 있으면 '이', 없으면 '가'
         const lastChar = currentCharacterName.charAt(currentCharacterName.length - 1);
         const hasJongseong = (lastChar.charCodeAt(0) - 0xAC00) % 28 > 0;
@@ -169,14 +172,27 @@ function initSpeechRecognition() {
         
         // 서버에 메시지 전송
         try {
-            const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000';
+            const API_BASE_URL = window.API_BASE_URL || '';
             // 선택된 AI 모델 가져오기 (localStorage에서)
             const selectedModel = localStorage.getItem('ai_model') || 'groq';
+            
+            // API 키 가져오기
+            const groqApiKey = localStorage.getItem('groq_api_key') || '';
+            const geminiApiKey = localStorage.getItem('gemini_api_key') || '';
+            
+            console.log('🤖 AI 챗봇 호출:', {
+                character: currentCharacterName,
+                model: selectedModel,
+                hasGroqKey: groqApiKey ? '설정됨' : '미설정',
+                hasGeminiKey: geminiApiKey ? '설정됨' : '미설정'
+            });
             
             const response = await fetch(`${API_BASE_URL}/api/aesong-chat`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-GROQ-API-Key': groqApiKey,
+                    'X-Gemini-API-Key': geminiApiKey
                 },
                 body: JSON.stringify({ 
                     message: transcript,
@@ -189,6 +205,9 @@ function initSpeechRecognition() {
             const aiResponse = data.response;
             
             console.log(`${currentCharacterName}: ${aiResponse}`);
+            
+            // AI 응답을 채팅창에 표시
+            addChatMessage(currentCharacterName, aiResponse);
             
             // TTS로 음성 출력
             speakText(aiResponse);
@@ -377,7 +396,47 @@ function updateStatusText(text) {
 
 // 채팅 메시지 추가 (대화창 제거로 비활성화)
 function addChatMessage(sender, message) {
-    // 콘솔에만 로그 출력
+    // UI에 채팅 메시지 표시
+    const chatContainer = document.getElementById('aesong-chat-messages');
+    const chatList = document.getElementById('chat-message-list');
+    
+    if (!chatContainer || !chatList) {
+        console.log(`${sender}: ${message}`);
+        return;
+    }
+    
+    // 채팅창 표시
+    chatContainer.style.display = 'block';
+    
+    // 메시지 요소 생성
+    const messageDiv = document.createElement('div');
+    messageDiv.style.marginBottom = '10px';
+    messageDiv.style.padding = '8px 12px';
+    messageDiv.style.borderRadius = '8px';
+    messageDiv.style.fontSize = '14px';
+    
+    if (sender === 'user' || sender === '사용자') {
+        // 사용자 메시지
+        messageDiv.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        messageDiv.style.color = 'white';
+        messageDiv.style.marginLeft = 'auto';
+        messageDiv.style.maxWidth = '80%';
+        messageDiv.style.textAlign = 'right';
+        messageDiv.innerHTML = `<strong>사용자:</strong> ${message}`;
+    } else {
+        // AI 메시지
+        messageDiv.style.background = '#f3f4f6';
+        messageDiv.style.color = '#374151';
+        messageDiv.style.marginRight = 'auto';
+        messageDiv.style.maxWidth = '80%';
+        messageDiv.innerHTML = `<strong>${sender}:</strong> ${message}`;
+    }
+    
+    chatList.appendChild(messageDiv);
+    
+    // 자동 스크롤 (맨 아래로)
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
     console.log(`${sender}: ${message}`);
 }
 

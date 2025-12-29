@@ -13409,6 +13409,54 @@ function renderSystemSettings(settings) {
                     </p>
                 </div>
                 
+                <!-- GROQ API 키 -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-bolt mr-2 text-yellow-500"></i>GROQ API 키
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="password" id="groq-api-key" 
+                               class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                               placeholder="GROQ API 키를 입력하세요">
+                        <button type="button" onclick="window.testGroqApiKey()" 
+                                class="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors whitespace-nowrap">
+                            <i class="fas fa-check-circle mr-2"></i>테스트
+                        </button>
+                    </div>
+                    <div id="groq-api-test-result" class="mt-2 text-sm hidden"></div>
+                    <p class="text-sm text-gray-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        GROQ AI 챗봇을 사용하려면 API 키가 필요합니다
+                    </p>
+                    <p class="text-sm text-gray-400 mt-1">
+                        💡 <a href="https://console.groq.com/keys" target="_blank" class="text-blue-500 hover:underline">GROQ Console</a>에서 무료 발급 가능
+                    </p>
+                </div>
+                
+                <!-- Gemini API 키 (Google Cloud TTS와 공통) -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-brain mr-2 text-purple-500"></i>Gemini / Google Cloud API 키
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="password" id="gemini-api-key" 
+                               class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                               placeholder="Gemini/Google Cloud API 키를 입력하세요">
+                        <button type="button" onclick="window.testGeminiApiKey()" 
+                                class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors whitespace-nowrap">
+                            <i class="fas fa-check-circle mr-2"></i>테스트
+                        </button>
+                    </div>
+                    <div id="gemini-api-test-result" class="mt-2 text-sm hidden"></div>
+                    <p class="text-sm text-gray-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Gemini AI 챗봇과 Google Cloud TTS(음성 합성)에 공통으로 사용됩니다
+                    </p>
+                    <p class="text-sm text-gray-400 mt-1">
+                        💡 <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-500 hover:underline">Google AI Studio</a>에서 무료 발급 가능
+                    </p>
+                </div>
+                
                 <!-- YouTube API 키 -->
                 <div>
                     <label class="block text-gray-700 font-semibold mb-2">
@@ -13562,6 +13610,28 @@ function renderSystemSettings(settings) {
         if (aiModelSelect) {
             aiModelSelect.value = savedModel;
             console.log('✅ AI 모델 로드:', savedModel);
+        }
+        
+        // GROQ API 키 로드
+        const groqApiKeyInput = document.getElementById('groq-api-key');
+        const groqKey = settings.groq_api_key || localStorage.getItem('groq_api_key') || '';
+        if (groqApiKeyInput) {
+            groqApiKeyInput.value = groqKey;
+            if (groqKey) {
+                localStorage.setItem('groq_api_key', groqKey);
+            }
+            console.log('✅ GROQ API 키 로드:', groqKey ? '설정됨 (****' + groqKey.slice(-4) + ')' : '미설정');
+        }
+        
+        // Gemini API 키 로드 (Google Cloud TTS와 공통)
+        const geminiApiKeyInput = document.getElementById('gemini-api-key');
+        const geminiKey = settings.gemini_api_key || localStorage.getItem('gemini_api_key') || '';
+        if (geminiApiKeyInput) {
+            geminiApiKeyInput.value = geminiKey;
+            if (geminiKey) {
+                localStorage.setItem('gemini_api_key', geminiKey);
+            }
+            console.log('✅ Gemini/Google Cloud API 키 로드:', geminiKey ? '설정됨 (****' + geminiKey.slice(-4) + ')' : '미설정');
         }
         
         // 대시보드 자동 새로고침 시간 설정 로드 (서버 우선)
@@ -13740,6 +13810,16 @@ window.saveSystemSettings = async function() {
     localStorage.setItem('ai_model', aiModel);
     console.log('💾 AI 모델 저장:', aiModel);
     
+    // GROQ API 키 저장
+    const groqApiKey = document.getElementById('groq-api-key')?.value || '';
+    localStorage.setItem('groq_api_key', groqApiKey);
+    console.log('💾 GROQ API 키 저장:', groqApiKey ? '설정됨 (****' + groqApiKey.slice(-4) + ')' : '미설정');
+    
+    // Gemini API 키 저장 (Google Cloud TTS와 공통)
+    const geminiApiKey = document.getElementById('gemini-api-key')?.value || '';
+    localStorage.setItem('gemini_api_key', geminiApiKey);
+    console.log('💾 Gemini/Google Cloud API 키 저장:', geminiApiKey ? '설정됨 (****' + geminiApiKey.slice(-4) + ')' : '미설정');
+    
     // 대시보드 자동 새로고침 시간 저장
     let refreshInterval = 5; // 기본값
     if (refreshIntervalElement) {
@@ -13767,6 +13847,8 @@ window.saveSystemSettings = async function() {
     formData.append('system_subtitle2', systemSubtitle2);
     formData.append('logo_url', logoUrl);
     formData.append('youtube_api_key', youtubeApiKey);
+    formData.append('groq_api_key', groqApiKey);
+    formData.append('gemini_api_key', geminiApiKey);
     formData.append('bgm_genre', bgmGenre);
     formData.append('bgm_volume', bgmVolume);
     formData.append('dashboard_refresh_interval', refreshInterval.toString());
@@ -17111,6 +17193,132 @@ window.testYouTubeApiKey = async function() {
         resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded';
         resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>❌ 테스트 실패: ${error.message}`;
         console.error('❌ YouTube API 키 테스트 실패:', error);
+    }
+}
+
+// GROQ API 키 테스트
+window.testGroqApiKey = async function() {
+    const apiKey = document.getElementById('groq-api-key')?.value;
+    const resultDiv = document.getElementById('groq-api-test-result');
+    
+    if (!apiKey) {
+        resultDiv.className = 'mt-2 text-sm text-red-600';
+        resultDiv.innerHTML = '<i class="fas fa-exclamation-circle mr-1"></i>API 키를 입력해주세요';
+        resultDiv.classList.remove('hidden');
+        return;
+    }
+    
+    // 테스트 중 표시
+    resultDiv.className = 'mt-2 text-sm text-blue-600';
+    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>API 키 테스트 중...';
+    resultDiv.classList.remove('hidden');
+    
+    try {
+        console.log('🧪 GROQ API 키 테스트 시작...');
+        
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'llama-3.3-70b-versatile',
+                messages: [
+                    { role: 'user', content: '안녕하세요' }
+                ],
+                max_tokens: 10
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.choices && data.choices.length > 0) {
+            // 성공
+            resultDiv.className = 'mt-2 text-sm text-green-600 bg-green-50 p-2 rounded';
+            resultDiv.innerHTML = '<i class="fas fa-check-circle mr-1"></i>✅ API 키가 정상적으로 작동합니다!';
+            console.log('✅ GROQ API 키 테스트 성공');
+            
+            // localStorage에도 저장
+            localStorage.setItem('groq_api_key', apiKey);
+        } else if (data.error) {
+            // API 오류
+            resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded';
+            resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>❌ API 오류: ${data.error.message}`;
+            console.error('❌ GROQ API 오류:', data.error);
+        } else {
+            // 알 수 없는 오류
+            resultDiv.className = 'mt-2 text-sm text-orange-600 bg-orange-50 p-2 rounded';
+            resultDiv.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>⚠️ 예상치 못한 응답입니다';
+            console.warn('⚠️ 예상치 못한 GROQ API 응답:', data);
+        }
+    } catch (error) {
+        resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded';
+        resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>❌ 테스트 실패: ${error.message}`;
+        console.error('❌ GROQ API 키 테스트 실패:', error);
+    }
+}
+
+// Gemini API 키 테스트
+window.testGeminiApiKey = async function() {
+    const apiKey = document.getElementById('gemini-api-key')?.value;
+    const resultDiv = document.getElementById('gemini-api-test-result');
+    
+    if (!apiKey) {
+        resultDiv.className = 'mt-2 text-sm text-red-600';
+        resultDiv.innerHTML = '<i class="fas fa-exclamation-circle mr-1"></i>API 키를 입력해주세요';
+        resultDiv.classList.remove('hidden');
+        return;
+    }
+    
+    // 테스트 중 표시
+    resultDiv.className = 'mt-2 text-sm text-blue-600';
+    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>API 키 테스트 중...';
+    resultDiv.classList.remove('hidden');
+    
+    try {
+        console.log('🧪 Gemini API 키 테스트 시작...');
+        
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{ text: '안녕하세요' }]
+                }],
+                generationConfig: {
+                    maxOutputTokens: 10
+                }
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.candidates && data.candidates.length > 0) {
+            // 성공
+            resultDiv.className = 'mt-2 text-sm text-green-600 bg-green-50 p-2 rounded';
+            resultDiv.innerHTML = '<i class="fas fa-check-circle mr-1"></i>✅ API 키가 정상적으로 작동합니다! (Gemini + Google Cloud TTS 사용 가능)';
+            console.log('✅ Gemini API 키 테스트 성공');
+            
+            // localStorage에도 저장
+            localStorage.setItem('gemini_api_key', apiKey);
+        } else if (data.error) {
+            // API 오류
+            resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded';
+            resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>❌ API 오류: ${data.error.message}`;
+            console.error('❌ Gemini API 오류:', data.error);
+        } else {
+            // 알 수 없는 오류
+            resultDiv.className = 'mt-2 text-sm text-orange-600 bg-orange-50 p-2 rounded';
+            resultDiv.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>⚠️ 예상치 못한 응답입니다';
+            console.warn('⚠️ 예상치 못한 Gemini API 응답:', data);
+        }
+    } catch (error) {
+        resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded';
+        resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>❌ 테스트 실패: ${error.message}`;
+        console.error('❌ Gemini API 키 테스트 실패:', error);
     }
 }
 

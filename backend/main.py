@@ -6273,11 +6273,15 @@ async def delete_notice(notice_id: int):
 
 # ==================== 예진이 챗봇 API ====================
 @app.post("/api/aesong-chat")
-async def aesong_chat(data: dict):
+async def aesong_chat(data: dict, request: Request):
     """예진이 AI 챗봇 - GROQ 또는 Gemini API 사용"""
     message = data.get('message', '')
     character = data.get('character', '예진이')  # 캐릭터 이름 받기
     model = data.get('model', 'groq')  # 사용할 모델 (groq 또는 gemini)
+    
+    # 헤더에서 API 키 가져오기 (프론트엔드에서 전달)
+    groq_api_key_header = request.headers.get('X-GROQ-API-Key', '')
+    gemini_api_key_header = request.headers.get('X-Gemini-API-Key', '')
     
     if not message:
         raise HTTPException(status_code=400, detail="메시지가 필요합니다")
@@ -6342,8 +6346,8 @@ async def aesong_chat(data: dict):
 
         # Gemini 모델 사용
         if model == 'gemini':
-            # Google Cloud TTS API KEY를 Gemini API에도 사용
-            gemini_api_key = os.getenv('GOOGLE_CLOUD_TTS_API_KEY', '')
+            # 헤더 우선, 없으면 환경변수 사용
+            gemini_api_key = gemini_api_key_header or os.getenv('GOOGLE_CLOUD_TTS_API_KEY', '')
             
             if not gemini_api_key:
                 raise Exception("Gemini API 키가 설정되지 않았습니다")
@@ -6379,7 +6383,8 @@ async def aesong_chat(data: dict):
         
         # GROQ 모델 사용 (기본값)
         else:
-            groq_api_key = os.getenv('GROQ_API_KEY', '')
+            # 헤더 우선, 없으면 환경변수 사용
+            groq_api_key = groq_api_key_header or os.getenv('GROQ_API_KEY', '')
             
             if not groq_api_key:
                 # API 키가 없으면 기본 응답
