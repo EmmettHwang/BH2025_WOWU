@@ -8790,8 +8790,8 @@ function renderProjects() {
                         <option value="1. 스터디그룹">1. 스터디그룹</option>
                         <option value="2. 프로젝트그룹">2. 프로젝트그룹</option>
                         <option value="3. 현장실습그룹">3. 현장실습그룹</option>
-                        <option value="4. 기타그룹">4. 기타그룹</option>
-                        <option value="5. 자유주제그룹">5. 자유주제그룹</option>
+                        <option value="4. 자유주제그룹">4. 자유주제그룹</option>
+                        <option value="5. 기타그룹">5. 기타그룹</option>
                     </select>
                 </div>
                 <div>
@@ -9006,8 +9006,8 @@ window.showProjectForm = function(code = null) {
                     <option value="1. 스터디그룹" ${existing && existing.group_type === '1. 스터디그룹' ? 'selected' : ''}>1. 스터디그룹</option>
                     <option value="2. 프로젝트그룹" ${existing && existing.group_type === '2. 프로젝트그룹' ? 'selected' : ''}>2. 프로젝트그룹</option>
                     <option value="3. 현장실습그룹" ${existing && existing.group_type === '3. 현장실습그룹' ? 'selected' : ''}>3. 현장실습그룹</option>
-                    <option value="4. 기타그룹" ${existing && existing.group_type === '4. 기타그룹' ? 'selected' : ''}>4. 기타그룹</option>
-                    <option value="5. 자유주제그룹" ${existing && existing.group_type === '5. 자유주제그룹' ? 'selected' : ''}>5. 자유주제그룹</option>
+                    <option value="4. 자유주제그룹" ${existing && existing.group_type === '4. 자유주제그룹' ? 'selected' : ''}>4. 자유주제그룹</option>
+                    <option value="5. 기타그룹" ${existing && existing.group_type === '5. 기타그룹' ? 'selected' : ''}>5. 기타그룹</option>
                 </select>
             </div>
             <div>
