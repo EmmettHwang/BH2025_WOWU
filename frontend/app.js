@@ -10495,8 +10495,34 @@ window.filterTimetables = function() {
     });
     
     pagination.timetables.totalItems = filteredTimetables.length;
-    pagination.timetables.currentPage = 1;
+    
+    // 오늘 날짜 계산
+    const now = new Date();
+    const today = now.getFullYear() + '-' + 
+                  String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                  String(now.getDate()).padStart(2, '0');
+    
+    // 오늘 날짜가 포함된 페이지 찾기
+    const todayIndex = filteredTimetables.findIndex(tt => tt.class_date === today);
+    if (todayIndex !== -1) {
+        // 오늘 날짜가 있는 페이지로 이동
+        const itemsPerPage = pagination.timetables.itemsPerPage;
+        const todayPage = Math.floor(todayIndex / itemsPerPage) + 1;
+        pagination.timetables.currentPage = todayPage;
+    } else {
+        // 오늘 날짜가 없으면 첫 페이지
+        pagination.timetables.currentPage = 1;
+    }
+    
     renderTimetableList();
+    
+    // 오늘 날짜 행으로 자동 스크롤
+    setTimeout(() => {
+        const todayRow = document.getElementById('today-timetable-row');
+        if (todayRow) {
+            todayRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 100);
 }
 
 window.showTimetableForm = function(id = null) {
