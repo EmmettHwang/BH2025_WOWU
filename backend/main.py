@@ -38,8 +38,13 @@ app = FastAPI(
 # 정적 파일 서빙 (프론트엔드)
 import os
 frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+public_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "public")
+
 if os.path.exists(frontend_dir):
     app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
+
+# public 폴더의 GLB 파일을 frontend에서 직접 접근 가능하도록 심볼릭 링크 또는 복사
+# 또는 별도 라우트로 서빙
 
 # CORS 설정
 app.add_middleware(
@@ -49,6 +54,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 3D 모델 파일 (GLB) 서빙
+from fastapi.responses import FileResponse
+
+@app.get("/{filename}.glb")
+async def serve_glb_file(filename: str):
+    """루트 경로에서 GLB 파일 서빙 (3D 모델용)"""
+    glb_path = os.path.join(frontend_dir, f"{filename}.glb")
+    if os.path.exists(glb_path):
+        return FileResponse(glb_path, media_type="model/gltf-binary")
+    else:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"GLB file not found: {filename}.glb")
+
 
 # 데이터베이스 연결 설정 (환경 변수에서 로드)
 DB_CONFIG = {
