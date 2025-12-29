@@ -2707,13 +2707,23 @@ window.sendChatMessage = async function() {
         // 로딩 메시지 제거
         document.getElementById(loadingId).remove();
         
-        // AI 응답 추가
-        appendChatMessage(response.data.response, 'bot');
+        // 에러 응답 확인
+        if (response.data.model === 'error') {
+            // 에러 메시지 한글 번역
+            const translatedError = translateApiError(response.data.error);
+            appendChatMessage(`죄송합니다. AI 응답 중 오류가 발생했습니다.\n\n${translatedError}`, 'bot');
+        } else {
+            // AI 응답 추가
+            appendChatMessage(response.data.response, 'bot');
+        }
         
     } catch (error) {
         console.error('챗봇 오류:', error);
         document.getElementById(loadingId).remove();
-        appendChatMessage('죄송합니다. 응답 중 오류가 발생했습니다. 😢', 'bot');
+        
+        // 에러 메시지 한글 번역
+        const translatedError = translateApiError(error.message || error.toString());
+        appendChatMessage(`죄송합니다. 응답 중 오류가 발생했습니다.\n\n${translatedError}`, 'bot');
     }
 };
 
@@ -13430,7 +13440,7 @@ function renderSystemSettings(settings) {
                         <i class="fas fa-bolt mr-2 text-yellow-500"></i>GROQ API 키
                     </label>
                     <div class="flex gap-2">
-                        <input type="password" id="groq-api-key" 
+                        <input type="text" id="groq-api-key" 
                                class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
                                placeholder="GROQ API 키를 입력하세요">
                         <button type="button" onclick="window.testGroqApiKey()" 
@@ -13454,7 +13464,7 @@ function renderSystemSettings(settings) {
                         <i class="fas fa-brain mr-2 text-purple-500"></i>Gemini / Google Cloud API 키
                     </label>
                     <div class="flex gap-2">
-                        <input type="password" id="gemini-api-key" 
+                        <input type="text" id="gemini-api-key" 
                                class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
                                placeholder="Gemini/Google Cloud API 키를 입력하세요">
                         <button type="button" onclick="window.testGeminiApiKey()" 
@@ -16911,7 +16921,11 @@ window.sendTextMessage = async function() {
         // 에러 응답 확인
         if (data.model === 'error') {
             console.error('❌ AI 오류:', data.error);
-            addChatMessage('ai', `죄송합니다. AI 응답 중 오류가 발생했습니다.\n\n오류: ${data.error}\n\n💡 해결방법:\n1. 시스템 등록에서 GROQ 또는 Gemini API 키 입력\n2. GROQ API 키 발급: https://console.groq.com/keys\n3. Gemini API 키 발급: https://aistudio.google.com/app/apikey`);
+            
+            // 에러 메시지 한글 번역
+            const translatedError = translateApiError(data.error);
+            
+            addChatMessage('ai', `죄송합니다. AI 응답 중 오류가 발생했습니다.\n\n${translatedError}\n\n💡 추가 해결방법:\n1. 시스템 등록에서 GROQ 또는 Gemini API 키 입력\n2. GROQ API 키 발급: https://console.groq.com/keys\n3. Gemini API 키 발급: https://aistudio.google.com/app/apikey`);
         } else {
             // AI 응답 추가
             addChatMessage('ai', data.response);
@@ -17338,6 +17352,74 @@ window.testYouTubeApiKey = async function() {
     }
 }
 
+// API 에러 메시지 한글 번역 함수
+function translateApiError(errorMessage) {
+    // Gemini API 할당량 초과 에러
+    if (errorMessage.includes('exceeded your current quota')) {
+        const retryMatch = errorMessage.match(/retry in ([\d.]+)s/);
+        const retryTime = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) : 20;
+        
+        return `❌ API 사용량 초과
+        
+🚫 문제: Gemini API 무료 할당량을 모두 사용했습니다.
+
+💡 해결 방법:
+1. ${retryTime}초 후에 다시 시도하세요
+2. API 사용량 확인: https://ai.dev/usage?tab=rate-limit
+3. 요금제 확인: https://ai.google.dev/gemini-api/docs/rate-limits
+4. 또는 GROQ API를 사용하세요 (무료 할당량 더 큼)
+
+📊 무료 할당량 정보:
+- Gemini 2.0 Flash: 분당 10개 요청
+- GROQ: 분당 30개 요청 (권장)`;
+    }
+    
+    // GROQ API 할당량 초과 에러
+    if (errorMessage.includes('Rate limit reached') || errorMessage.includes('rate_limit_exceeded')) {
+        return `❌ API 요청 한도 초과
+
+🚫 문제: GROQ API 요청 한도에 도달했습니다.
+
+💡 해결 방법:
+1. 1분 후에 다시 시도하세요
+2. API 사용량 확인: https://console.groq.com/usage
+3. 더 많은 할당량이 필요하면 유료 플랜 고려
+
+📊 무료 할당량:
+- 분당 30개 요청
+- 일일 14,400개 요청`;
+    }
+    
+    // 잘못된 API 키
+    if (errorMessage.includes('Invalid API Key') || errorMessage.includes('Unauthorized') || errorMessage.includes('invalid_api_key')) {
+        return `❌ 잘못된 API 키
+
+🚫 문제: API 키가 유효하지 않습니다.
+
+💡 해결 방법:
+1. API 키를 다시 확인하세요
+2. 공백이나 특수문자가 없는지 확인
+3. 새 API 키를 발급받으세요
+   - GROQ: https://console.groq.com/keys
+   - Gemini: https://aistudio.google.com/app/apikey`;
+    }
+    
+    // 네트워크 에러
+    if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Network')) {
+        return `❌ 네트워크 연결 오류
+
+🚫 문제: 서버에 연결할 수 없습니다.
+
+💡 해결 방법:
+1. 인터넷 연결을 확인하세요
+2. 방화벽 설정을 확인하세요
+3. VPN을 사용 중이라면 잠시 끄고 시도하세요`;
+    }
+    
+    // 기본: 원본 메시지 반환
+    return errorMessage;
+}
+
 // GROQ API 키 테스트
 window.testGroqApiKey = async function() {
     const apiKey = document.getElementById('groq-api-key')?.value;
@@ -17384,9 +17466,10 @@ window.testGroqApiKey = async function() {
             // localStorage에도 저장
             localStorage.setItem('groq_api_key', apiKey);
         } else if (data.error) {
-            // API 오류
-            resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded';
-            resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>❌ API 오류: ${data.error.message}`;
+            // API 오류 (한글 번역)
+            const translatedError = translateApiError(data.error.message);
+            resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded whitespace-pre-line';
+            resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>${translatedError}`;
             console.error('❌ GROQ API 오류:', data.error);
         } else {
             // 알 수 없는 오류
@@ -17395,8 +17478,9 @@ window.testGroqApiKey = async function() {
             console.warn('⚠️ 예상치 못한 GROQ API 응답:', data);
         }
     } catch (error) {
-        resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded';
-        resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>❌ 테스트 실패: ${error.message}`;
+        const translatedError = translateApiError(error.message);
+        resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded whitespace-pre-line';
+        resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>${translatedError}`;
         console.error('❌ GROQ API 키 테스트 실패:', error);
     }
 }
@@ -17447,9 +17531,10 @@ window.testGeminiApiKey = async function() {
             // localStorage에도 저장
             localStorage.setItem('gemini_api_key', apiKey);
         } else if (data.error) {
-            // API 오류
-            resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded';
-            resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>❌ API 오류: ${data.error.message}`;
+            // API 오류 (한글 번역)
+            const translatedError = translateApiError(data.error.message);
+            resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded whitespace-pre-line';
+            resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>${translatedError}`;
             console.error('❌ Gemini API 오류:', data.error);
         } else {
             // 알 수 없는 오류
@@ -17458,8 +17543,9 @@ window.testGeminiApiKey = async function() {
             console.warn('⚠️ 예상치 못한 Gemini API 응답:', data);
         }
     } catch (error) {
-        resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded';
-        resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>❌ 테스트 실패: ${error.message}`;
+        const translatedError = translateApiError(error.message);
+        resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded whitespace-pre-line';
+        resultDiv.innerHTML = `<i class="fas fa-times-circle mr-1"></i>${translatedError}`;
         console.error('❌ Gemini API 키 테스트 실패:', error);
     }
 }
