@@ -5769,7 +5769,7 @@ window.showInstructorCodeForm = function(code = null) {
         { id: 'ai-timetable', name: 'AI 시간표', icon: 'fa-calendar-alt' },
         { id: 'ai-training-log', name: 'AI 훈련일지', icon: 'fa-brain' },
         { id: 'ai-counseling', name: 'AI 상담일지', icon: 'fa-comments' },
-        { id: 'aesong-3d-chat', name: '🐶 애송이 만나기', icon: 'fa-robot' },
+        { id: 'aesong-3d-chat', name: '🐶 예진이 만나기', icon: 'fa-robot' },
         { id: 'projects', name: '팀 관리', icon: 'fa-users' },
         { id: 'team-activity-logs', name: '팀 활동일지', icon: 'fa-clipboard-list' }
     ];
@@ -13298,7 +13298,7 @@ function renderSystemSettings(settings) {
                     </select>
                     <p class="text-sm text-gray-500 mt-2">
                         <i class="fas fa-info-circle mr-1"></i>
-                        애송이 3D 챗봇에서 사용할 AI 모델을 선택합니다
+                        예진이 3D 챗봇에서 사용할 AI 모델을 선택합니다
                     </p>
                     <p class="text-sm text-gray-400 mt-1">
                         💡 GROQ: 빠른 응답 속도 | Gemini: 더 자연스러운 대화
@@ -16260,7 +16260,7 @@ window.togglePasswordVisibility = function(inputId) {
     }
 };
 
-// ==================== 애송이 3D 채팅 ====================
+// ==================== 예진이 3D 채팅 ====================
 function renderAesong3DChat() {
     const app = document.getElementById('app');
     app.innerHTML = `
@@ -16401,7 +16401,7 @@ function renderAesong3DChat() {
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">
                     <i class="fas fa-robot text-purple-600 mr-2"></i>
-                    🐶 애송이 만나기
+                    🐶 예진이 만나기
                 </h2>
                 <button onclick="showTab('dashboard')" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition">
                     <i class="fas fa-arrow-left mr-2"></i>돌아가기
@@ -16421,7 +16421,7 @@ function renderAesong3DChat() {
                             🐶
                         </div>
                         <div>
-                            <div class="text-sm font-semibold">애송이</div>
+                            <div class="text-sm font-semibold">예진이</div>
                             <div class="text-xs text-gray-500">작은 사이즈 (1.5MB)</div>
                         </div>
                     </div>
@@ -16499,8 +16499,8 @@ function renderAesong3DChat() {
                             <ul class="list-disc list-inside space-y-1">
                                 <li>마이크 버튼을 클릭하여 음성 녹음을 시작하세요</li>
                                 <li>말씀하신 후 다시 버튼을 클릭하여 녹음을 중지하세요</li>
-                                <li>애송이가 음성으로 답변해드립니다!</li>
-                                <li>3D 애송이 캐릭터를 마우스로 회전할 수 있어요</li>
+                                <li>예진이가 음성으로 답변해드립니다!</li>
+                                <li>3D 예진이 캐릭터를 마우스로 회전할 수 있어요</li>
                             </ul>
                         </div>
                     </div>
@@ -16589,7 +16589,7 @@ function initSimple3DScene() {
     
     // 캐릭터 3D 모델 매핑
     const characterModels = {
-        'aesong': '/AEsong.glb',    // 애송이
+        'aesong': '/AEsong.glb',    // 예진이
         'david': '/David.glb',       // 데이빗
         'asol': '/pmjung.glb'        // PM 정운표
     };
@@ -16988,7 +16988,7 @@ function addChatMessage(type, text) {
                 <div style="display: inline-block; background: #f3f4f6; color: #1f2937; padding: 10px 15px; border-radius: 12px; max-width: 80%; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);">
                     ${text}
                 </div>
-                <div style="font-size: 10px; color: #9ca3af; margin-top: 4px;">애송이</div>
+                <div style="font-size: 10px; color: #9ca3af; margin-top: 4px;">예진이</div>
             </div>
         `;
     }
