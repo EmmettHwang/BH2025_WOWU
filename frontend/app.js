@@ -2678,13 +2678,28 @@ window.sendChatMessage = async function() {
             currentCharacter = window.currentCharacterName;
         }
         
-        console.log('플로팅 챗봇 API 호출:', { message, character: currentCharacter, model: selectedModel });
+        // API 키 가져오기
+        const groqApiKey = localStorage.getItem('groq_api_key') || '';
+        const geminiApiKey = localStorage.getItem('gemini_api_key') || '';
         
-        // API 호출
+        console.log('플로팅 챗봇 API 호출:', { 
+            message, 
+            character: currentCharacter, 
+            model: selectedModel,
+            hasGroqKey: groqApiKey ? '설정됨' : '미설정',
+            hasGeminiKey: geminiApiKey ? '설정됨' : '미설정'
+        });
+        
+        // API 호출 (헤더에 API 키 포함)
         const response = await axios.post(`${API_BASE_URL}/api/aesong-chat`, {
             message: message,
             character: currentCharacter,
             model: selectedModel
+        }, {
+            headers: {
+                'X-GROQ-API-Key': groqApiKey,
+                'X-Gemini-API-Key': geminiApiKey
+            }
         });
         
         console.log('플로팅 챗봇 API 응답:', response.data);
@@ -16857,15 +16872,32 @@ window.sendTextMessage = async function() {
         // 선택된 AI 모델 가져오기
         const selectedModel = localStorage.getItem('ai_model') || 'groq';
         
+        // 현재 캐릭터 이름 가져오기
+        const currentCharacter = window.currentCharacterName || '예진이';
+        
+        // API 키 가져오기
+        const groqApiKey = localStorage.getItem('groq_api_key') || '';
+        const geminiApiKey = localStorage.getItem('gemini_api_key') || '';
+        
+        console.log('💬 3D 챗봇 텍스트 전송:', { 
+            message, 
+            character: currentCharacter, 
+            model: selectedModel,
+            hasGroqKey: groqApiKey ? '설정됨' : '미설정',
+            hasGeminiKey: geminiApiKey ? '설정됨' : '미설정'
+        });
+        
         // 백엔드 API 호출
         const response = await fetch('/api/aesong-chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'X-GROQ-API-Key': groqApiKey,
+                'X-Gemini-API-Key': geminiApiKey
             },
             body: JSON.stringify({
                 message: message,
+                character: currentCharacter,
                 model: selectedModel
             })
         });
@@ -16879,7 +16911,7 @@ window.sendTextMessage = async function() {
         // 에러 응답 확인
         if (data.model === 'error') {
             console.error('❌ AI 오류:', data.error);
-            addChatMessage('ai', `죄송합니다. AI 응답 중 오류가 발생했습니다.\n\n오류: ${data.error}\n\n💡 해결방법:\n1. backend/.env 파일에 GOOGLE_CLOUD_TTS_API_KEY 설정\n2. Gemini API 키 발급: https://console.cloud.google.com/\n3. 백엔드 재시작: pm2 restart backend-server`);
+            addChatMessage('ai', `죄송합니다. AI 응답 중 오류가 발생했습니다.\n\n오류: ${data.error}\n\n💡 해결방법:\n1. 시스템 등록에서 GROQ 또는 Gemini API 키 입력\n2. GROQ API 키 발급: https://console.groq.com/keys\n3. Gemini API 키 발급: https://aistudio.google.com/app/apikey`);
         } else {
             // AI 응답 추가
             addChatMessage('ai', data.response);
