@@ -2672,12 +2672,22 @@ window.sendChatMessage = async function() {
         // 선택된 AI 모델 가져오기
         const selectedModel = localStorage.getItem('ai_model') || 'groq';
         
+        // 현재 선택된 캐릭터 가져오기 (기본값: 예진이)
+        let currentCharacter = '예진이';
+        if (window.currentCharacterName) {
+            currentCharacter = window.currentCharacterName;
+        }
+        
+        console.log('플로팅 챗봇 API 호출:', { message, character: currentCharacter, model: selectedModel });
+        
         // API 호출
         const response = await axios.post(`${API_BASE_URL}/api/aesong-chat`, {
             message: message,
-            character: '예진이',
+            character: currentCharacter,
             model: selectedModel
         });
+        
+        console.log('플로팅 챗봇 API 응답:', response.data);
         
         // 로딩 메시지 제거
         document.getElementById(loadingId).remove();
@@ -16396,6 +16406,7 @@ function renderAesong3DChat() {
                 cursor: pointer;
                 transition: all 0.3s ease;
                 border: 2px solid transparent;
+                white-space: nowrap;
             }
             
             .character-option:hover {
@@ -16537,24 +16548,24 @@ function renderAesong3DChat() {
                         <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
                             🐶
                         </div>
-                        <div>
-                            <div class="text-sm font-semibold">예진이 <span class="text-xs text-gray-500 font-normal">(1.5MB)</span></div>
+                        <div style="flex: 1;">
+                            <div class="text-sm font-semibold" style="white-space: nowrap;">예진이 <span class="text-xs text-gray-500 font-normal">(1.5MB)</span></div>
                         </div>
                     </div>
                     <div class="character-option" data-character="david" onclick="window.switchCharacter('david')">
                         <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
                             👨‍💻
                         </div>
-                        <div>
-                            <div class="text-sm font-semibold">데이빗 <span class="text-xs text-gray-500 font-normal">(1.3MB)</span></div>
+                        <div style="flex: 1;">
+                            <div class="text-sm font-semibold" style="white-space: nowrap;">데이빗 <span class="text-xs text-gray-500 font-normal">(1.3MB)</span></div>
                         </div>
                     </div>
                     <div class="character-option" data-character="asol" onclick="window.switchCharacter('asol')">
                         <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%); border-radius: 10px; margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
                             👨‍💼
                         </div>
-                        <div>
-                            <div class="text-sm font-semibold">PM 정운표 <span class="text-xs text-gray-500 font-normal">(1.5MB)</span></div>
+                        <div style="flex: 1;">
+                            <div class="text-sm font-semibold" style="white-space: nowrap;">PM 정운표 <span class="text-xs text-gray-500 font-normal">(1.5MB)</span></div>
                         </div>
                     </div>
                     
@@ -16577,8 +16588,8 @@ function renderAesong3DChat() {
                     로딩 중...
                 </div>
                 
-                <!-- 채팅 메시지 영역 -->
-                <div id="aesong-chat-messages" style="position: absolute; bottom: 140px; left: 20px; right: 20px; max-height: 200px; overflow-y: auto; background: rgba(255, 255, 255, 0.95); border-radius: 12px; padding: 15px; display: none; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <!-- 채팅 메시지 영역 (왼쪽에 좁게) -->
+                <div id="aesong-chat-messages" style="position: absolute; bottom: 140px; left: 20px; width: 350px; max-height: 300px; overflow-y: auto; background: rgba(255, 255, 255, 0.95); border-radius: 12px; padding: 15px; display: none; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
                     <div id="chat-message-list"></div>
                 </div>
                 

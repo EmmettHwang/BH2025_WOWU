@@ -439,6 +439,7 @@ function loadCharacter(characterType) {
     
     // 현재 캐릭터 이름 저장
     currentCharacterName = modelName;
+    window.currentCharacterName = currentCharacterName; // 전역 변수도 업데이트
     
     console.log(`🔄 ${modelName} 로드 시작...`);
     console.log(`📂 모델 경로: ${modelPath}`);
@@ -550,15 +551,47 @@ export function switchCharacter(characterType) {
     
     // 캐릭터 로드
     loadCharacter(characterType);
+    
+    // 초기 인사 메시지 업데이트 (챗봇 위젯용)
+    updateInitialGreeting(characterType);
+}
+
+// 초기 인사 메시지 업데이트
+function updateInitialGreeting(characterType) {
+    let greeting = '';
+    
+    if (characterType === 'aesong') {
+        greeting = '안녕하세요! 저는 예진이예요. 무엇을 도와드릴까요?';
+    } else if (characterType === 'david') {
+        greeting = '안녕하세요! 저는 데이빗입니다. AI 헬스케어 프로그램 개발에 대해 궁금하신 게 있으신가요?';
+    } else if (characterType === 'asol') {
+        greeting = '안녕하십니까, PM 정운표입니다. 프로젝트 관리나 팀 협업에 대해 도움이 필요하신가요?';
+    }
+    
+    // 챗봇 위젯의 초기 메시지 업데이트
+    const chatMessages = document.getElementById('chatbot-messages');
+    if (chatMessages) {
+        const botMessages = chatMessages.querySelectorAll('.bot-message');
+        if (botMessages.length > 0) {
+            const firstMessage = botMessages[0].querySelector('div:last-child div');
+            if (firstMessage) {
+                firstMessage.textContent = greeting;
+            }
+        }
+    }
+    
+    console.log(`캐릭터 ${characterType}의 인사 메시지:`, greeting);
 }
 
 // 전역에 함수 노출
 window.initAesong3DScene = initAesong3DScene;
 window.toggleVoiceRecording = toggleVoiceRecording;
 window.switchCharacter = switchCharacter;
+window.currentCharacterName = currentCharacterName; // 현재 캐릭터 이름 전역 노출
 
 // 모듈 로드 확인
 console.log('✅ aesong-3d-module.js 모듈 로드 완료');
 console.log('✅ window.initAesong3DScene:', typeof window.initAesong3DScene);
 console.log('✅ window.toggleVoiceRecording:', typeof window.toggleVoiceRecording);
 console.log('✅ window.switchCharacter:', typeof window.switchCharacter);
+console.log('✅ window.currentCharacterName:', window.currentCharacterName);
