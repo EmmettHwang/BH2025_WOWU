@@ -4253,26 +4253,133 @@ async def generate_ai_training_logs(data: dict):
                         DELETE FROM training_logs WHERE timetable_id = %s
                     """, (timetable_id,))
                 
-                # AI로 훈련일지 내용 생성 (실제로는 GPT API를 사용하지만, 여기서는 템플릿 사용)
-                content = f"""[{timetable['class_date']}] {timetable['subject_name'] or '과목'} 수업
+                # AI로 훈련일지 내용 생성 - 타입별 템플릿
+                timetable_type = timetable.get('type', 'lecture')
+                
+                if timetable_type == 'project':
+                    # 프로젝트 타입 템플릿
+                    content = f"""[{timetable['class_date']}] 프로젝트 활동
+
+▶ 프로젝트 정보
+- 활동: 프로젝트
+- 지도강사: {timetable['instructor_name'] or timetable['instructor_code']}
+- 날짜: {timetable['class_date']}
+
+▶ 금일 목표
+• 프로젝트 핵심 기능 구현 및 개발 진행
+• 팀원 간 역할 분담 및 협업 강화
+• 프로젝트 일정 대비 진행 상황 점검
+
+▶ 주요 진행 내용
+• 프로젝트 핵심 기능 개발 및 구현
+• 데이터 구조 설계 및 적용
+• UI/UX 개선 작업 진행
+• 코드 리뷰 및 품질 개선
+
+▶ 팀별 활동
+• 역할별 작업 진행 상황 공유
+• 통합 작업 및 충돌 해결
+• 상호 코드 리뷰 및 피드백
+
+▶ 문제 해결 및 개선사항
+• 발생한 기술적 이슈 해결
+• 일정 지연 요인 파악 및 대응
+• 효율적 개발 방법론 적용
+
+▶ 프로젝트 목표 달성도
+• 계획 대비 진행률: 약 65% (중반 단계)
+• 주요 기능 구현 완료율: 70%
+• 팀 협업 효율성: 우수
+
+▶ 특이사항
+{prompt_guide if prompt_guide else '특별한 사항 없음'}
+
+▶ 향후 계획
+• 다음 단계: 프로젝트 고도화 및 테스트
+• 남은 기간: 프로젝트 완성 및 발표 준비
+"""
+                
+                elif timetable_type == 'practice':
+                    # 현장실습 타입 템플릿
+                    content = f"""[{timetable['class_date']}] 현장실습 활동
+
+▶ 실습 정보
+- 활동: 현장실습
+- 지도강사: {timetable['instructor_name'] or timetable['instructor_code']}
+- 날짜: {timetable['class_date']}
+
+▶ 금일 목표
+• 현장 실무 업무 수행 및 학습
+• 기업 멘토 지도 하에 실습 진행
+• 실무 프로세스 이해 및 적용
+
+▶ 주요 실습 내용
+• 현장 업무 직접 수행 및 경험
+• 실무 도구 및 시스템 활용 학습
+• 업무 프로세스 및 워크플로우 습득
+• 팀 협업 및 커뮤니케이션 실습
+
+▶ 현장 업무 수행
+• 실제 프로젝트 참여 및 기여
+• 업무 요구사항 분석 및 구현
+• 품질 관리 및 테스트 수행
+• 문서 작성 및 보고서 제출
+
+▶ 멘토링 및 피드백
+• 기업 멘토의 실무 지도 및 조언
+• 작업 결과물에 대한 구체적 피드백
+• 개선 방향 및 학습 가이드 제공
+• 진로 상담 및 커리어 조언
+
+▶ 학습 성과 및 역량
+• 실무 경험 축적 및 역량 강화
+• 현장 업무 수행 능력 향상
+• 협업 및 문제 해결 역량 강화
+• 직무 역량 및 전문성 성장
+
+▶ 특이사항
+{prompt_guide if prompt_guide else '특별한 사항 없음'}
+
+▶ 향후 계획
+• 현장 실습 지속 및 심화
+• 실무 프로젝트 완성도 제고
+"""
+                
+                else:  # lecture (교과목)
+                    # 교과목 타입 템플릿 (기존 유지)
+                    content = f"""[{timetable['class_date']}] {timetable['subject_name'] or '과목'} 수업
 
 ▶ 교육 내용
 - 과목: {timetable['subject_name'] or timetable['subject_code']}
 - 강사: {timetable['instructor_name'] or timetable['instructor_code']}
-- 수업 유형: {timetable['type']}
+- 수업 유형: 교과
 
-▶ 진행 내용
-오늘은 {timetable['subject_name'] or '해당 과목'}에 대한 수업을 진행하였습니다.
-학생들의 참여도가 높았으며, 질문과 토론이 활발하게 이루어졌습니다.
+▶ 학습 목표
+• {timetable['subject_name'] or '과목'}의 핵심 개념 이해
+• 실무 활용 방법 습득
+• 관련 기술 실습 능력 향상
 
-▶ 학습 목표 달성도
-대부분의 학생들이 학습 목표를 달성하였으며, 이해도가 높은 편이었습니다.
+▶ 주요 학습 내용
+• {timetable['subject_name'] or '과목'} 이론 강의 진행
+• 기본 원리 및 핵심 개념 설명
+• 실제 활용 사례 분석
+• 단계별 실습 프로젝트 수행
+
+▶ 실습 활동
+• {timetable['subject_name'] or '과목'} 기반 프로젝트 실습
+• 개별/팀별 과제 수행
+• 문제 해결 및 피드백
+
+▶ 학습 성과
+• {timetable['subject_name'] or '과목'}에 대한 이해도 향상
+• 실무 적용 능력 강화
+• 과제 완료율 우수
 
 ▶ 특이사항
 {prompt_guide if prompt_guide else '특별한 사항 없음'}
 
 ▶ 다음 시간 계획
-이번 시간에 학습한 내용을 바탕으로 다음 시간에는 심화 학습을 진행할 예정입니다.
+• {timetable['subject_name'] or '과목'} 심화 학습 진행 예정
 """
                 
                 # 훈련일지 생성
