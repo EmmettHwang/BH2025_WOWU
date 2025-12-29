@@ -411,6 +411,10 @@ function loadCharacter(characterType) {
     // 현재 캐릭터 이름 저장
     currentCharacterName = modelName;
     
+    console.log(`🔄 ${modelName} 로드 시작...`);
+    console.log(`📂 모델 경로: ${modelPath}`);
+    console.log(`📏 스케일: ${scale}, 위치 Y: ${positionY}`);
+    
     updateStatusText(`${modelName} 로딩 중...`);
     
     loader.load(
@@ -451,11 +455,59 @@ function loadCharacter(characterType) {
             updateStatusText(`${modelName} 로딩 중...`);
         },
         function(error) {
-            console.error(`${modelName} 모델 로드 실패:`, error);
+            console.error(`❌ ${modelName} 모델 로드 실패:`, error);
+            console.error('❌ 에러 상세:', error.message, error.stack);
+            console.error(`❌ 시도한 경로: ${modelPath}`);
             updateStatusText(`${modelName}를 불러오는데 실패했습니다`);
+            
+            // 폴백: 이모지 표시
+            console.log('⚠️ 폴백 이모지 사용');
+            createFallbackEmoji(characterType);
         }
     );
 }
+
+// 폴백: 이모지 스프라이트 생성
+function createFallbackEmoji(characterType) {
+    const emojis = {
+        'aesong': '🐶',
+        'david': '👨‍💻',
+        'asol': '👨‍💼'
+    };
+    const emoji = emojis[characterType] || '🐶';
+    
+    // Canvas에 이모지 그리기
+    const canvas2d = document.createElement('canvas');
+    canvas2d.width = 512;
+    canvas2d.height = 512;
+    const ctx = canvas2d.getContext('2d');
+    ctx.font = '400px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, 256, 256);
+    
+    // Three.js 텍스처로 변환
+    const texture = new THREE.CanvasTexture(canvas2d);
+    const spriteMaterial = new THREE.SpriteMaterial({ 
+        map: texture,
+        transparent: true
+    });
+    
+    // 기존 모델 제거
+    if (aesongModel) {
+        aesongScene.remove(aesongModel);
+    }
+    
+    // 스프라이트 생성
+    aesongModel = new THREE.Sprite(spriteMaterial);
+    aesongModel.scale.set(2, 2, 1);
+    aesongModel.position.set(0, 0, 0);
+    aesongScene.add(aesongModel);
+    
+    console.log('✅ 폴백 이모지 표시:', emoji);
+    updateStatusText('3D 모델을 불러올 수 없어 이모지로 표시합니다');
+}
+
 
 // 캐릭터 전환 함수
 export function switchCharacter(characterType) {
@@ -475,3 +527,9 @@ export function switchCharacter(characterType) {
 window.initAesong3DScene = initAesong3DScene;
 window.toggleVoiceRecording = toggleVoiceRecording;
 window.switchCharacter = switchCharacter;
+
+// 모듈 로드 확인
+console.log('✅ aesong-3d-module.js 모듈 로드 완료');
+console.log('✅ window.initAesong3DScene:', typeof window.initAesong3DScene);
+console.log('✅ window.toggleVoiceRecording:', typeof window.toggleVoiceRecording);
+console.log('✅ window.switchCharacter:', typeof window.switchCharacter);
