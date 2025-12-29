@@ -59,10 +59,11 @@ app.add_middleware(
 from fastapi.responses import FileResponse
 from fastapi import HTTPException
 
+# 방법 1: 루트 경로에서 서빙 (프록시 서버와 충돌 가능)
 @app.get("/{filename}.glb")
-async def serve_glb_file(filename: str):
+async def serve_glb_file_root(filename: str):
     """루트 경로에서 GLB 파일 서빙 (3D 모델용)"""
-    print(f"🔍 GLB 파일 요청: {filename}.glb")
+    print(f"🔍 GLB 파일 요청 (루트): {filename}.glb")
     glb_path = os.path.join(frontend_dir, f"{filename}.glb")
     print(f"🔍 GLB 파일 경로: {glb_path}")
     print(f"🔍 파일 존재 여부: {os.path.exists(glb_path)}")
@@ -72,6 +73,22 @@ async def serve_glb_file(filename: str):
         return FileResponse(glb_path, media_type="model/gltf-binary")
     else:
         print(f"❌ GLB 파일 없음: {filename}.glb")
+        raise HTTPException(status_code=404, detail=f"GLB file not found: {filename}.glb")
+
+# 방법 2: /api/models/ 경로에서 서빙 (권장)
+@app.get("/api/models/{filename}.glb")
+async def serve_glb_file_api(filename: str):
+    """API 경로에서 GLB 파일 서빙 (3D 모델용)"""
+    print(f"🔍 GLB 파일 요청 (API): {filename}.glb")
+    glb_path = os.path.join(frontend_dir, f"{filename}.glb")
+    print(f"🔍 GLB 파일 경로: {glb_path}")
+    print(f"🔍 파일 존재 여부: {os.path.exists(glb_path)}")
+    
+    if os.path.exists(glb_path):
+        print(f"✅ GLB 파일 전송 (API): {filename}.glb")
+        return FileResponse(glb_path, media_type="model/gltf-binary")
+    else:
+        print(f"❌ GLB 파일 없음 (API): {filename}.glb")
         raise HTTPException(status_code=404, detail=f"GLB file not found: {filename}.glb")
 
 

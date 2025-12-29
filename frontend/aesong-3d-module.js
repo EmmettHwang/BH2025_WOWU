@@ -389,17 +389,17 @@ function loadCharacter(characterType) {
     let positionY = 0;
     
     if (characterType === 'aesong') {
-        modelPath = '/AEsong.glb';
+        modelPath = '/api/models/AEsong.glb';
         modelName = '예진이';
         scale = 1.5; // 적당한 크기
         positionY = -0.2; // 가운데 위치
     } else if (characterType === 'david') {
-        modelPath = '/David.glb';
+        modelPath = '/api/models/David.glb';
         modelName = '데이빗';
         scale = 1.5; // 적당한 크기
         positionY = -0.8; // 키가 크니까 아래로 (얼굴이 보이도록)
     } else if (characterType === 'asol') {
-        modelPath = '/pmjung.glb';
+        modelPath = '/api/models/pmjung.glb';
         modelName = 'PM 정운표';
         scale = 1.5; // 적당한 크기
         positionY = -0.8; // 성인 남성 키
