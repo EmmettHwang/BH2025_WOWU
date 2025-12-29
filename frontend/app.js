@@ -10058,12 +10058,17 @@ function renderTimetableList() {
         const totalHours = subjectHoursMap[tt.subject_code] || 0;
         const isCompleted = accumulatedHours >= totalHours && totalHours > 0;
         
+        // 과목명 표시: 프로젝트/현장실습일 때는 타입명 사용
+        const displaySubject = tt.type === 'project' ? '프로젝트' : 
+                               tt.type === 'practice' ? '현장실습' : 
+                               (tt.subject_name || tt.subject_code || '-');
+        
         return `
         <tr class="border-t hover:bg-gray-50 ${isToday ? 'bg-yellow-100 border-l-4 border-yellow-500' : ''}" ${isToday ? 'id="today-timetable-row"' : ''}>
             <td class="px-3 py-2 text-xs ${isToday ? 'font-bold text-yellow-900' : ''}">${tt.class_date}${dayOfWeek ? ' (' + dayOfWeek + ')' : ''}${isToday ? ' <span class="text-yellow-600">(오늘)</span>' : ''}</td>
             <td class="px-3 py-2 text-xs">${tt.week_number || '-'}주차</td>
             <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일차</td>
-            <td class="px-3 py-2 text-xs">${tt.subject_name || tt.subject_code || '-'}</td>
+            <td class="px-3 py-2 text-xs">${displaySubject}</td>
             <td class="px-3 py-2 text-xs">${tt.instructor_name || tt.instructor_code || '-'}</td>
             <td class="px-3 py-2 text-xs">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>
             <td class="px-3 py-2 text-xs font-semibold">${Math.round(duration)}h</td>
@@ -10287,12 +10292,17 @@ function renderTimetables() {
                                 }
                             }
                             
+                            // 과목명 표시: 프로젝트/현장실습일 때는 타입명 사용
+                            const displaySubject = tt.type === 'project' ? '프로젝트' : 
+                                                   tt.type === 'practice' ? '현장실습' : 
+                                                   (tt.subject_name || tt.subject_code || '-');
+                            
                             return `
                             <tr class="border-t hover:bg-gray-50 ${isToday ? 'bg-yellow-100 border-l-4 border-yellow-500' : ''}" ${isToday ? 'id="today-timetable-row"' : ''}>
                                 <td class="px-3 py-2 text-xs ${isToday ? 'font-bold text-yellow-900' : ''}">${tt.class_date} (${dayOfWeek})${isToday ? ' <span class="text-yellow-600">(오늘)</span>' : ''}</td>
                                 <td class="px-3 py-2 text-xs">${tt.week_number || '-'}주차</td>
                                 <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일참</td>
-                                <td class="px-3 py-2 text-xs">${tt.subject_name || tt.subject_code || '-'}</td>
+                                <td class="px-3 py-2 text-xs">${displaySubject}</td>
                                 <td class="px-3 py-2 text-xs">${tt.instructor_name || tt.instructor_code || '-'}</td>
                                 <td class="px-3 py-2 text-xs">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>
                                 <td class="px-3 py-2 text-xs font-semibold">${Math.round(dailyHours)}h</td>
@@ -10998,7 +11008,7 @@ function renderTrainingLogsTable(timetables) {
                                 <td class="px-3 py-2 text-xs">${tt.class_date} (${dayOfWeek})</td>
                                 <td class="px-3 py-2 text-xs">${tt.day_number || '-'}일차</td>
                                 <td class="px-3 py-2 text-xs font-semibold text-blue-600">${hoursDisplay}</td>
-                                <td class="px-3 py-2 text-xs">${tt.subject_name || '-'}</td>
+                                <td class="px-3 py-2 text-xs">${tt.type === 'project' ? '프로젝트' : tt.type === 'practice' ? '현장실습' : (tt.subject_name || '-')}</td>
                                 <td class="px-3 py-2 text-xs">${tt.instructor_name || '-'}</td>
                                 <td class="px-3 py-2 text-xs">${formatTime(tt.start_time)} - ${formatTime(tt.end_time)}</td>
                                 <td class="px-3 py-2 text-xs">
@@ -11148,7 +11158,7 @@ window.showTrainingLogForm = async function(timetableId) {
                                         </p>
                                     </div>
                                     <button type="button" 
-                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'summary')"
+                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'summary', '${tt.type || 'lecture'}')"
                                             class="w-full text-left px-4 py-3 hover:bg-blue-50 transition flex items-center gap-3 border-b">
                                         <i class="fas fa-compress-alt text-blue-500"></i>
                                         <div>
@@ -11157,7 +11167,7 @@ window.showTrainingLogForm = async function(timetableId) {
                                         </div>
                                     </button>
                                     <button type="button" 
-                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'normal')"
+                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'normal', '${tt.type || 'lecture'}')"
                                             class="w-full text-left px-4 py-3 hover:bg-green-50 transition flex items-center gap-3 border-b">
                                         <i class="fas fa-align-left text-green-500"></i>
                                         <div>
@@ -11166,7 +11176,7 @@ window.showTrainingLogForm = async function(timetableId) {
                                         </div>
                                     </button>
                                     <button type="button" 
-                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'detailed')"
+                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'detailed', '${tt.type || 'lecture'}')"
                                             class="w-full text-left px-4 py-3 hover:bg-purple-50 transition flex items-center gap-3 rounded-b-lg">
                                         <i class="fas fa-align-justify text-purple-500"></i>
                                         <div>
@@ -11324,7 +11334,7 @@ window.editTrainingLog = async function(logId, timetableId) {
                                         </p>
                                     </div>
                                     <button type="button" 
-                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'summary')"
+                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'summary', '${tt.type || 'lecture'}')"
                                             class="w-full text-left px-4 py-3 hover:bg-blue-50 transition flex items-center gap-3 border-b">
                                         <i class="fas fa-compress-alt text-blue-500"></i>
                                         <div>
@@ -11333,7 +11343,7 @@ window.editTrainingLog = async function(logId, timetableId) {
                                         </div>
                                     </button>
                                     <button type="button" 
-                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'normal')"
+                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'normal', '${tt.type || 'lecture'}')"
                                             class="w-full text-left px-4 py-3 hover:bg-green-50 transition flex items-center gap-3 border-b">
                                         <i class="fas fa-align-left text-green-500"></i>
                                         <div>
@@ -11342,7 +11352,7 @@ window.editTrainingLog = async function(logId, timetableId) {
                                         </div>
                                     </button>
                                     <button type="button" 
-                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'detailed')"
+                                            onclick="window.generateAIContent(${timetableId}, '${tt.subject_name || ''}', '${tt.subject_code || ''}', '${tt.class_date}', '${tt.instructor_name || ''}', 'detailed', '${tt.type || 'lecture'}')"
                                             class="w-full text-left px-4 py-3 hover:bg-purple-50 transition flex items-center gap-3 rounded-b-lg">
                                         <i class="fas fa-align-justify text-purple-500"></i>
                                         <div>
@@ -11592,7 +11602,7 @@ function updateTrainingPhotoPreview(photoUrls) {
     ).join('');
 }
 
-window.generateAIContent = async function(timetableId, subjectName, subjectCode, classDate, instructorName, detailLevel = 'normal') {
+window.generateAIContent = async function(timetableId, subjectName, subjectCode, classDate, instructorName, detailLevel = 'normal', timetableType = 'lecture') {
     const contentTextarea = document.getElementById('training-content-textarea');
     const userInput = contentTextarea.value.trim();
     
@@ -11621,9 +11631,9 @@ window.generateAIContent = async function(timetableId, subjectName, subjectCode,
     };
     
     try {
-        // 세부 교과목 정보 조회
+        // 세부 교과목 정보 조회 (교과목인 경우에만)
         let subSubjects = [];
-        if (subjectCode) {
+        if (subjectCode && timetableType === 'lecture') {
             try {
                 const subjectRes = await axios.get(`${API_BASE_URL}/api/subjects/${subjectCode}`);
                 const subject = subjectRes.data;
@@ -11638,14 +11648,23 @@ window.generateAIContent = async function(timetableId, subjectName, subjectCode,
             }
         }
         
+        // 프로젝트/현장실습일 때 과목명 변경
+        let displaySubjectName = subjectName;
+        if (timetableType === 'project') {
+            displaySubjectName = '프로젝트';
+        } else if (timetableType === 'practice') {
+            displaySubjectName = '현장실습';
+        }
+        
         // AI 수업 내용 생성 API 호출
         const response = await axios.post(`${API_BASE_URL}/api/training-logs/generate-content`, {
-            subject_name: subjectName,
+            subject_name: displaySubjectName,
             sub_subjects: subSubjects,
             class_date: classDate,
             instructor_name: instructorName,
             user_input: userInput,
-            detail_level: detailLevel
+            detail_level: detailLevel,
+            timetable_type: timetableType  // 타입 정보 추가
         });
         
         // 생성된 내용을 textarea에 채우기

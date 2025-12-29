@@ -2474,6 +2474,7 @@ async def generate_training_content(data: dict):
     instructor_name = data.get('instructor_name', '')
     user_input = data.get('user_input', '').strip()  # 사용자가 입력한 내용
     detail_level = data.get('detail_level', 'normal')  # 'summary', 'normal', 'detailed'
+    timetable_type = data.get('timetable_type', 'lecture')  # 'lecture', 'project', 'practice'
     
     if not user_input:
         raise HTTPException(status_code=400, detail="수업 내용을 먼저 입력해주세요 (최소 몇 단어라도)")
@@ -2494,7 +2495,125 @@ async def generate_training_content(data: dict):
         'detailed': '매우 상세하고 구체적으로 800-1200자 정도로 작성해주세요. 예제, 실습 내용, 학생 반응 등을 포함하세요.'
     }
     
-    system_prompt = """당신은 IT 훈련 과정의 전문 강사입니다.
+    # 타입별 시스템 프롬프트
+    if timetable_type == 'project':
+        system_prompt = """당신은 IT 프로젝트 과정의 전문 지도 강사입니다.
+강사가 입력한 간단한 메모나 키워드를 바탕으로, 실제 프로젝트 진행 내용을 전문적인 훈련일지 형식으로 확장하여 작성해주세요.
+
+**중요 규칙**:
+1. 강사가 입력한 원본 내용은 반드시 그대로 포함
+2. 원본 텍스트를 절대 삭제하거나 변경하지 말 것
+3. **개조식(bullet point) 형식으로 작성** - 완전한 문장이 아닌 간결한 구문 사용
+4. "~했습니다", "~입니다" 등의 서술형 대신 "~함", "~진행", "~학습" 등의 체언 종결 사용
+5. 프로젝트 진행 상황, 문제 해결, 팀 협업에 초점"""
+
+        user_prompt_template = """
+다음은 강사가 입력한 오늘 프로젝트 활동 메모입니다:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【강사가 입력한 원본 내용】
+{user_input}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【프로젝트 정보】
+- 날짜: {class_date}
+- 활동: 프로젝트
+- 지도강사: {instructor_name}
+
+위의 원본 내용을 **반드시 그대로 유지하면서** 프로젝트 훈련일지 형식으로 확장해주세요:
+
+✅ 필수 요구사항:
+1. 강사가 입력한 원본 내용("{user_input}")을 반드시 포함
+2. 원본 내용을 중심으로 프로젝트 목표, 진행 상황, 팀 활동 추가
+3. 원본 키워드나 문장을 삭제하거나 변경 금지
+4. **개조식(bullet point) 형식으로 작성**
+
+📝 작성 형식 (개조식):
+- 프로젝트 주제: [원본 내용 포함]
+- 금일 목표:
+  • 목표1
+  • 목표2
+- 주요 진행 내용:
+  • 내용1 (원본 키워드 활용)
+  • 내용2
+  • 내용3
+- 팀별 활동:
+  • 활동1
+  • 활동2
+- 문제 해결 및 개선사항:
+  • 이슈1 및 해결방법
+  • 이슈2 및 해결방법
+- 진행률 및 성과:
+  • 달성사항1
+  • 달성사항2
+
+{detail_instructions}
+
+**다시 한번 강조**: 
+1. "{user_input}" 이 내용은 반드시 결과물에 포함
+2. 개조식으로 작성 (서술형 금지)
+"""
+    
+    elif timetable_type == 'practice':
+        system_prompt = """당신은 IT 현장실습 과정의 전문 지도 강사입니다.
+강사가 입력한 간단한 메모나 키워드를 바탕으로, 실제 현장실습 진행 내용을 전문적인 훈련일지 형식으로 확장하여 작성해주세요.
+
+**중요 규칙**:
+1. 강사가 입력한 원본 내용은 반드시 그대로 포함
+2. 원본 텍스트를 절대 삭제하거나 변경하지 말 것
+3. **개조식(bullet point) 형식으로 작성** - 완전한 문장이 아닌 간결한 구문 사용
+4. "~했습니다", "~입니다" 등의 서술형 대신 "~함", "~진행", "~학습" 등의 체언 종결 사용
+5. 현장 업무, 실무 경험, 기업 멘토링에 초점"""
+
+        user_prompt_template = """
+다음은 강사가 입력한 오늘 현장실습 활동 메모입니다:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【강사가 입력한 원본 내용】
+{user_input}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【현장실습 정보】
+- 날짜: {class_date}
+- 활동: 현장실습
+- 지도강사: {instructor_name}
+
+위의 원본 내용을 **반드시 그대로 유지하면서** 현장실습 훈련일지 형식으로 확장해주세요:
+
+✅ 필수 요구사항:
+1. 강사가 입력한 원본 내용("{user_input}")을 반드시 포함
+2. 원본 내용을 중심으로 실습 목표, 현장 업무, 멘토링 내용 추가
+3. 원본 키워드나 문장을 삭제하거나 변경 금지
+4. **개조식(bullet point) 형식으로 작성**
+
+📝 작성 형식 (개조식):
+- 실습 업무: [원본 내용 포함]
+- 금일 목표:
+  • 목표1
+  • 목표2
+- 주요 실습 내용:
+  • 내용1 (원본 키워드 활용)
+  • 내용2
+  • 내용3
+- 현장 업무 수행:
+  • 업무1
+  • 업무2
+- 멘토링 및 피드백:
+  • 피드백1
+  • 피드백2
+- 학습 성과 및 역량:
+  • 성과1
+  • 성과2
+
+{detail_instructions}
+
+**다시 한번 강조**: 
+1. "{user_input}" 이 내용은 반드시 결과물에 포함
+2. 개조식으로 작성 (서술형 금지)
+"""
+    
+    else:  # lecture (기존 교과목)
+        system_prompt = """당신은 IT 훈련 과정의 전문 강사입니다.
 강사가 입력한 간단한 메모나 키워드를 바탕으로, 실제 수업에서 진행한 내용을 전문적인 훈련일지 형식으로 확장하여 작성해주세요.
 
 **중요 규칙**:
@@ -2503,7 +2622,7 @@ async def generate_training_content(data: dict):
 3. **개조식(bullet point) 형식으로 작성** - 완전한 문장이 아닌 간결한 구문 사용
 4. "~했습니다", "~입니다" 등의 서술형 대신 "~함", "~진행", "~학습" 등의 체언 종결 사용"""
 
-    user_prompt = f"""
+        user_prompt_template = """
 다음은 강사가 입력한 오늘 수업의 메모입니다:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2516,7 +2635,7 @@ async def generate_training_content(data: dict):
 - 과목: {subject_name}
 - 강사: {instructor_name}
 - 세부 교과목: 
-{sub_subjects_text if sub_subjects_text else '세부 교과목 정보 없음'}
+{sub_subjects_text}
 
 위의 원본 내용을 **반드시 그대로 유지하면서** 훈련일지 형식으로 확장해주세요:
 
@@ -2548,12 +2667,22 @@ async def generate_training_content(data: dict):
 - ❌ 나쁜 예: "학생들은 CSS를 이해하고 활용할 수 있게 되었습니다."
 - ✅ 좋은 예: "CSS 선택자, 속성 이해 및 레이아웃 실습 완료"
 
-{detail_instructions.get(detail_level, detail_instructions['normal'])}
+{detail_instructions}
 
 **다시 한번 강조**: 
 1. "{user_input}" 이 내용은 반드시 결과물에 포함
 2. 개조식으로 작성 (서술형 금지)
 """
+    
+    # 프롬프트 변수 대입
+    user_prompt = user_prompt_template.format(
+        user_input=user_input,
+        class_date=class_date,
+        subject_name=subject_name,
+        instructor_name=instructor_name,
+        sub_subjects_text=sub_subjects_text if sub_subjects_text else '세부 교과목 정보 없음',
+        detail_instructions=detail_instructions.get(detail_level, detail_instructions['normal'])
+    )
     
     try:
         if groq_api_key:
