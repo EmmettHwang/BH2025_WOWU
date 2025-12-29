@@ -6437,7 +6437,7 @@ async def aesong_chat(data: dict, request: Request):
 
 # ==================== Google Cloud TTS API ====================
 @app.post("/api/tts")
-async def text_to_speech(data: dict):
+async def text_to_speech(data: dict, request: Request):
     """Google Cloud TTS - 텍스트를 음성으로 변환 (개선된 파라미터)"""
     text = data.get('text', '')
     character = data.get('character', '예진이')
@@ -6445,11 +6445,12 @@ async def text_to_speech(data: dict):
     if not text:
         raise HTTPException(status_code=400, detail="텍스트가 필요합니다")
     
-    # Google Cloud TTS API 키 확인
-    api_key = os.getenv('GOOGLE_CLOUD_TTS_API_KEY', '')
+    # Google Cloud TTS API 키 확인 (헤더 우선, 환경 변수는 fallback)
+    api_key_header = request.headers.get('X-Gemini-API-Key', '')
+    api_key = api_key_header if api_key_header else os.getenv('GOOGLE_CLOUD_TTS_API_KEY', '')
     
     if not api_key:
-        raise HTTPException(status_code=500, detail="Google Cloud TTS API 키가 설정되지 않았습니다")
+        raise HTTPException(status_code=500, detail="Google Cloud TTS API 키가 설정되지 않았습니다. 시스템 등록에서 Gemini API 키를 입력해주세요.")
     
     try:
         # 캐릭터별 음성 설정 (자연스러운 파라미터로 개선)

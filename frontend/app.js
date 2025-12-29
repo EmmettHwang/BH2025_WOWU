@@ -16915,6 +16915,15 @@ window.sendTextMessage = async function() {
         } else {
             // AI 응답 추가
             addChatMessage('ai', data.response);
+            
+            // TTS로 음성 출력 (키보드 입력 시에도 음성으로 응답)
+            try {
+                const characterName = window.currentCharacterName || '예진이';
+                await playTTS(data.response, characterName);
+            } catch (ttsError) {
+                console.warn('TTS 재생 실패:', ttsError);
+                // TTS 실패해도 텍스트는 이미 표시되었으므로 계속 진행
+            }
         }
         
         if (statusText) {
@@ -16932,9 +16941,103 @@ window.sendTextMessage = async function() {
     }
 };
 
+// TTS 음성 재생 함수
+async function playTTS(text, characterName) {
+    try {
+        console.log('🔊 TTS 재생 시작:', characterName);
+        
+        // Gemini API 키 가져오기 (Google Cloud TTS와 공통)
+        const geminiApiKey = localStorage.getItem('gemini_api_key') || '';
+        
+        if (!geminiApiKey) {
+            console.warn('⚠️ Gemini/Google Cloud API 키가 없어 TTS를 재생할 수 없습니다');
+            return;
+        }
+        
+        // 백엔드 TTS API 호출
+        const response = await fetch('/api/tts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Gemini-API-Key': geminiApiKey
+            },
+            body: JSON.stringify({
+                text: text,
+                character: characterName
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('TTS API 호출 실패');
+        }
+        
+        const data = await response.json();
+        
+        if (!data.audioContent) {
+            throw new Error('audioContent가 없습니다');
+        }
+        
+        // Base64 디코딩하여 오디오 재생
+        const audioBlob = base64ToBlob(data.audioContent, 'audio/mp3');
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        
+        audio.onplay = () => {
+            console.log('🔊 음성 재생 시작');
+        };
+        
+        audio.onended = () => {
+            console.log('✅ 음성 재생 완료');
+            URL.revokeObjectURL(audioUrl);
+        };
+        
+        audio.onerror = (error) => {
+            console.error('❌ 음성 재생 오류:', error);
+        };
+        
+        await audio.play();
+        
+    } catch (error) {
+        console.error('❌ TTS 재생 실패:', error);
+        throw error;
+    }
+}
+
+// Base64를 Blob으로 변환
+function base64ToBlob(base64, contentType) {
+    const byteCharacters = atob(base64);
+    const byteArrays = [];
+    
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+        const slice = byteCharacters.slice(offset, offset + 512);
+        const byteNumbers = new Array(slice.length);
+        
+        for (let i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+        }
+        
+        const byteArray = new Uint8Array(byteNumbers);
+        byteArrays.push(byteArray);
+    }
+    
+    return new Blob(byteArrays, { type: contentType });
+}
+
 // 채팅 메시지 추가 함수
 function addChatMessage(type, text) {
     const messageList = document.getElementById('chat-message-list');
+    const chatContainer = document.getElementById('aesong-chat-messages');
+    
+    if (!messageList) {
+        console.warn('chat-message-list 요소를 찾을 수 없습니다');
+        return;
+    }
+    
+    // 채팅 컨테이너 표시
+    if (chatContainer) {
+        chatContainer.style.display = 'block';
+    }
+    
     const messageDiv = document.createElement('div');
     messageDiv.style.marginBottom = '10px';
     messageDiv.style.display = 'flex';
@@ -16951,18 +17054,25 @@ function addChatMessage(type, text) {
             </div>
         `;
     } else {
+        const characterName = window.currentCharacterName || '예진이';
         messageDiv.innerHTML = `
             <div style="flex: 1;">
                 <div style="display: inline-block; background: #f3f4f6; color: #1f2937; padding: 10px 15px; border-radius: 12px; max-width: 80%; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);">
                     ${text}
                 </div>
-                <div style="font-size: 10px; color: #9ca3af; margin-top: 4px;">예진이</div>
+                <div style="font-size: 10px; color: #9ca3af; margin-top: 4px;">${characterName}</div>
             </div>
         `;
     }
     
     messageList.appendChild(messageDiv);
-    messageList.scrollTop = messageList.scrollHeight;
+    
+    // 자동 스크롤 (채팅 컨테이너를 스크롤)
+    if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    console.log('💬 메시지 추가:', type, text.substring(0, 30) + '...');
 }
 
 // ==================== BGM 관련 기능 ====================
