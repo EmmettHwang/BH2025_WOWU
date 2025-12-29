@@ -2634,6 +2634,100 @@ async function loadDashboard() {
     }
 }
 
+// ==================== 플로팅 챗봇 기능 ====================
+window.toggleChatbot = function() {
+    const widget = document.getElementById('chatbot-widget');
+    const btn = document.getElementById('chatbot-toggle-btn');
+    
+    if (widget.style.display === 'none' || widget.style.display === '') {
+        // 챗봇 열기
+        widget.style.display = 'flex';
+        btn.style.transform = 'scale(0.9)';
+        
+        // 입력창에 포커스
+        setTimeout(() => {
+            document.getElementById('chatbot-input').focus();
+        }, 100);
+    } else {
+        // 챗봇 닫기
+        widget.style.display = 'none';
+        btn.style.transform = 'scale(1)';
+    }
+};
+
+window.sendChatMessage = async function() {
+    const input = document.getElementById('chatbot-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // 사용자 메시지 추가
+    appendChatMessage(message, 'user');
+    input.value = '';
+    
+    // 로딩 표시
+    const loadingId = appendChatMessage('...', 'bot', true);
+    
+    try {
+        // 선택된 AI 모델 가져오기
+        const selectedModel = localStorage.getItem('ai_model') || 'groq';
+        
+        // API 호출
+        const response = await axios.post(`${API_BASE_URL}/api/aesong-chat`, {
+            message: message,
+            character: '예진이',
+            model: selectedModel
+        });
+        
+        // 로딩 메시지 제거
+        document.getElementById(loadingId).remove();
+        
+        // AI 응답 추가
+        appendChatMessage(response.data.response, 'bot');
+        
+    } catch (error) {
+        console.error('챗봇 오류:', error);
+        document.getElementById(loadingId).remove();
+        appendChatMessage('죄송합니다. 응답 중 오류가 발생했습니다. 😢', 'bot');
+    }
+};
+
+function appendChatMessage(message, type, isLoading = false) {
+    const messagesContainer = document.getElementById('chatbot-messages');
+    const messageId = 'msg-' + Date.now();
+    
+    if (type === 'user') {
+        // 사용자 메시지
+        const messageHTML = `
+            <div class="chatbot-message user-message" style="display: flex; gap: 10px; margin-bottom: 15px; justify-content: flex-end;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 15px; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 70%;">
+                    <div style="font-size: 14px;">${message}</div>
+                </div>
+            </div>
+        `;
+        messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
+    } else {
+        // 봇 메시지
+        const loadingAnimation = isLoading ? 'style="animation: pulse 1.5s ease-in-out infinite;"' : '';
+        const messageHTML = `
+            <div id="${messageId}" class="chatbot-message bot-message" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <div style="width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">
+                    🐶
+                </div>
+                <div ${loadingAnimation} style="background: white; padding: 10px 15px; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 70%;">
+                    <div style="font-size: 14px; color: #374151;">${message}</div>
+                </div>
+            </div>
+        `;
+        messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
+    }
+    
+    // 스크롤을 맨 아래로
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    return messageId;
+}
+
 // 초기화
 document.addEventListener('DOMContentLoaded', () => {
     console.log('=== KDT 교육관리시스템 초기화 ===');

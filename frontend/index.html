@@ -466,6 +466,58 @@
                 </div>
             </div>
         </main>
+        
+        <!-- 전역 플로팅 챗봇 (모든 페이지에서 사용 가능) -->
+        <div id="global-floating-chatbot">
+            <!-- 챗봇 위젯 (처음엔 숨김) -->
+            <div id="chatbot-widget" style="display: none; position: fixed; bottom: 90px; right: 20px; width: 350px; max-height: 500px; background: white; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 1000; flex-direction: column;">
+                <!-- 챗봇 헤더 -->
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 15px 15px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 40px; height: 40px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                            🐶
+                        </div>
+                        <div>
+                            <div style="font-weight: bold; font-size: 16px;">예진이</div>
+                            <div style="font-size: 12px; opacity: 0.9;">AI 어시스턴트</div>
+                        </div>
+                    </div>
+                    <button onclick="window.toggleChatbot()" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.3s;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <!-- 챗봇 메시지 영역 -->
+                <div id="chatbot-messages" style="flex: 1; padding: 15px; overflow-y: auto; max-height: 350px; background: #f9fafb;">
+                    <div class="chatbot-message bot-message" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <div style="width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">
+                            🐶
+                        </div>
+                        <div style="background: white; padding: 10px 15px; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 70%;">
+                            <div style="font-size: 14px; color: #374151;">안녕하세요! 저는 예진이입니다. 무엇을 도와드릴까요? 😊</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 챗봇 입력 영역 -->
+                <div style="padding: 15px; border-top: 1px solid #e5e7eb; background: white; border-radius: 0 0 15px 15px;">
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="chatbot-input" placeholder="메시지를 입력하세요..." 
+                               style="flex: 1; padding: 10px 15px; border: 2px solid #e5e7eb; border-radius: 25px; outline: none; font-size: 14px;"
+                               onkeypress="if(event.key==='Enter'){window.sendChatMessage();}">
+                        <button onclick="window.sendChatMessage()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 플로팅 버튼 -->
+            <button id="chatbot-toggle-btn" onclick="window.toggleChatbot()" 
+                    style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 50%; cursor: pointer; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); display: flex; align-items: center; justify-content: center; font-size: 24px; z-index: 999; transition: transform 0.3s, box-shadow 0.3s;">
+                <i class="fas fa-comments"></i>
+            </button>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
@@ -502,7 +554,7 @@
     </script>
     
     <!-- 캐시 버스팅을 위한 버전 쿼리 -->
-    <script src="/app.js?v=2.0.135"></script>
+    <script src="/app.js?v=2.0.136"></script>
     
     <!-- 3D 모듈 (Three.js) -->
     <script type="importmap">
