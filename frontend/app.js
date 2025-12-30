@@ -16873,18 +16873,27 @@ window.sendTextMessage = async function() {
     addChatMessage('user', message);
     input.value = '';
     
+    // 선택된 AI 모델 가져오기
+    const selectedModel = localStorage.getItem('ai_model') || 'groq';
+    
+    // 현재 캐릭터 이름 가져오기
+    const currentCharacter = window.currentCharacterName || '예진이';
+    
+    // 모델명 표시
+    const modelNames = {
+        'groq': 'Llama 3.3 70B',
+        'gemma': 'Gemma 2 9B',
+        'gemini': 'Gemini 2.0 Flash'
+    };
+    const modelDisplayName = modelNames[selectedModel] || selectedModel.toUpperCase();
+    
     // AI 응답 대기 표시
     if (statusText) {
-        statusText.textContent = 'AI가 생각 중...';
+        statusText.textContent = `${currentCharacter}가 ${modelDisplayName}로 생각 중...`;
         statusText.style.display = 'flex';
     }
     
     try {
-        // 선택된 AI 모델 가져오기
-        const selectedModel = localStorage.getItem('ai_model') || 'groq';
-        
-        // 현재 캐릭터 이름 가져오기
-        const currentCharacter = window.currentCharacterName || '예진이';
         
         // API 키 가져오기
         const groqApiKey = localStorage.getItem('groq_api_key') || '';
