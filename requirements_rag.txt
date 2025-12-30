@@ -8,4 +8,4 @@ python-multipart==0.0.6
 
 # 기타 유틸리티
 tiktoken==0.5.2
-faiss-cpu==1.7.4
+faiss-cpu>=1.8.0
