@@ -233,8 +233,9 @@ def test_document_list():
     try:
         response = requests.get(f"{BASE_URL}/api/rag/documents")
         if response.status_code == 200:
-            documents = response.json()
-            print(f"✅ 총 {len(documents)}개 문서:")
+            data = response.json()
+            documents = data.get('documents', [])
+            print(f"✅ 총 {data.get('unique_documents', 0)}개 문서 ({data.get('total_chunks', 0)}개 청크):")
             for i, doc in enumerate(documents, 1):
                 print(f"\n{i}. {doc.get('filename')}")
                 print(f"   - ID: {doc.get('document_id')}")
@@ -274,13 +275,15 @@ def test_rag_chat(question, api_key=None):
     print_section(f"6. RAG 챗봇 테스트: '{question}'")
     
     try:
-        payload = {"question": question}
+        payload = {"message": question, "k": 3}
+        headers = {}
         if api_key:
-            payload["api_key"] = api_key
+            headers["X-GROQ-API-Key"] = api_key
             
         response = requests.post(
             f"{BASE_URL}/api/rag/chat",
-            json=payload
+            json=payload,
+            headers=headers
         )
         
         if response.status_code == 200:

@@ -7428,25 +7428,16 @@ async def rag_search(
         raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
     
     try:
-        # 필터 구성
-        filter_dict = {}
-        if subject:
-            filter_dict['subject'] = subject
-        
-        # 검색
-        results = vector_store_manager.search_with_score(
-            query, 
-            k=k, 
-            filter=filter_dict if filter_dict else None
-        )
+        # 검색 (필터 없이)
+        results = vector_store_manager.search_with_score(query, k=k)
         
         # 결과 포맷팅
         search_results = []
-        for doc, score in results:
+        for result in results:
             search_results.append({
-                'content': doc.page_content,
-                'similarity': float(score),
-                'metadata': doc.metadata
+                'content': result.get('content', ''),
+                'similarity': float(result.get('score', 0)),
+                'metadata': result.get('metadata', {})
             })
         
         return {
@@ -7495,8 +7486,9 @@ async def rag_status():
         return {
             "initialized": True,
             "document_count": count,
-            "embedding_model": "paraphrase-multilingual-MiniLM-L12-v2",
-            "vector_db": "ChromaDB",
+            "embedding_model": vector_store_manager.embedding_model,
+            "collection_name": vector_store_manager.collection_name,
+            "vector_db": "FAISS",
             "status": "정상"
         }
         
