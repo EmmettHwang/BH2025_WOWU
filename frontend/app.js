@@ -17431,9 +17431,23 @@ window.testYouTubeApiKey = async function() {
         
         if (response.ok && data.items && data.items.length > 0) {
             // 성공
+            const video = data.items[0];
             resultDiv.className = 'mt-2 text-sm text-green-600 bg-green-50 p-2 rounded';
-            resultDiv.innerHTML = '<i class="fas fa-check-circle mr-1"></i>✅ API 키가 정상적으로 작동합니다! <button onclick="window.showYouTubeDemoModal()" class="ml-2 text-blue-600 hover:text-blue-700 underline">BGM 재생 체험하기</button>';
+            resultDiv.innerHTML = `<i class="fas fa-check-circle mr-1"></i>✅ API 키가 정상적으로 작동합니다!<br><small class="text-gray-600">테스트 검색: "${video.snippet.title.substring(0, 40)}..."</small>`;
             console.log('✅ YouTube API 키 테스트 성공');
+            
+            // localStorage에 저장
+            localStorage.setItem('youtube_api_key', apiKey);
+            
+            // DB에도 저장
+            try {
+                const formData = new FormData();
+                formData.append('youtube_api_key', apiKey);
+                await axios.post(`${API_BASE_URL}/api/system-settings`, formData);
+                console.log('✅ YouTube API 키 DB 저장 완료');
+            } catch (dbError) {
+                console.warn('⚠️ DB 저장 실패 (localStorage는 저장됨):', dbError);
+            }
         } else if (data.error) {
             // API 오류
             resultDiv.className = 'mt-2 text-sm text-red-600 bg-red-50 p-2 rounded';
@@ -17559,12 +17573,23 @@ window.testGroqApiKey = async function() {
         
         if (response.ok && data.choices && data.choices.length > 0) {
             // 성공
+            const aiResponse = data.choices[0].message.content;
             resultDiv.className = 'mt-2 text-sm text-green-600 bg-green-50 p-2 rounded';
-            resultDiv.innerHTML = '<i class="fas fa-check-circle mr-1"></i>✅ API 키가 정상적으로 작동합니다! <button onclick="window.showGroqDemoModal()" class="ml-2 text-blue-600 hover:text-blue-700 underline">실제 기능 체험하기</button>';
+            resultDiv.innerHTML = `<i class="fas fa-check-circle mr-1"></i>✅ API 키가 정상적으로 작동합니다!<br><small class="text-gray-600">테스트 응답: "${aiResponse.substring(0, 50)}..."</small>`;
             console.log('✅ GROQ API 키 테스트 성공');
             
-            // localStorage에도 저장
+            // localStorage에 저장
             localStorage.setItem('groq_api_key', apiKey);
+            
+            // DB에도 저장
+            try {
+                const formData = new FormData();
+                formData.append('groq_api_key', apiKey);
+                await axios.post(`${API_BASE_URL}/api/system-settings`, formData);
+                console.log('✅ GROQ API 키 DB 저장 완료');
+            } catch (dbError) {
+                console.warn('⚠️ DB 저장 실패 (localStorage는 저장됨):', dbError);
+            }
         } else if (data.error) {
             // API 오류 (한글 번역)
             const translatedError = translateApiError(data.error.message);
@@ -17624,12 +17649,23 @@ window.testGeminiApiKey = async function() {
         
         if (response.ok && data.candidates && data.candidates.length > 0) {
             // 성공
+            const aiResponse = data.candidates[0].content.parts[0].text;
             resultDiv.className = 'mt-2 text-sm text-green-600 bg-green-50 p-2 rounded';
-            resultDiv.innerHTML = '<i class="fas fa-check-circle mr-1"></i>✅ API 키가 정상적으로 작동합니다! (Gemini + Google Cloud TTS 사용 가능) <button onclick="window.showGeminiDemoModal()" class="ml-2 text-blue-600 hover:text-blue-700 underline">실제 기능 체험하기</button>';
+            resultDiv.innerHTML = `<i class="fas fa-check-circle mr-1"></i>✅ API 키가 정상적으로 작동합니다! (Gemini + Google Cloud TTS 사용 가능)<br><small class="text-gray-600">테스트 응답: "${aiResponse.substring(0, 50)}..."</small>`;
             console.log('✅ Gemini API 키 테스트 성공');
             
-            // localStorage에도 저장
+            // localStorage에 저장
             localStorage.setItem('gemini_api_key', apiKey);
+            
+            // DB에도 저장
+            try {
+                const formData = new FormData();
+                formData.append('gemini_api_key', apiKey);
+                await axios.post(`${API_BASE_URL}/api/system-settings`, formData);
+                console.log('✅ Gemini API 키 DB 저장 완료');
+            } catch (dbError) {
+                console.warn('⚠️ DB 저장 실패 (localStorage는 저장됨):', dbError);
+            }
         } else if (data.error) {
             // API 오류 (한글 번역)
             const translatedError = translateApiError(data.error.message);
@@ -18357,537 +18393,3 @@ console.log('- window.downloadFile(url, filename)');
 
 // ============================================
 // API 키 데모 모달 함수들
-// ============================================
-
-// GROQ API 데모 모달
-window.showGroqDemoModal = function() {
-    const modal = document.createElement('div');
-    modal.id = 'api-demo-modal';
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] animate-fade-in';
-    modal.innerHTML = `
-        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-scale-in">
-            <!-- 헤더 -->
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-900 flex items-center">
-                    <i class="fas fa-robot mr-3 text-purple-600"></i>
-                    GROQ AI 챗봇 체험
-                </h2>
-                <button onclick="document.getElementById('api-demo-modal').remove()" class="text-gray-400 hover:text-gray-600 text-2xl">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <!-- 탭 메뉴 -->
-            <div class="flex border-b mb-6">
-                <button onclick="window.switchDemoTab('biohealth')" class="demo-tab-btn active px-6 py-3 font-semibold text-purple-600 border-b-2 border-purple-600" data-tab="biohealth">
-                    <i class="fas fa-dna mr-2"></i>바이오헬스 Q&A
-                </button>
-                <button onclick="window.switchDemoTab('training-log')" class="demo-tab-btn px-6 py-3 font-semibold text-gray-500 hover:text-purple-600" data-tab="training-log">
-                    <i class="fas fa-clipboard-list mr-2"></i>훈련일지 자동작성
-                </button>
-            </div>
-            
-            <!-- 바이오헬스 Q&A 탭 -->
-            <div id="demo-tab-biohealth" class="demo-tab-content">
-                <div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-4">
-                    <p class="text-sm text-gray-700">
-                        <i class="fas fa-info-circle mr-2 text-blue-500"></i>
-                        바이오헬스 분야에 대한 질문을 하면 AI가 답변합니다.
-                    </p>
-                </div>
-                
-                <!-- 예시 질문 버튼 -->
-                <div class="mb-4">
-                    <p class="text-sm font-semibold text-gray-700 mb-2">예시 질문:</p>
-                    <div class="flex flex-wrap gap-2">
-                        <button onclick="window.askGroqQuestion('mRNA 백신의 작동 원리를 설명해주세요')" class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm hover:bg-purple-200">
-                            mRNA 백신 작동 원리
-                        </button>
-                        <button onclick="window.askGroqQuestion('바이오헬스 산업의 최신 트렌드는?')" class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm hover:bg-purple-200">
-                            산업 트렌드
-                        </button>
-                        <button onclick="window.askGroqQuestion('유전자 치료와 세포 치료의 차이점은?')" class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm hover:bg-purple-200">
-                            유전자/세포 치료
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- 질문 입력 -->
-                <div class="mb-4">
-                    <textarea id="groq-question-input" rows="2" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="바이오헬스에 대해 궁금한 것을 물어보세요..."></textarea>
-                    <button onclick="window.askGroqQuestion()" class="mt-2 w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
-                        <i class="fas fa-paper-plane mr-2"></i>질문하기
-                    </button>
-                </div>
-                
-                <!-- 답변 영역 -->
-                <div id="groq-answer" class="hidden bg-gray-50 rounded-lg p-4 border-l-4 border-purple-500">
-                    <p class="text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-robot mr-2 text-purple-600"></i>AI 답변:
-                    </p>
-                    <div id="groq-answer-text" class="text-gray-800 whitespace-pre-line"></div>
-                </div>
-                
-                <!-- 로딩 -->
-                <div id="groq-loading" class="hidden text-center py-4">
-                    <i class="fas fa-spinner fa-spin text-3xl text-purple-600 mb-2"></i>
-                    <p class="text-gray-600">AI가 생각 중...</p>
-                </div>
-            </div>
-            
-            <!-- 훈련일지 자동작성 탭 -->
-            <div id="demo-tab-training-log" class="demo-tab-content hidden">
-                <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 mb-4">
-                    <p class="text-sm text-gray-700">
-                        <i class="fas fa-info-circle mr-2 text-green-500"></i>
-                        오늘 학습한 내용을 간단히 입력하면 AI가 훈련일지를 자동으로 작성합니다.
-                    </p>
-                </div>
-                
-                <!-- 입력 -->
-                <div class="mb-4">
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">오늘 학습 내용 (키워드):</label>
-                    <textarea id="training-log-input" rows="3" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500" placeholder="예: Python 기초, 데이터 분석, pandas 라이브러리"></textarea>
-                    <button onclick="window.generateTrainingLog()" class="mt-2 w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
-                        <i class="fas fa-magic mr-2"></i>훈련일지 자동 작성
-                    </button>
-                </div>
-                
-                <!-- 결과 영역 -->
-                <div id="training-log-result" class="hidden bg-gray-50 rounded-lg p-4 border-l-4 border-green-500">
-                    <p class="text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-clipboard-check mr-2 text-green-600"></i>생성된 훈련일지:
-                    </p>
-                    <div id="training-log-text" class="text-gray-800 whitespace-pre-line"></div>
-                </div>
-                
-                <!-- 로딩 -->
-                <div id="training-log-loading" class="hidden text-center py-4">
-                    <i class="fas fa-spinner fa-spin text-3xl text-green-600 mb-2"></i>
-                    <p class="text-gray-600">훈련일지 작성 중...</p>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-};
-
-// Gemini API 데모 모달
-window.showGeminiDemoModal = function() {
-    const modal = document.createElement('div');
-    modal.id = 'api-demo-modal';
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] animate-fade-in';
-    modal.innerHTML = `
-        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-scale-in">
-            <!-- 헤더 -->
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-900 flex items-center">
-                    <i class="fas fa-brain mr-3 text-blue-600"></i>
-                    Gemini AI + TTS 체험
-                </h2>
-                <button onclick="document.getElementById('api-demo-modal').remove()" class="text-gray-400 hover:text-gray-600 text-2xl">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 mb-4">
-                <p class="text-sm text-gray-700">
-                    <i class="fas fa-info-circle mr-2 text-blue-500"></i>
-                    Gemini AI가 답변하고, 음성으로도 들려줍니다.
-                </p>
-            </div>
-            
-            <!-- 예시 질문 -->
-            <div class="mb-4">
-                <p class="text-sm font-semibold text-gray-700 mb-2">예시 질문:</p>
-                <div class="flex flex-wrap gap-2">
-                    <button onclick="window.askGeminiQuestion('바이오헬스 산업의 미래는?')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm hover:bg-blue-200">
-                        산업 미래
-                    </button>
-                    <button onclick="window.askGeminiQuestion('인공지능이 의료에 어떻게 활용되나요?')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm hover:bg-blue-200">
-                        AI 의료 활용
-                    </button>
-                </div>
-            </div>
-            
-            <!-- 질문 입력 -->
-            <div class="mb-4">
-                <textarea id="gemini-question-input" rows="2" class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="질문을 입력하세요..."></textarea>
-                <button onclick="window.askGeminiQuestion()" class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
-                    <i class="fas fa-paper-plane mr-2"></i>질문하기 (음성 답변)
-                </button>
-            </div>
-            
-            <!-- 답변 영역 -->
-            <div id="gemini-answer" class="hidden bg-gray-50 rounded-lg p-4 border-l-4 border-blue-500">
-                <p class="text-sm font-semibold text-gray-700 mb-2">
-                    <i class="fas fa-brain mr-2 text-blue-600"></i>Gemini AI 답변:
-                </p>
-                <div id="gemini-answer-text" class="text-gray-800 whitespace-pre-line mb-3"></div>
-                <button onclick="window.speakGeminiAnswer()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">
-                    <i class="fas fa-volume-up mr-2"></i>다시 듣기
-                </button>
-            </div>
-            
-            <!-- 로딩 -->
-            <div id="gemini-loading" class="hidden text-center py-4">
-                <i class="fas fa-spinner fa-spin text-3xl text-blue-600 mb-2"></i>
-                <p class="text-gray-600">AI가 생각 중...</p>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-};
-
-// YouTube BGM 데모 모달
-window.showYouTubeDemoModal = function() {
-    const modal = document.createElement('div');
-    modal.id = 'api-demo-modal';
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] animate-fade-in';
-    modal.innerHTML = `
-        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-scale-in">
-            <!-- 헤더 -->
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-900 flex items-center">
-                    <i class="fab fa-youtube mr-3 text-red-600"></i>
-                    YouTube BGM 재생 체험
-                </h2>
-                <button onclick="document.getElementById('api-demo-modal').remove()" class="text-gray-400 hover:text-gray-600 text-2xl">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="bg-gradient-to-r from-red-50 to-pink-50 rounded-lg p-4 mb-4">
-                <p class="text-sm text-gray-700">
-                    <i class="fas fa-info-circle mr-2 text-red-500"></i>
-                    장르를 선택하면 YouTube에서 자동으로 BGM을 검색하여 재생합니다.
-                </p>
-            </div>
-            
-            <!-- 장르 선택 -->
-            <div class="mb-6">
-                <label class="block text-sm font-semibold text-gray-700 mb-3">BGM 장르 선택:</label>
-                <div class="grid grid-cols-2 gap-3">
-                    <button onclick="window.playDemoBGM('classical')" class="bg-gradient-to-r from-purple-100 to-purple-200 hover:from-purple-200 hover:to-purple-300 text-purple-800 px-6 py-4 rounded-xl font-semibold transition-all transform hover:scale-105">
-                        <i class="fas fa-music mr-2"></i>클래식
-                    </button>
-                    <button onclick="window.playDemoBGM('piano')" class="bg-gradient-to-r from-blue-100 to-blue-200 hover:from-blue-200 hover:to-blue-300 text-blue-800 px-6 py-4 rounded-xl font-semibold transition-all transform hover:scale-105">
-                        <i class="fas fa-piano mr-2"></i>피아노 연주
-                    </button>
-                    <button onclick="window.playDemoBGM('meditation')" class="bg-gradient-to-r from-green-100 to-green-200 hover:from-green-200 hover:to-green-300 text-green-800 px-6 py-4 rounded-xl font-semibold transition-all transform hover:scale-105">
-                        <i class="fas fa-spa mr-2"></i>명상 음악
-                    </button>
-                    <button onclick="window.playDemoBGM('oldpop')" class="bg-gradient-to-r from-pink-100 to-pink-200 hover:from-pink-200 hover:to-pink-300 text-pink-800 px-6 py-4 rounded-xl font-semibold transition-all transform hover:scale-105">
-                        <i class="fas fa-compact-disc mr-2"></i>고전 팝송
-                    </button>
-                </div>
-            </div>
-            
-            <!-- 재생 중 표시 -->
-            <div id="bgm-playing" class="hidden bg-green-50 rounded-lg p-4 border-l-4 border-green-500">
-                <p class="text-sm font-semibold text-green-700 mb-2">
-                    <i class="fas fa-play-circle mr-2 animate-pulse"></i>BGM 재생 중
-                </p>
-                <p id="bgm-info" class="text-gray-700"></p>
-                <button onclick="window.stopDemoBGM()" class="mt-3 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm">
-                    <i class="fas fa-stop mr-2"></i>정지
-                </button>
-            </div>
-            
-            <!-- 로딩 -->
-            <div id="bgm-loading" class="hidden text-center py-4">
-                <i class="fas fa-spinner fa-spin text-3xl text-red-600 mb-2"></i>
-                <p class="text-gray-600">BGM 검색 중...</p>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-};
-
-// 탭 전환
-window.switchDemoTab = function(tabName) {
-    // 모든 탭 버튼 비활성화
-    document.querySelectorAll('.demo-tab-btn').forEach(btn => {
-        btn.classList.remove('active', 'text-purple-600', 'border-b-2', 'border-purple-600');
-        btn.classList.add('text-gray-500');
-    });
-    
-    // 선택된 탭 버튼 활성화
-    const activeBtn = document.querySelector(`.demo-tab-btn[data-tab="${tabName}"]`);
-    if (activeBtn) {
-        activeBtn.classList.add('active', 'text-purple-600', 'border-b-2', 'border-purple-600');
-        activeBtn.classList.remove('text-gray-500');
-    }
-    
-    // 모든 탭 내용 숨기기
-    document.querySelectorAll('.demo-tab-content').forEach(content => {
-        content.classList.add('hidden');
-    });
-    
-    // 선택된 탭 내용 표시
-    const activeContent = document.getElementById(`demo-tab-${tabName}`);
-    if (activeContent) {
-        activeContent.classList.remove('hidden');
-    }
-};
-
-// GROQ 질문
-window.askGroqQuestion = async function(predefinedQuestion) {
-    const questionInput = document.getElementById('groq-question-input');
-    const question = predefinedQuestion || questionInput.value.trim();
-    
-    if (!question) {
-        alert('질문을 입력해주세요');
-        return;
-    }
-    
-    const answerDiv = document.getElementById('groq-answer');
-    const answerText = document.getElementById('groq-answer-text');
-    const loadingDiv = document.getElementById('groq-loading');
-    
-    // 이전 질문이면 입력창에 표시
-    if (predefinedQuestion) {
-        questionInput.value = predefinedQuestion;
-    }
-    
-    // 로딩 표시
-    answerDiv.classList.add('hidden');
-    loadingDiv.classList.remove('hidden');
-    
-    try {
-        const apiKey = localStorage.getItem('groq_api_key');
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'llama-3.3-70b-versatile',
-                messages: [
-                    { role: 'system', content: '당신은 바이오헬스 분야 전문가입니다. 친절하고 자세하게 설명해주세요.' },
-                    { role: 'user', content: question }
-                ],
-                max_tokens: 500,
-                temperature: 0.7
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.choices && data.choices.length > 0) {
-            answerText.textContent = data.choices[0].message.content;
-            answerDiv.classList.remove('hidden');
-        } else {
-            answerText.textContent = '답변을 생성할 수 없습니다.';
-            answerDiv.classList.remove('hidden');
-        }
-    } catch (error) {
-        answerText.textContent = '오류가 발생했습니다: ' + error.message;
-        answerDiv.classList.remove('hidden');
-    } finally {
-        loadingDiv.classList.add('hidden');
-    }
-};
-
-// 훈련일지 생성
-window.generateTrainingLog = async function() {
-    const input = document.getElementById('training-log-input').value.trim();
-    
-    if (!input) {
-        alert('학습 내용을 입력해주세요');
-        return;
-    }
-    
-    const resultDiv = document.getElementById('training-log-result');
-    const resultText = document.getElementById('training-log-text');
-    const loadingDiv = document.getElementById('training-log-loading');
-    
-    // 로딩 표시
-    resultDiv.classList.add('hidden');
-    loadingDiv.classList.remove('hidden');
-    
-    try {
-        const apiKey = localStorage.getItem('groq_api_key');
-        const today = new Date().toLocaleDateString('ko-KR');
-        
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'llama-3.3-70b-versatile',
-                messages: [
-                    { 
-                        role: 'system', 
-                        content: '당신은 교육 훈련일지 작성 전문가입니다. 학습 내용을 바탕으로 체계적인 훈련일지를 작성해주세요.' 
-                    },
-                    { 
-                        role: 'user', 
-                        content: `날짜: ${today}\n학습 내용: ${input}\n\n위 내용을 바탕으로 다음 형식으로 훈련일지를 작성해주세요:\n1. 학습 주제\n2. 학습 내용 (상세)\n3. 새롭게 배운 점\n4. 어려웠던 점\n5. 다음 학습 계획` 
-                    }
-                ],
-                max_tokens: 800,
-                temperature: 0.7
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.choices && data.choices.length > 0) {
-            resultText.textContent = data.choices[0].message.content;
-            resultDiv.classList.remove('hidden');
-        } else {
-            resultText.textContent = '훈련일지를 생성할 수 없습니다.';
-            resultDiv.classList.remove('hidden');
-        }
-    } catch (error) {
-        resultText.textContent = '오류가 발생했습니다: ' + error.message;
-        resultDiv.classList.remove('hidden');
-    } finally {
-        loadingDiv.classList.add('hidden');
-    }
-};
-
-// Gemini 질문
-let currentGeminiAnswer = '';
-window.askGeminiQuestion = async function(predefinedQuestion) {
-    const questionInput = document.getElementById('gemini-question-input');
-    const question = predefinedQuestion || questionInput.value.trim();
-    
-    if (!question) {
-        alert('질문을 입력해주세요');
-        return;
-    }
-    
-    const answerDiv = document.getElementById('gemini-answer');
-    const answerText = document.getElementById('gemini-answer-text');
-    const loadingDiv = document.getElementById('gemini-loading');
-    
-    if (predefinedQuestion) {
-        questionInput.value = predefinedQuestion;
-    }
-    
-    // 로딩 표시
-    answerDiv.classList.add('hidden');
-    loadingDiv.classList.remove('hidden');
-    
-    try {
-        const apiKey = localStorage.getItem('gemini_api_key');
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{ 
-                        text: `당신은 바이오헬스 분야 전문가입니다. 다음 질문에 친절하고 자세하게 답변해주세요: ${question}` 
-                    }]
-                }],
-                generationConfig: {
-                    maxOutputTokens: 500,
-                    temperature: 0.7
-                }
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.candidates && data.candidates.length > 0) {
-            currentGeminiAnswer = data.candidates[0].content.parts[0].text;
-            answerText.textContent = currentGeminiAnswer;
-            answerDiv.classList.remove('hidden');
-            
-            // 자동으로 음성 재생
-            window.speakGeminiAnswer();
-        } else {
-            answerText.textContent = '답변을 생성할 수 없습니다.';
-            answerDiv.classList.remove('hidden');
-        }
-    } catch (error) {
-        answerText.textContent = '오류가 발생했습니다: ' + error.message;
-        answerDiv.classList.remove('hidden');
-    } finally {
-        loadingDiv.classList.add('hidden');
-    }
-};
-
-// Gemini 답변 음성 재생
-window.speakGeminiAnswer = function() {
-    if (!currentGeminiAnswer) return;
-    
-    // Web Speech API 사용
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); // 이전 재생 중지
-        
-        const utterance = new SpeechSynthesisUtterance(currentGeminiAnswer);
-        utterance.lang = 'ko-KR';
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        
-        window.speechSynthesis.speak(utterance);
-        console.log('🔊 음성 재생 시작');
-    } else {
-        alert('이 브라우저는 음성 재생을 지원하지 않습니다.');
-    }
-};
-
-// BGM 재생 (데모용 간단 버전)
-let demoBGMPlayer = null;
-window.playDemoBGM = async function(genre) {
-    const loadingDiv = document.getElementById('bgm-loading');
-    const playingDiv = document.getElementById('bgm-playing');
-    const infoDiv = document.getElementById('bgm-info');
-    
-    loadingDiv.classList.remove('hidden');
-    playingDiv.classList.add('hidden');
-    
-    try {
-        const apiKey = localStorage.getItem('youtube_api_key');
-        const genreNames = {
-            'classical': '클래식 음악',
-            'piano': '피아노 연주',
-            'meditation': '명상 음악',
-            'oldpop': '고전 팝송'
-        };
-        
-        const searchQuery = genreNames[genre] || genre;
-        const apiUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${encodeURIComponent(searchQuery + ' instrumental')}&type=video&key=${apiKey}`;
-        
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-        
-        if (data.items && data.items.length > 0) {
-            const video = data.items[0];
-            infoDiv.innerHTML = `
-                <p class="font-semibold">${video.snippet.title}</p>
-                <p class="text-sm text-gray-600 mt-1">${genreNames[genre]} - YouTube</p>
-            `;
-            playingDiv.classList.remove('hidden');
-            
-            // 실제 YouTube 플레이어는 표시하지 않고 정보만 표시
-            console.log('🎵 BGM 정보:', video.snippet.title);
-            alert(`"${genreNames[genre]}" BGM을 찾았습니다!\n\n제목: ${video.snippet.title}\n\n실제 대시보드에서는 배경음악이 자동으로 재생됩니다.`);
-        } else {
-            alert('BGM을 찾을 수 없습니다.');
-        }
-    } catch (error) {
-        alert('오류가 발생했습니다: ' + error.message);
-    } finally {
-        loadingDiv.classList.add('hidden');
-    }
-};
-
-// BGM 정지
-window.stopDemoBGM = function() {
-    const playingDiv = document.getElementById('bgm-playing');
-    playingDiv.classList.add('hidden');
-    if (demoBGMPlayer) {
-        demoBGMPlayer.stopVideo();
-    }
-};
-
-console.log('✅ API 데모 모달 함수 로드 완료');
