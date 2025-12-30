@@ -17095,7 +17095,6 @@ if ('speechSynthesis' in window) {
         console.log('🇰🇷 한국어 TTS 음성:', koreanVoices.map(v => v.name).join(', '));
     };
 }
-}
 
 // Base64를 Blob으로 변환
 function base64ToBlob(base64, contentType) {
