@@ -8,8 +8,17 @@ from typing import List, Dict
 from pathlib import Path
 import PyPDF2
 import docx
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+
+# LangChain imports - 버전 호환성 처리
+try:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+except ImportError:
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+try:
+    from langchain_core.documents import Document
+except ImportError:
+    from langchain.schema import Document
 
 
 class DocumentLoader:
