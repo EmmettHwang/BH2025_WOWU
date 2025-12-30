@@ -7213,7 +7213,7 @@ def init_rag():
         )
         
         print("✅ RAG 시스템 초기화 완료")
-        print(f"📚 저장된 문서 수: {vector_store_manager.get_document_count()}")
+        print(f"📚 저장된 문서 수: {vector_store_manager.count_documents()}")
         
     except Exception as e:
         print(f"❌ RAG 시스템 초기화 실패: {e}")
@@ -7320,7 +7320,7 @@ async def list_rag_documents(limit: int = 100):
     
     try:
         documents = vector_store_manager.list_documents(limit=limit)
-        count = vector_store_manager.get_document_count()
+        count = vector_store_manager.count_documents()
         
         # 중복 제거 (원본 파일명 기준)
         unique_docs = {}
@@ -7459,7 +7459,7 @@ async def clear_rag_database():
         raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
     
     try:
-        old_count = vector_store_manager.get_document_count()
+        old_count = vector_store_manager.count_documents()
         vector_store_manager.delete_collection()
         
         return {
@@ -7482,7 +7482,7 @@ async def rag_status():
         }
     
     try:
-        count = vector_store_manager.get_document_count()
+        count = vector_store_manager.count_documents()
         
         return {
             "initialized": True,
