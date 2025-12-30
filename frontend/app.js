@@ -2755,14 +2755,25 @@ function appendChatMessage(message, type, isRAG = false, isLoading = false, sour
         const ragBadge = isRAG ? '<span style="background: #667eea; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 6px;">📚 지식검색</span>' : '';
         const messageHTML = `
             <div class="chatbot-message user-message" style="display: flex; gap: 10px; margin-bottom: 15px; justify-content: flex-end;">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 15px; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 70%;">
-                    <div style="font-size: 14px;">${message}${ragBadge}</div>
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 15px; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 80%;">
+                    <div style="font-size: 14px; white-space: pre-wrap;">${message}${ragBadge}</div>
                 </div>
             </div>
         `;
         messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
     } else {
-        // 봇 메시지
+        // 봇 메시지 포맷팅
+        let formattedMessage = message;
+        
+        // 객관식 문제 포맷팅
+        formattedMessage = formattedMessage.replace(/(\d+\.\s+[^\n]+)\n([A-D]\))/g, '$1\n\n$2');
+        formattedMessage = formattedMessage.replace(/([A-D]\)\s+[^\n]+)/g, '<span style="display: block; margin-left: 20px; margin-bottom: 5px;">$1</span>');
+        formattedMessage = formattedMessage.replace(/(정답:\s+[^\n]+)/g, '<strong style="color: #10b981; display: block; margin-top: 10px;">$1</strong>');
+        formattedMessage = formattedMessage.replace(/(해설:\s+[^\n]+)/g, '<em style="color: #6b7280; display: block; margin-bottom: 15px;">$1</em>');
+        
+        // 줄바꿈을 <br>로 변환
+        formattedMessage = formattedMessage.replace(/\n/g, '<br>');
+        
         const loadingAnimation = isLoading ? 'style="animation: pulse 1.5s ease-in-out infinite;"' : '';
         
         // 출처 정보 HTML 생성
@@ -2776,7 +2787,7 @@ function appendChatMessage(message, type, isRAG = false, isLoading = false, sour
                     ${sources.map((src, idx) => `
                         <div style="font-size: 11px; color: #6b7280; margin-top: 3px;">
                             ${idx + 1}. ${src.source || '알 수 없음'} 
-                            <span style="color: #9ca3af;">(유사도: ${(src.similarity * 100).toFixed(1)}%)</span>
+                            <span style="color: #9ca3af;">(유사도: ${(src.similarity).toFixed(1)}%)</span>
                         </div>
                     `).join('')}
                 </div>
@@ -2788,8 +2799,8 @@ function appendChatMessage(message, type, isRAG = false, isLoading = false, sour
                 <div style="width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">
                     🐶
                 </div>
-                <div ${loadingAnimation} style="background: white; padding: 10px 15px; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 70%;">
-                    <div style="font-size: 14px; color: #374151;">${message}</div>
+                <div ${loadingAnimation} style="background: white; padding: 12px 16px; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 80%; line-height: 1.6;">
+                    <div style="font-size: 14px; color: #374151;">${formattedMessage}</div>
                     ${sourcesHTML}
                 </div>
             </div>
