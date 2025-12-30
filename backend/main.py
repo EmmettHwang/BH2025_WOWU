@@ -7295,7 +7295,12 @@ async def upload_rag_document(
         
         # 벡터 DB에 저장
         print(f"💾 벡터 DB에 저장 중...")
-        doc_ids = vector_store_manager.add_documents(documents)
+        
+        # Document 객체를 텍스트와 메타데이터로 분리
+        texts = [doc.page_content for doc in documents]
+        metadatas = [doc.metadata for doc in documents]
+        
+        doc_ids = vector_store_manager.add_documents(texts, metadatas)
         
         return {
             "success": True,
