@@ -5468,6 +5468,15 @@ async def serve_login():
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Login page not found")
 
+@app.get("/manifest.json")
+async def serve_manifest():
+    """manifest.json 서빙"""
+    from fastapi.responses import FileResponse
+    manifest_path = os.path.join(frontend_dir, "manifest.json")
+    if os.path.exists(manifest_path):
+        return FileResponse(manifest_path, media_type="application/json")
+    raise HTTPException(status_code=404, detail="manifest.json not found")
+
 @app.get("/{filename}.html", response_class=HTMLResponse)
 async def serve_html(filename: str):
     """프론트엔드 HTML 파일 서빙"""
