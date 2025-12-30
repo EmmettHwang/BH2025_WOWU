@@ -7180,3 +7180,321 @@ if __name__ == "__main__":
         limit_max_requests=10000,
         timeout_keep_alive=300
     )
+
+
+# ============================================
+# RAG (Retrieval-Augmented Generation) API
+# ============================================
+
+from backend.rag.document_loader import DocumentLoader
+from backend.rag.vector_store import VectorStoreManager
+from backend.rag.rag_chain import RAGChain
+import shutil
+from typing import Optional
+
+# RAG 전역 인스턴스 (앱 시작 시 초기화)
+vector_store_manager = None
+document_loader = None
+
+def init_rag():
+    """RAG 시스템 초기화"""
+    global vector_store_manager, document_loader
+    
+    print("🔄 RAG 시스템 초기화 중...")
+    
+    try:
+        # 문서 로더 초기화
+        document_loader = DocumentLoader(chunk_size=1000, chunk_overlap=200)
+        
+        # 벡터 스토어 초기화
+        vector_store_manager = VectorStoreManager(
+            persist_directory="./backend/chroma_db",
+            collection_name="biohealth_docs"
+        )
+        
+        print("✅ RAG 시스템 초기화 완료")
+        print(f"📚 저장된 문서 수: {vector_store_manager.get_document_count()}")
+        
+    except Exception as e:
+        print(f"❌ RAG 시스템 초기화 실패: {e}")
+        print("⚠️ RAG 기능을 사용하려면 필요한 패키지를 설치하세요:")
+        print("   pip install -r requirements_rag.txt")
+
+# 앱 시작 시 RAG 초기화
+try:
+    init_rag()
+except:
+    print("⚠️ RAG 초기화 실패 - RAG 기능 비활성화됨")
+
+
+@app.post("/api/rag/upload")
+async def upload_rag_document(
+    file: UploadFile = File(...),
+    subject: Optional[str] = Form(None),
+    instructor: Optional[str] = Form(None),
+    date: Optional[str] = Form(None),
+    description: Optional[str] = Form(None)
+):
+    """
+    RAG 문서 업로드
+    
+    - PDF, DOCX, TXT 파일 지원
+    - 자동으로 벡터 DB에 저장
+    """
+    if not vector_store_manager or not document_loader:
+        raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
+    
+    # 파일 확장자 확인
+    file_ext = Path(file.filename).suffix.lower()
+    if file_ext not in ['.pdf', '.docx', '.doc', '.txt']:
+        raise HTTPException(
+            status_code=400, 
+            detail="지원하지 않는 파일 형식입니다. PDF, DOCX, TXT 파일만 업로드 가능합니다."
+        )
+    
+    # 파일 크기 확인 (50MB 제한)
+    file_size = 0
+    content = await file.read()
+    file_size = len(content)
+    
+    if file_size > 50 * 1024 * 1024:  # 50MB
+        raise HTTPException(status_code=400, detail="파일 크기는 50MB 이하여야 합니다")
+    
+    try:
+        # 파일 저장
+        upload_dir = Path("./backend/uploads")
+        upload_dir.mkdir(exist_ok=True)
+        
+        # 고유 파일명 생성
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_filename = f"{timestamp}_{file.filename}"
+        file_path = upload_dir / safe_filename
+        
+        with open(file_path, "wb") as f:
+            f.write(content)
+        
+        print(f"📁 파일 저장 완료: {file_path}")
+        
+        # 메타데이터 구성
+        metadata = {
+            "original_filename": file.filename,
+            "upload_date": datetime.now().isoformat(),
+            "file_size": file_size,
+            "subject": subject or "미지정",
+            "instructor": instructor or "미지정",
+            "date": date or datetime.now().strftime("%Y-%m-%d"),
+            "description": description or ""
+        }
+        
+        # 문서 로드 및 청킹
+        print(f"📝 문서 처리 중: {file.filename}")
+        documents = document_loader.load_document(str(file_path), metadata)
+        
+        if not documents:
+            raise HTTPException(status_code=400, detail="문서에서 텍스트를 추출할 수 없습니다")
+        
+        # 벡터 DB에 저장
+        print(f"💾 벡터 DB에 저장 중...")
+        doc_ids = vector_store_manager.add_documents(documents)
+        
+        return {
+            "success": True,
+            "message": "문서가 성공적으로 업로드되었습니다",
+            "filename": file.filename,
+            "file_path": str(file_path),
+            "chunks_count": len(documents),
+            "document_ids": doc_ids,
+            "metadata": metadata
+        }
+        
+    except Exception as e:
+        print(f"❌ 문서 업로드 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"문서 업로드 실패: {str(e)}")
+
+
+@app.get("/api/rag/documents")
+async def list_rag_documents(limit: int = 100):
+    """RAG 문서 목록 조회"""
+    if not vector_store_manager:
+        raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
+    
+    try:
+        documents = vector_store_manager.list_documents(limit=limit)
+        count = vector_store_manager.get_document_count()
+        
+        # 중복 제거 (원본 파일명 기준)
+        unique_docs = {}
+        for doc in documents:
+            filename = doc.get('original_filename', doc.get('source', '알 수 없음'))
+            if filename not in unique_docs:
+                unique_docs[filename] = doc
+        
+        return {
+            "success": True,
+            "total_chunks": count,
+            "unique_documents": len(unique_docs),
+            "documents": list(unique_docs.values())
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"문서 목록 조회 실패: {str(e)}")
+
+
+@app.post("/api/rag/chat")
+async def rag_chat(request: Request):
+    """
+    RAG 기반 채팅
+    
+    Body:
+        - message: 사용자 질문
+        - k: 검색할 문서 수 (기본 3)
+        - model: AI 모델 (groq, gemini, gemma)
+    """
+    if not vector_store_manager:
+        raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
+    
+    try:
+        data = await request.json()
+        message = data.get('message', '').strip()
+        k = data.get('k', 3)
+        model = data.get('model', 'groq').lower()
+        
+        if not message:
+            raise HTTPException(status_code=400, detail="메시지를 입력해주세요")
+        
+        # API 키 가져오기 (헤더 또는 환경변수)
+        groq_api_key = request.headers.get('X-GROQ-API-Key') or os.getenv('GROQ_API_KEY', '')
+        gemini_api_key = request.headers.get('X-Gemini-API-Key') or os.getenv('GOOGLE_CLOUD_TTS_API_KEY', '')
+        
+        # 모델에 따라 API 키 선택
+        if model in ['groq', 'gemma']:
+            api_key = groq_api_key
+            api_type = 'groq'
+        elif model == 'gemini':
+            api_key = gemini_api_key
+            api_type = 'gemini'
+        else:
+            raise HTTPException(status_code=400, detail="지원하지 않는 모델입니다")
+        
+        if not api_key:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"{api_type.upper()} API 키가 설정되지 않았습니다"
+            )
+        
+        # RAG 체인 생성
+        rag_chain = RAGChain(vector_store_manager, api_key, api_type)
+        
+        # RAG 질문 처리
+        print(f"💬 RAG 질문: {message}")
+        result = await rag_chain.query(message, k=k)
+        
+        return {
+            "success": True,
+            "model": model,
+            "answer": result['answer'],
+            "sources": result['sources'],
+            "message": message
+        }
+        
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"❌ RAG 채팅 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"RAG 채팅 실패: {str(e)}")
+
+
+@app.post("/api/rag/search")
+async def rag_search(
+    query: str = Form(...),
+    k: int = Form(5),
+    subject: Optional[str] = Form(None)
+):
+    """
+    RAG 문서 검색
+    
+    - 질문과 유사한 문서 검색
+    - 메타데이터 필터링 지원
+    """
+    if not vector_store_manager:
+        raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
+    
+    try:
+        # 필터 구성
+        filter_dict = {}
+        if subject:
+            filter_dict['subject'] = subject
+        
+        # 검색
+        results = vector_store_manager.search_with_score(
+            query, 
+            k=k, 
+            filter=filter_dict if filter_dict else None
+        )
+        
+        # 결과 포맷팅
+        search_results = []
+        for doc, score in results:
+            search_results.append({
+                'content': doc.page_content,
+                'similarity': float(score),
+                'metadata': doc.metadata
+            })
+        
+        return {
+            "success": True,
+            "query": query,
+            "results_count": len(search_results),
+            "results": search_results
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"문서 검색 실패: {str(e)}")
+
+
+@app.delete("/api/rag/clear")
+async def clear_rag_database():
+    """RAG 데이터베이스 초기화 (모든 문서 삭제)"""
+    if not vector_store_manager:
+        raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
+    
+    try:
+        old_count = vector_store_manager.get_document_count()
+        vector_store_manager.delete_collection()
+        
+        return {
+            "success": True,
+            "message": "RAG 데이터베이스가 초기화되었습니다",
+            "deleted_chunks": old_count
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"데이터베이스 초기화 실패: {str(e)}")
+
+
+@app.get("/api/rag/status")
+async def rag_status():
+    """RAG 시스템 상태 확인"""
+    if not vector_store_manager:
+        return {
+            "initialized": False,
+            "message": "RAG 시스템이 초기화되지 않았습니다"
+        }
+    
+    try:
+        count = vector_store_manager.get_document_count()
+        
+        return {
+            "initialized": True,
+            "document_count": count,
+            "embedding_model": "paraphrase-multilingual-MiniLM-L12-v2",
+            "vector_db": "ChromaDB",
+            "status": "정상"
+        }
+        
+    except Exception as e:
+        return {
+            "initialized": False,
+            "error": str(e)
+        }
+
