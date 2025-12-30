@@ -42,9 +42,9 @@ def create_test_documents():
     """테스트용 문서 생성"""
     print_section("2. 테스트 문서 생성")
     
-    # 테스트 문서 디렉토리 생성
-    test_dir = Path("/home/user/webapp/test_documents")
-    test_dir.mkdir(exist_ok=True)
+    # 테스트 문서 디렉토리 생성 (현재 디렉토리 기준)
+    test_dir = Path("./test_documents")
+    test_dir.mkdir(parents=True, exist_ok=True)
     
     # 바이오헬스 관련 테스트 문서들
     documents = {
