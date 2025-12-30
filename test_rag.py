@@ -252,7 +252,7 @@ def test_rag_search(query):
     try:
         response = requests.post(
             f"{BASE_URL}/api/rag/search",
-            json={"query": query, "top_k": 3}
+            data={"query": query, "k": 3}
         )
         
         if response.status_code == 200:

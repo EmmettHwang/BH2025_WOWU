@@ -7319,15 +7319,23 @@ async def list_rag_documents(limit: int = 100):
         raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
     
     try:
-        documents = vector_store_manager.list_documents(limit=limit)
+        documents = vector_store_manager.get_all_documents()
         count = vector_store_manager.count_documents()
         
         # 중복 제거 (원본 파일명 기준)
         unique_docs = {}
         for doc in documents:
-            filename = doc.get('original_filename', doc.get('source', '알 수 없음'))
+            metadata = doc.get('metadata', {})
+            filename = metadata.get('filename', metadata.get('source', '알 수 없음'))
             if filename not in unique_docs:
-                unique_docs[filename] = doc
+                unique_docs[filename] = {
+                    'filename': filename,
+                    'document_id': metadata.get('document_id', ''),
+                    'uploaded_at': metadata.get('uploaded_at', ''),
+                    'chunks_count': 1
+                }
+            else:
+                unique_docs[filename]['chunks_count'] += 1
         
         return {
             "success": True,
