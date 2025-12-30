@@ -5,7 +5,12 @@ RAG 체인 모듈
 
 from typing import List, Dict, Optional
 import httpx
-from langchain.schema import Document
+
+# LangChain imports - 버전 호환성 처리
+try:
+    from langchain_core.documents import Document
+except ImportError:
+    from langchain.schema import Document
 
 
 class RAGChain:
