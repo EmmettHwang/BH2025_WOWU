@@ -1,12 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
-import io
-
-# Windows에서 UTF-8 인코딩 강제 설정
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
-
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
@@ -14,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from typing import Optional, List
 import pymysql
 import pandas as pd
+import io
 import os
 from datetime import datetime, timedelta, date
 from openai import OpenAI
@@ -71,32 +64,32 @@ from fastapi import HTTPException
 @app.get("/{filename}.glb")
 async def serve_glb_file_root(filename: str):
     """루트 경로에서 GLB 파일 서빙 (3D 모델용)"""
-    print(f"🔍 GLB 파일 요청 (루트): {filename}.glb")
+    print(f"[DEBUG] GLB 파일 요청 (루트): {filename}.glb")
     glb_path = os.path.join(frontend_dir, f"{filename}.glb")
-    print(f"🔍 GLB 파일 경로: {glb_path}")
-    print(f"🔍 파일 존재 여부: {os.path.exists(glb_path)}")
+    print(f"[DEBUG] GLB 파일 경로: {glb_path}")
+    print(f"[DEBUG] 파일 존재 여부: {os.path.exists(glb_path)}")
     
     if os.path.exists(glb_path):
-        print(f"✅ GLB 파일 전송: {filename}.glb")
+        print(f"[OK] GLB 파일 전송: {filename}.glb")
         return FileResponse(glb_path, media_type="model/gltf-binary")
     else:
-        print(f"❌ GLB 파일 없음: {filename}.glb")
+        print(f"[ERROR] GLB 파일 없음: {filename}.glb")
         raise HTTPException(status_code=404, detail=f"GLB file not found: {filename}.glb")
 
 # 방법 2: /api/models/ 경로에서 서빙 (권장)
 @app.get("/api/models/{filename}.glb")
 async def serve_glb_file_api(filename: str):
     """API 경로에서 GLB 파일 서빙 (3D 모델용)"""
-    print(f"🔍 GLB 파일 요청 (API): {filename}.glb")
+    print(f"[DEBUG] GLB 파일 요청 (API): {filename}.glb")
     glb_path = os.path.join(frontend_dir, f"{filename}.glb")
-    print(f"🔍 GLB 파일 경로: {glb_path}")
-    print(f"🔍 파일 존재 여부: {os.path.exists(glb_path)}")
+    print(f"[DEBUG] GLB 파일 경로: {glb_path}")
+    print(f"[DEBUG] 파일 존재 여부: {os.path.exists(glb_path)}")
     
     if os.path.exists(glb_path):
-        print(f"✅ GLB 파일 전송 (API): {filename}.glb")
+        print(f"[OK] GLB 파일 전송 (API): {filename}.glb")
         return FileResponse(glb_path, media_type="model/gltf-binary")
     else:
-        print(f"❌ GLB 파일 없음 (API): {filename}.glb")
+        print(f"[ERROR] GLB 파일 없음 (API): {filename}.glb")
         raise HTTPException(status_code=404, detail=f"GLB file not found: {filename}.glb")
 
 
@@ -132,9 +125,9 @@ def ensure_career_path_column(cursor):
             cursor.execute("ALTER TABLE students ADD COLUMN career_path VARCHAR(50) DEFAULT '4. 미정'")
             # 기존 데이터의 NULL 값을 '4. 미정'으로 업데이트
             cursor.execute("UPDATE students SET career_path = '4. 미정' WHERE career_path IS NULL")
-            print("✅ students 테이블에 career_path 컬럼 추가 완료")
+            print("[OK] students 테이블에 career_path 컬럼 추가 완료")
     except Exception as e:
-        print(f"⚠️ career_path 컬럼 추가 실패: {e}")
+        print(f"[WARN] career_path 컬럼 추가 실패: {e}")
         pass  # 이미 존재하거나 권한 문제
 
 def ensure_career_decision_column(cursor):
@@ -143,9 +136,9 @@ def ensure_career_decision_column(cursor):
         cursor.execute("SHOW COLUMNS FROM consultations LIKE 'career_decision'")
         if not cursor.fetchone():
             cursor.execute("ALTER TABLE consultations ADD COLUMN career_decision VARCHAR(50) DEFAULT NULL")
-            print("✅ consultations 테이블에 career_decision 컬럼 추가 완료")
+            print("[OK] consultations 테이블에 career_decision 컬럼 추가 완료")
     except Exception as e:
-        print(f"⚠️ career_decision 컬럼 추가 실패: {e}")
+        print(f"[WARN] career_decision 컬럼 추가 실패: {e}")
         pass
 
 def ensure_profile_photo_columns(cursor, table_name: str):
@@ -155,15 +148,15 @@ def ensure_profile_photo_columns(cursor, table_name: str):
         cursor.execute(f"SHOW COLUMNS FROM {table_name} LIKE 'profile_photo'")
         if not cursor.fetchone():
             cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN profile_photo VARCHAR(500) DEFAULT NULL")
-            print(f"✅ {table_name} 테이블에 profile_photo 컬럼 추가 완료")
+            print(f"[OK] {table_name} 테이블에 profile_photo 컬럼 추가 완료")
         
         # attachments 컬럼 확인 및 추가 (첨부 파일 배열, 최대 20개)
         cursor.execute(f"SHOW COLUMNS FROM {table_name} LIKE 'attachments'")
         if not cursor.fetchone():
             cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN attachments TEXT DEFAULT NULL")
-            print(f"✅ {table_name} 테이블에 attachments 컬럼 추가 완료")
+            print(f"[OK] {table_name} 테이블에 attachments 컬럼 추가 완료")
     except Exception as e:
-        print(f"⚠️ {table_name} 컬럼 추가 실패: {e}")
+        print(f"[WARN] {table_name} 컬럼 추가 실패: {e}")
         pass  # 이미 존재하거나 권한 문제
 
 def ensure_menu_permissions_column(cursor):
@@ -172,9 +165,9 @@ def ensure_menu_permissions_column(cursor):
         cursor.execute("SHOW COLUMNS FROM instructor_codes LIKE 'menu_permissions'")
         if not cursor.fetchone():
             cursor.execute("ALTER TABLE instructor_codes ADD COLUMN menu_permissions TEXT DEFAULT NULL")
-            print("✅ instructor_codes 테이블에 menu_permissions 컬럼 추가 완료")
+            print("[OK] instructor_codes 테이블에 menu_permissions 컬럼 추가 완료")
     except Exception as e:
-        print(f"⚠️ menu_permissions 컬럼 추가 실패: {e}")
+        print(f"[WARN] menu_permissions 컬럼 추가 실패: {e}")
         pass
 
 # FTP 설정 (환경 변수에서 로드)
@@ -956,7 +949,7 @@ async def get_instructor_codes():
         if not cursor.fetchone():
             cursor.execute("ALTER TABLE instructor_codes ADD COLUMN permissions TEXT DEFAULT NULL")
             conn.commit()
-            print("✅ instructor_codes 테이블에 permissions 컬럼 추가")
+            print("[OK] instructor_codes 테이블에 permissions 컬럼 추가")
         
         # "0. 관리자" 타입이 없으면 추가
         cursor.execute("SELECT * FROM instructor_codes WHERE code = '0'")
@@ -966,7 +959,7 @@ async def get_instructor_codes():
                 VALUES ('0', '관리자', '0', NULL)
             """)
             conn.commit()
-            print("✅ '0. 관리자' 타입 추가 완료")
+            print("[OK] '0. 관리자' 타입 추가 완료")
         
         cursor.execute("SELECT * FROM instructor_codes ORDER BY code")
         codes = cursor.fetchall()
@@ -1005,7 +998,7 @@ async def create_instructor_code(data: dict):
         if not cursor.fetchone():
             cursor.execute("ALTER TABLE instructor_codes ADD COLUMN default_screen VARCHAR(50) DEFAULT NULL")
             conn.commit()
-            print("✅ instructor_codes 테이블에 default_screen 컬럼 추가")
+            print("[OK] instructor_codes 테이블에 default_screen 컬럼 추가")
         
         import json
         permissions_json = json.dumps(data.get('permissions', {})) if data.get('permissions') else None
@@ -1038,7 +1031,7 @@ async def update_instructor_code(code: str, data: dict):
         if not cursor.fetchone():
             cursor.execute("ALTER TABLE instructor_codes ADD COLUMN default_screen VARCHAR(50) DEFAULT NULL")
             conn.commit()
-            print("✅ instructor_codes 테이블에 default_screen 컬럼 추가")
+            print("[OK] instructor_codes 테이블에 default_screen 컬럼 추가")
         
         import json
         permissions_json = json.dumps(data.get('permissions', {})) if data.get('permissions') else None
@@ -1469,7 +1462,7 @@ async def auto_add_holidays(year: int):
                     VALUES (%s, %s, 1)
                 """, (holiday_date, name))
                 added += 1
-                print(f"✅ 추가됨: {holiday_date} - {name}")
+                print(f"[OK] 추가됨: {holiday_date} - {name}")
         
         # 음력 공휴일 추가
         try:
@@ -1500,9 +1493,9 @@ async def auto_add_holidays(year: int):
                         VALUES (%s, %s, 1)
                     """, (solar_date, name))
                     added += 1
-                    print(f"✅ 추가됨: {solar_date} - {name} (음력)")
+                    print(f"[OK] 추가됨: {solar_date} - {name} (음력)")
         except Exception as e:
-            print(f"⚠️  음력 변환 실패 (korean_lunar_calendar 라이브러리 필요): {e}")
+            print(f"[WARN]  음력 변환 실패 (korean_lunar_calendar 라이브러리 필요): {e}")
             print("ℹ️  음력 공휴일은 추가되지 않았습니다. 수동으로 추가해주세요.")
         
         conn.commit()
@@ -1642,7 +1635,7 @@ async def create_course(data: dict):
     except Exception as e:
         conn.rollback()
         import traceback
-        print(f"❌ 과정 생성 에러: {e}")
+        print(f"[ERROR] 과정 생성 에러: {e}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"과정 생성 실패: {str(e)}")
     finally:
@@ -1715,7 +1708,7 @@ async def update_course(code: str, data: dict):
 
 @app.delete("/api/courses/{code}")
 async def delete_course(code: str):
-    """과정 삭제 (관련 데이터 cascade) - ⚠️ 위험: 시간표, 훈련일지 모두 삭제됨!"""
+    """과정 삭제 (관련 데이터 cascade) - [WARN] 위험: 시간표, 훈련일지 모두 삭제됨!"""
     conn = get_db_connection()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -1730,19 +1723,19 @@ async def delete_course(code: str):
         # 모든 과정 삭제 차단 (데이터 보호)
         raise HTTPException(
             status_code=403, 
-            detail=f"❌ 과정 삭제 기능이 비활성화되었습니다. 데이터 손실 방지를 위해 관리자에게 문의하세요. (과정: {code}, 영향: 시간표 {timetable_count}건, 훈련일지 {training_log_count}건)"
+            detail=f"[ERROR] 과정 삭제 기능이 비활성화되었습니다. 데이터 손실 방지를 위해 관리자에게 문의하세요. (과정: {code}, 영향: 시간표 {timetable_count}건, 훈련일지 {training_log_count}건)"
         )
         
         # 삭제가 정말 필요한 경우, 아래 주석을 해제하고 위 raise를 주석 처리
         # if code in ['C-001', 'C-002']:
         #     raise HTTPException(
         #         status_code=403, 
-        #         detail=f"❌ 주요 과정({code})은 삭제할 수 없습니다. 관리자에게 문의하세요."
+        #         detail=f"[ERROR] 주요 과정({code})은 삭제할 수 없습니다. 관리자에게 문의하세요."
         #     )
         
         # 데이터가 많을 경우 경고 로그
         if timetable_count > 0 or training_log_count > 0:
-            print(f"⚠️ 과정 삭제 경고: {code} - 시간표 {timetable_count}건, 훈련일지 {training_log_count}건 함께 삭제됨!")
+            print(f"[WARN] 과정 삭제 경고: {code} - 시간표 {timetable_count}건, 훈련일지 {training_log_count}건 함께 삭제됨!")
         
         # 1. 시간표 삭제
         cursor.execute("DELETE FROM timetables WHERE course_code = %s", (code,))
@@ -2572,7 +2565,7 @@ async def generate_training_content(data: dict):
 
 위의 원본 내용을 **반드시 그대로 유지하면서** 프로젝트 훈련일지 형식으로 확장해주세요:
 
-✅ 필수 요구사항:
+[OK] 필수 요구사항:
 1. 강사가 입력한 원본 내용("{user_input}")을 반드시 포함
 2. 원본 내용을 중심으로 프로젝트 목표, 진행 상황, 팀 활동 추가
 3. 원본 키워드나 문장을 삭제하거나 변경 금지
@@ -2630,7 +2623,7 @@ async def generate_training_content(data: dict):
 
 위의 원본 내용을 **반드시 그대로 유지하면서** 현장실습 훈련일지 형식으로 확장해주세요:
 
-✅ 필수 요구사항:
+[OK] 필수 요구사항:
 1. 강사가 입력한 원본 내용("{user_input}")을 반드시 포함
 2. 원본 내용을 중심으로 실습 목표, 현장 업무, 멘토링 내용 추가
 3. 원본 키워드나 문장을 삭제하거나 변경 금지
@@ -2689,7 +2682,7 @@ async def generate_training_content(data: dict):
 
 위의 원본 내용을 **반드시 그대로 유지하면서** 훈련일지 형식으로 확장해주세요:
 
-✅ 필수 요구사항:
+[OK] 필수 요구사항:
 1. 강사가 입력한 원본 내용("{user_input}")을 반드시 포함
 2. 원본 내용을 중심으로 학습 목표, 진행 내용, 실습 활동 추가
 3. 원본 키워드나 문장을 삭제하거나 변경 금지
@@ -2712,10 +2705,10 @@ async def generate_training_content(data: dict):
   • 성과2
 
 📏 작성 스타일:
-- ❌ 나쁜 예: "오늘 수업에서는 HTML을 학습했습니다." (서술형)
-- ✅ 좋은 예: "HTML 기본 문법 학습 및 실습 진행" (개조식)
-- ❌ 나쁜 예: "학생들은 CSS를 이해하고 활용할 수 있게 되었습니다."
-- ✅ 좋은 예: "CSS 선택자, 속성 이해 및 레이아웃 실습 완료"
+- [ERROR] 나쁜 예: "오늘 수업에서는 HTML을 학습했습니다." (서술형)
+- [OK] 좋은 예: "HTML 기본 문법 학습 및 실습 진행" (개조식)
+- [ERROR] 나쁜 예: "학생들은 CSS를 이해하고 활용할 수 있게 되었습니다."
+- [OK] 좋은 예: "CSS 선택자, 속성 이해 및 레이아웃 실습 완료"
 
 {detail_instructions}
 
@@ -3179,7 +3172,7 @@ def generate_report_template(student, counselings, counseling_text, style='forma
 무엇보다 꾸준히 노력하는 모습이 정말 멋있었어요. 👍
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📚 함께 나눈 이야기들
+[DOC] 함께 나눈 이야기들
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {counseling_text}
 
@@ -3760,9 +3753,9 @@ def generate_calculation_pdf(calculation_result: dict, course_code: str):
         # FTP 업로드
         try:
             upload_to_ftp(pdf_path, f"course_reports/{filename}")
-            print(f"✅ PDF FTP 업로드 완료: {filename}")
+            print(f"[OK] PDF FTP 업로드 완료: {filename}")
         except Exception as e:
-            print(f"⚠️ PDF FTP 업로드 실패: {str(e)}")
+            print(f"[WARN] PDF FTP 업로드 실패: {str(e)}")
         
         return pdf_path
         
@@ -3894,11 +3887,11 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, work
         for date_line in all_dates:
             summary += date_line + "\n"
         
-        summary += "\n  📊 월별 집계:\n"
+        summary += "\n  [STAT] 월별 집계:\n"
         for month, data in sorted(monthly_hours.items()):
             summary += f"    {month}: 근무일 {data['days']}일, 수업시간 {data['hours']}시간\n"
         
-        summary += f"\n  ✅ 총: {hours}시간 완료\n"
+        summary += f"\n  [OK] 총: {hours}시간 완료\n"
         
         # 다음 단계가 오후부터 시작하는지 판단
         # last_day_hours == 0이면 오전+오후 모두 사용 → 다음은 다음날 오전부터
@@ -3952,7 +3945,7 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, work
     )
     
     details = f"""
-📊 과정 자동 계산 상세 내역
+[STAT] 과정 자동 계산 상세 내역
 
 📋 기본 정보
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3977,7 +3970,7 @@ def generate_detailed_calculation(start_date, lecture_hours, project_hours, work
 {project_detail}
 {intern_detail}
 
-📊 최종 요약
+[STAT] 최종 요약
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 • 교육 기간: {format_date(start_date)} ~ {format_date(intern_actual_end)}
 • 총 교육시간: {lecture_hours + project_hours + workship_hours}시간
@@ -4632,7 +4625,7 @@ async def replace_timetable(data: dict):
         conn.rollback()
         import traceback
         error_detail = f"{type(e).__name__}: {str(e)}"
-        print(f"❌ 시간표 대체 실패: {error_detail}")
+        print(f"[ERROR] 시간표 대체 실패: {error_detail}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"시간표 대체 실패: {error_detail}")
     finally:
@@ -4990,7 +4983,7 @@ async def login(credentials: dict):
     
     # 🔐 관리자 계정 하드코딩 (DB 없이 무조건 접속 가능)
     if user_name.strip() == "root" and password == "xhRl1004!@#":
-        print("✅ 관리자(root) 로그인 성공")
+        print("[OK] 관리자(root) 로그인 성공")
         # 모든 메뉴에 대한 권한 부여
         all_permissions = {
             "dashboard": True,
@@ -5115,7 +5108,7 @@ async def login(credentials: dict):
             
             instructor['permissions'] = permissions_dict
             
-            print(f"✅ 강사 로그인 성공: {instructor['name']}")
+            print(f"[OK] 강사 로그인 성공: {instructor['name']}")
             return {
                 "success": True,
                 "message": f"{instructor['name']}님, 환영합니다!",
@@ -5164,7 +5157,7 @@ async def login(credentials: dict):
             elif isinstance(value, bytes):
                 student[key] = None
         
-        print(f"✅ 학생 로그인 성공: {student['name']}")
+        print(f"[OK] 학생 로그인 성공: {student['name']}")
         return {
             "success": True,
             "message": f"{student['name']}님, 환영합니다!",
@@ -5189,7 +5182,7 @@ async def student_login(credentials: dict):
     student_name = credentials.get('name')
     password = credentials.get('password')
     
-    print(f"🔍 학생 로그인 시도: 이름='{student_name}', 비밀번호='{password}'")
+    print(f"[DEBUG] 학생 로그인 시도: 이름='{student_name}', 비밀번호='{password}'")
     
     if not student_name:
         raise HTTPException(status_code=400, detail="이름을 입력하세요")
@@ -5209,7 +5202,7 @@ async def student_login(credentials: dict):
         if not cursor.fetchone():
             cursor.execute("ALTER TABLE students ADD COLUMN password VARCHAR(100) DEFAULT 'kdt2025'")
             conn.commit()
-            print("✅ students 테이블에 password 컬럼 추가")
+            print("[OK] students 테이블에 password 컬럼 추가")
         
         # 학생 조회 (이름으로)
         cursor.execute("""
@@ -5225,10 +5218,10 @@ async def student_login(credentials: dict):
         
         student = cursor.fetchone()
         
-        print(f"🔍 조회 결과: {student}")
+        print(f"[DEBUG] 조회 결과: {student}")
         
         if not student:
-            print(f"❌ 학생을 찾을 수 없음: '{student_name}' (길이: {len(student_name)}, bytes: {student_name.encode('utf-8')})")
+            print(f"[ERROR] 학생을 찾을 수 없음: '{student_name}' (길이: {len(student_name)}, bytes: {student_name.encode('utf-8')})")
             # 모든 학생 이름 목록 출력
             cursor.execute("SELECT id, name FROM students ORDER BY id")
             all_students = cursor.fetchall()
@@ -5535,9 +5528,9 @@ def ensure_system_settings_table(cursor):
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )
         """)
-        print("✅ system_settings 테이블 확인/생성 완료")
+        print("[OK] system_settings 테이블 확인/생성 완료")
     except Exception as e:
-        print(f"⚠️ system_settings 테이블 생성 실패: {e}")
+        print(f"[WARN] system_settings 테이블 생성 실패: {e}")
 
 @app.get("/api/system-settings")
 async def get_system_settings():
@@ -5633,19 +5626,19 @@ async def update_system_settings(
                 update_count += 1
         
         conn.commit()
-        print(f"✅ {update_count}개 설정 업데이트 완료")
+        print(f"[OK] {update_count}개 설정 업데이트 완료")
         
         # 저장된 데이터 확인
         cursor.execute("SELECT setting_key, setting_value FROM system_settings")
         saved_data = cursor.fetchall()
-        print(f"📊 현재 DB 상태:")
+        print(f"[STAT] 현재 DB 상태:")
         for row in saved_data:
             print(f"  - {row[0]}: {row[1]}")
         
         return {"message": "시스템 설정이 업데이트되었습니다", "updated_count": update_count}
     except Exception as e:
         conn.rollback()
-        print(f"❌ 시스템 설정 업데이트 실패: {e}")
+        print(f"[ERROR] 시스템 설정 업데이트 실패: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
@@ -5677,7 +5670,7 @@ def ensure_class_notes_table(cursor):
                 ALTER TABLE class_notes 
                 ADD COLUMN instructor_code VARCHAR(50) AFTER student_id
             """)
-            print("✅ instructor_code 컬럼 추가됨")
+            print("[OK] instructor_code 컬럼 추가됨")
         except Exception:
             pass  # 이미 존재하면 무시
         
@@ -5687,7 +5680,7 @@ def ensure_class_notes_table(cursor):
                 ALTER TABLE class_notes 
                 ADD COLUMN photo_urls TEXT AFTER content
             """)
-            print("✅ photo_urls 컬럼 추가됨")
+            print("[OK] photo_urls 컬럼 추가됨")
         except Exception:
             pass  # 이미 존재하면 무시
         
@@ -5697,7 +5690,7 @@ def ensure_class_notes_table(cursor):
                 ALTER TABLE class_notes 
                 MODIFY COLUMN student_id INT NULL
             """)
-            print("✅ student_id NULL 허용으로 변경됨")
+            print("[OK] student_id NULL 허용으로 변경됨")
         except Exception:
             pass
         
@@ -5707,14 +5700,14 @@ def ensure_class_notes_table(cursor):
                 ALTER TABLE class_notes 
                 MODIFY COLUMN note_date DATETIME NOT NULL
             """)
-            print("✅ note_date를 DATETIME으로 변경됨")
+            print("[OK] note_date를 DATETIME으로 변경됨")
         except Exception as e:
             # 이미 DATETIME이거나 변경 불가능하면 무시
             pass
         
-        print("✅ class_notes 테이블 확인/생성 완료")
+        print("[OK] class_notes 테이블 확인/생성 완료")
     except Exception as e:
-        print(f"⚠️ class_notes 테이블 생성 실패: {e}")
+        print(f"[WARN] class_notes 테이블 생성 실패: {e}")
 
 @app.get("/api/class-notes")
 async def get_all_class_notes(student_id: Optional[int] = None, instructor_code: Optional[str] = None):
@@ -5792,7 +5785,7 @@ async def create_class_note(data: dict):
         content = data.get('content', '')
         photo_urls = data.get('photo_urls', '[]')
         
-        print(f"🔍 class-notes 데이터 수신: id={note_id}, student_id={student_id}, note_date={note_date}, content_len={len(content)}")
+        print(f"[DEBUG] class-notes 데이터 수신: id={note_id}, student_id={student_id}, note_date={note_date}, content_len={len(content)}")
         
         if not note_date:
             raise HTTPException(status_code=400, detail="note_date는 필수입니다")
@@ -5834,7 +5827,7 @@ async def create_class_note(data: dict):
         return {"success": True, "message": "수업일지가 저장되었습니다", "note": note, "id": note_id}
     except Exception as e:
         conn.rollback()
-        print(f"❌ class-notes 저장 에러: {str(e)}")
+        print(f"[ERROR] class-notes 저장 에러: {str(e)}")
         print(f"   데이터: id={note_id}, student_id={student_id}, note_date={note_date}")
         import traceback
         traceback.print_exc()
@@ -5919,7 +5912,7 @@ async def upload_note_file(
     """
     conn = get_db_connection()
     try:
-        print(f"🔍 upload-note-file 시작: note_id={note_id}, filename={file.filename}")
+        print(f"[DEBUG] upload-note-file 시작: note_id={note_id}, filename={file.filename}")
         
         # 파일 업로드 (기존 upload-image 로직 재사용)
         allowed_extensions = [
@@ -5993,7 +5986,7 @@ async def upload_note_file(
         )
         conn.commit()
         
-        print(f"✅ upload-note-file 성공: note_id={note_id}, url={file_url}")
+        print(f"[OK] upload-note-file 성공: note_id={note_id}, url={file_url}")
         
         return {
             "success": True,
@@ -6005,7 +5998,7 @@ async def upload_note_file(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ upload-note-file 에러: {str(e)}")
+        print(f"[ERROR] upload-note-file 에러: {str(e)}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"파일 업로드 실패: {str(e)}")
@@ -6028,9 +6021,9 @@ def ensure_instructor_notes_table(cursor):
                 INDEX idx_instructor_date (instructor_id, note_date)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
-        print("✅ instructor_notes 테이블 확인/생성 완료")
+        print("[OK] instructor_notes 테이블 확인/생성 완료")
     except Exception as e:
-        print(f"⚠️ instructor_notes 테이블 생성 실패: {e}")
+        print(f"[WARN] instructor_notes 테이블 생성 실패: {e}")
 
 @app.get("/api/instructors/{instructor_id}/notes")
 async def get_instructor_notes(instructor_id: int, note_date: Optional[str] = None):
@@ -6158,9 +6151,9 @@ def ensure_notices_table(cursor):
                 INDEX idx_dates (start_date, end_date)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
-        print("✅ notices 테이블 확인/생성 완료")
+        print("[OK] notices 테이블 확인/생성 완료")
     except Exception as e:
-        print(f"⚠️ notices 테이블 생성 실패: {e}")
+        print(f"[WARN] notices 테이블 생성 실패: {e}")
 
 @app.get("/api/notices")
 async def get_notices(active_only: bool = False):
@@ -7056,7 +7049,7 @@ async def create_backup():
                 backup_data[table] = serializable_rows
                 total_records += len(rows)
             except Exception as e:
-                print(f"⚠️ {table} 백업 실패: {e}")
+                print(f"[WARN] {table} 백업 실패: {e}")
                 backup_data[table] = []
         
         # 백업 디렉토리 생성
@@ -7082,7 +7075,7 @@ async def create_backup():
         
     except Exception as e:
         import traceback
-        print(f"❌ 백업 생성 실패: {e}")
+        print(f"[ERROR] 백업 생성 실패: {e}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"백업 생성 실패: {str(e)}")
     finally:
@@ -7208,7 +7201,7 @@ def init_rag():
     """RAG 시스템 초기화"""
     global vector_store_manager, document_loader
     
-    print("🔄 RAG 시스템 초기화 중...")
+    print("[INFO] RAG 시스템 초기화 중...")
     
     try:
         # 문서 로더 초기화
@@ -7220,15 +7213,15 @@ def init_rag():
             collection_name="biohealth_docs"
         )
         
-        print("✅ RAG 시스템 초기화 완료")
-        print(f"📚 저장된 문서 수: {vector_store_manager.count_documents()}")
+        print("[OK] RAG 시스템 초기화 완료")
+        print(f"[DOC] 저장된 문서 수: {vector_store_manager.count_documents()}")
         
         # 기본 문서 자동 로드
         load_default_documents()
         
     except Exception as e:
-        print(f"❌ RAG 시스템 초기화 실패: {e}")
-        print("⚠️ RAG 기능을 사용하려면 필요한 패키지를 설치하세요:")
+        print(f"[ERROR] RAG 시스템 초기화 실패: {e}")
+        print("[WARN] RAG 기능을 사용하려면 필요한 패키지를 설치하세요:")
         print("   pip install -r requirements_rag.txt")
 
 
@@ -7237,7 +7230,7 @@ def load_default_documents():
     global vector_store_manager, document_loader
     
     if not vector_store_manager or not document_loader:
-        print("⚠️ RAG 시스템이 초기화되지 않아 기본 문서를 로드할 수 없습니다")
+        print("[WARN] RAG 시스템이 초기화되지 않아 기본 문서를 로드할 수 없습니다")
         return
     
     documents_dir = Path("./documents")
@@ -7258,10 +7251,10 @@ def load_default_documents():
     
     if not doc_files:
         print("📁 documents 폴더에 문서가 없습니다")
-        print("💡 교재 및 교육자료를 documents 폴더에 넣어주세요")
+        print("[TIP] 교재 및 교육자료를 documents 폴더에 넣어주세요")
         return
     
-    print(f"\n📚 기본 문서 자동 로드 시작 ({len(doc_files)}개 파일)")
+    print(f"\n[DOC] 기본 문서 자동 로드 시작 ({len(doc_files)}개 파일)")
     print("=" * 60)
     
     loaded_count = 0
@@ -7289,7 +7282,7 @@ def load_default_documents():
             documents = document_loader.load_document(str(doc_path), metadata)
             
             if not documents:
-                print(f"⚠️ {doc_path.name}: 텍스트를 추출할 수 없습니다")
+                print(f"[WARN] {doc_path.name}: 텍스트를 추출할 수 없습니다")
                 skipped_count += 1
                 continue
             
@@ -7300,16 +7293,16 @@ def load_default_documents():
             # 벡터 스토어에 추가
             doc_ids = vector_store_manager.add_documents(texts, metadatas)
             
-            print(f"✅ {doc_path.name}: {len(documents)}개 청크 로드 완료")
+            print(f"[OK] {doc_path.name}: {len(documents)}개 청크 로드 완료")
             loaded_count += 1
             
         except Exception as e:
-            print(f"❌ {doc_path.name}: 로드 실패 - {str(e)}")
+            print(f"[ERROR] {doc_path.name}: 로드 실패 - {str(e)}")
             skipped_count += 1
     
     print("=" * 60)
-    print(f"📊 기본 문서 로드 완료: {loaded_count}개 성공, {skipped_count}개 실패")
-    print(f"📚 현재 총 문서 수: {vector_store_manager.count_documents()}")
+    print(f"[STAT] 기본 문서 로드 완료: {loaded_count}개 성공, {skipped_count}개 실패")
+    print(f"[DOC] 현재 총 문서 수: {vector_store_manager.count_documents()}")
     print()
 
 
@@ -7317,7 +7310,7 @@ def load_default_documents():
 try:
     init_rag()
 except:
-    print("⚠️ RAG 초기화 실패 - RAG 기능 비활성화됨")
+    print("[WARN] RAG 초기화 실패 - RAG 기능 비활성화됨")
 
 
 @app.post("/api/rag/upload")
@@ -7406,7 +7399,7 @@ async def upload_rag_document(
         }
         
     except Exception as e:
-        print(f"❌ 문서 업로드 실패: {e}")
+        print(f"[ERROR] 문서 업로드 실패: {e}")
         raise HTTPException(status_code=500, detail=f"문서 업로드 실패: {str(e)}")
 
 
@@ -7506,7 +7499,7 @@ async def rag_chat(request: Request):
     except HTTPException as he:
         raise he
     except Exception as e:
-        print(f"❌ RAG 채팅 실패: {e}")
+        print(f"[ERROR] RAG 채팅 실패: {e}")
         raise HTTPException(status_code=500, detail=f"RAG 채팅 실패: {str(e)}")
 
 
