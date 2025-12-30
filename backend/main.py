@@ -7505,9 +7505,17 @@ async def rag_chat(request: Request):
         if not message:
             raise HTTPException(status_code=400, detail="메시지를 입력해주세요")
         
-        # API 키 가져오기 (헤더 또는 환경변수)
-        groq_api_key = request.headers.get('X-GROQ-API-Key') or os.getenv('GROQ_API_KEY', '')
-        gemini_api_key = request.headers.get('X-Gemini-API-Key') or os.getenv('GOOGLE_CLOUD_TTS_API_KEY', '')
+        # API 키 가져오기 (DB → 헤더 → 환경변수 순서)
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('groq_api_key', 'gemini_api_key')")
+        db_settings_list = cursor.fetchall()
+        conn.close()
+        
+        db_settings = {item['setting_key']: item['setting_value'] for item in db_settings_list}
+        
+        groq_api_key = request.headers.get('X-GROQ-API-Key') or db_settings.get('groq_api_key', '') or os.getenv('GROQ_API_KEY', '')
+        gemini_api_key = request.headers.get('X-Gemini-API-Key') or db_settings.get('gemini_api_key', '') or os.getenv('GOOGLE_CLOUD_TTS_API_KEY', '')
         
         # 모델에 따라 API 키 선택
         if model in ['groq', 'gemma']:
@@ -7520,9 +7528,11 @@ async def rag_chat(request: Request):
             raise HTTPException(status_code=400, detail="지원하지 않는 모델입니다")
         
         if not api_key:
+            error_msg = f"{api_type.upper()} API 키가 설정되지 않았습니다. 시스템 설정에서 API 키를 입력해주세요."
+            print(f"[ERROR] {error_msg}")
             raise HTTPException(
                 status_code=400, 
-                detail=f"{api_type.upper()} API 키가 설정되지 않았습니다"
+                detail=error_msg
             )
         
         # RAG 체인 생성
@@ -7541,9 +7551,12 @@ async def rag_chat(request: Request):
         }
         
     except HTTPException as he:
+        print(f"[ERROR] RAG 채팅 요청 실패: {he.detail}")
         raise he
     except Exception as e:
         print(f"[ERROR] RAG 채팅 실패: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"RAG 채팅 실패: {str(e)}")
 
 
