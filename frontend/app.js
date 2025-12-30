@@ -16965,16 +16965,76 @@ window.sendTextMessage = async function() {
     }
 };
 
-// TTS 음성 재생 함수 (브라우저 내장 TTS 사용)
+// TTS 음성 재생 함수 (Google Cloud TTS 우선, 실패 시 브라우저 TTS)
 async function playTTS(text, characterName) {
     try {
-        console.log('🔊 브라우저 TTS 재생 시작:', characterName);
+        console.log('🔊 TTS 재생 시작:', characterName);
         
-        // Web Speech API 지원 확인
+        // 1단계: Google Cloud TTS 시도
+        const geminiApiKey = localStorage.getItem('gemini_api_key') || '';
+        
+        if (geminiApiKey) {
+            try {
+                console.log('☁️ Google Cloud TTS 시도 중...');
+                
+                // 백엔드 TTS API 호출
+                const response = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Gemini-API-Key': geminiApiKey
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        character: characterName
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.audioContent) {
+                        // Base64 디코딩하여 오디오 재생
+                        const audioBlob = base64ToBlob(data.audioContent, 'audio/mp3');
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        const audio = new Audio(audioUrl);
+                        
+                        audio.onplay = () => {
+                            console.log('🔊 Google Cloud TTS 음성 재생 시작');
+                        };
+                        
+                        audio.onended = () => {
+                            console.log('✅ Google Cloud TTS 음성 재생 완료');
+                            URL.revokeObjectURL(audioUrl);
+                        };
+                        
+                        audio.onerror = (error) => {
+                            console.error('❌ 오디오 재생 오류:', error);
+                            URL.revokeObjectURL(audioUrl);
+                        };
+                        
+                        await audio.play();
+                        console.log('✅ Google Cloud TTS 사용 완료');
+                        return; // 성공하면 여기서 종료
+                    }
+                }
+                
+                console.warn('⚠️ Google Cloud TTS 실패, 브라우저 TTS로 전환...');
+            } catch (cloudError) {
+                console.warn('⚠️ Google Cloud TTS 오류:', cloudError.message);
+                console.log('🔄 브라우저 TTS로 전환...');
+            }
+        } else {
+            console.log('ℹ️ Google Cloud API 키 없음, 브라우저 TTS 사용');
+        }
+        
+        // 2단계: 브라우저 TTS 사용 (Google Cloud TTS 실패 시 또는 API 키 없을 때)
         if (!('speechSynthesis' in window)) {
             console.warn('⚠️ 브라우저가 음성 합성을 지원하지 않습니다');
             return;
         }
+        
+        console.log('🌐 브라우저 Web Speech API 사용');
         
         // 이미 재생 중이면 중지
         window.speechSynthesis.cancel();
@@ -17005,15 +17065,15 @@ async function playTTS(text, characterName) {
         }
         
         utterance.onstart = () => {
-            console.log('🔊 음성 재생 시작');
+            console.log('🔊 브라우저 TTS 음성 재생 시작');
         };
         
         utterance.onend = () => {
-            console.log('✅ 음성 재생 완료');
+            console.log('✅ 브라우저 TTS 음성 재생 완료');
         };
         
         utterance.onerror = (error) => {
-            console.error('❌ 음성 재생 오류:', error);
+            console.error('❌ 브라우저 TTS 음성 재생 오류:', error);
         };
         
         // 음성 재생
