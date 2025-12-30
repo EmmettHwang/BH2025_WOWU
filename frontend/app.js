@@ -13354,93 +13354,121 @@ function renderSystemSettings(settings) {
             </div>
             
             <form id="system-settings-form" class="space-y-6">
-                <!-- 큰 제목 -->
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2">
-                        <i class="fas fa-heading mr-2 text-blue-500"></i>큰 제목 (시스템 이름)
-                    </label>
-                    <input type="text" id="system-title" 
-                           class="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500"
-                           placeholder="예: 바이오헬스교육관리시스템">
-                    <p class="text-sm text-gray-500 mt-1">헤더 상단에 표시되는 메인 제목입니다</p>
-                </div>
-                
-                <!-- 작은 제목 1줄 -->
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2">
-                        <i class="fas fa-align-left mr-2 text-green-500"></i>작은 제목 (1줄)
-                    </label>
-                    <input type="text" id="system-subtitle1" 
-                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                           placeholder="예: 보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단">
-                    <p class="text-sm text-gray-500 mt-1">헤더 하단 첫 번째 줄에 표시됩니다</p>
-                </div>
-                
-                <!-- 작은 제목 2줄 -->
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2">
-                        <i class="fas fa-align-left mr-2 text-green-500"></i>작은 제목 (2줄)
-                    </label>
-                    <input type="text" id="system-subtitle2" 
-                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                           placeholder="예: 바이오헬스아카데미 올인원테크 이노베이터">
-                    <p class="text-sm text-gray-500 mt-1">헤더 하단 두 번째 줄에 표시됩니다</p>
-                </div>
-                
-                <!-- 로고 이미지 -->
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2">
-                        <i class="fas fa-image mr-2 text-purple-500"></i>로고 이미지
-                    </label>
+                <!-- 시스템 정보 설정 박스 -->
+                <div class="p-6 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border-2 border-blue-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-cog mr-2 text-blue-600"></i>
+                        시스템 정보 설정
+                    </h3>
                     
-                    <!-- 현재 로고 미리보기 -->
-                    <div class="mb-4 p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                        <p class="text-sm text-gray-600 mb-2">현재 로고:</p>
-                        <img id="current-logo" 
-                             alt="현재 로고" class="h-20 object-contain bg-white p-2 rounded shadow-sm"
-                             onerror="this.style.display='none'">
+                    <!-- 큰 제목 -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-heading mr-2 text-blue-500"></i>큰 제목 (시스템 이름)
+                        </label>
+                        <input type="text" id="system-title" 
+                               class="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                               placeholder="예: 바이오헬스교육관리시스템">
+                        <p class="text-sm text-gray-600 mt-1">헤더 상단에 표시되는 메인 제목입니다</p>
                     </div>
                     
-                    <!-- 로고 업로드 -->
-                    <div class="space-y-3">
-                        <input type="file" id="logo-file" accept="image/*" 
-                               onchange="window.handleLogoUpload(event)"
-                               class="w-full px-3 py-2 border rounded-lg">
-                        <p class="text-sm text-gray-500">
+                    <!-- 작은 제목 1줄 -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-align-left mr-2 text-green-500"></i>작은 제목 (1줄)
+                        </label>
+                        <input type="text" id="system-subtitle1" 
+                               class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                               placeholder="예: 보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단">
+                        <p class="text-sm text-gray-600 mt-1">헤더 하단 첫 번째 줄에 표시됩니다</p>
+                    </div>
+                    
+                    <!-- 작은 제목 2줄 -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-align-left mr-2 text-green-500"></i>작은 제목 (2줄)
+                        </label>
+                        <input type="text" id="system-subtitle2" 
+                               class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                               placeholder="예: 바이오헬스아카데미 올인원테크 이노베이터">
+                        <p class="text-sm text-gray-600 mt-1">헤더 하단 두 번째 줄에 표시됩니다</p>
+                    </div>
+                    
+                    <!-- 로고 이미지 -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-image mr-2 text-purple-500"></i>로고 이미지
+                        </label>
+                        
+                        <!-- 현재 로고 미리보기 -->
+                        <div class="mb-4 p-4 bg-white rounded-lg border-2 border-dashed border-gray-300">
+                            <p class="text-sm text-gray-600 mb-2">현재 로고:</p>
+                            <img id="current-logo" 
+                                 alt="현재 로고" class="h-20 object-contain bg-white p-2 rounded shadow-sm"
+                                 onerror="this.style.display='none'">
+                        </div>
+                        
+                        <!-- 로고 업로드 -->
+                        <div class="space-y-3">
+                            <input type="file" id="logo-file" accept="image/*" 
+                                   onchange="window.handleLogoUpload(event)"
+                                   class="w-full px-3 py-2 border rounded-lg bg-white">
+                            <p class="text-sm text-gray-600">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                권장: PNG, 투명 배경, 가로 300px 이상
+                            </p>
+                        </div>
+                        
+                        <input type="hidden" id="logo-url">
+                    </div>
+                    
+                    <!-- 대시보드 자동 새로고침 시간 -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-sync-alt mr-2 text-orange-500"></i>대시보드 자동 새로고침 시간
+                        </label>
+                        <div class="flex items-center gap-3">
+                            <input type="number" id="refresh-interval" min="1" max="60" step="1"
+                                   class="w-32 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                                   placeholder="5">
+                            <span class="text-gray-700">분마다 자동 새로고침</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2">
                             <i class="fas fa-info-circle mr-1"></i>
-                            권장: PNG, 투명 배경, 가로 300px 이상
+                            대시보드가 자동으로 새로고침되는 시간 간격입니다 (1~60분, 기본값: 5분)
+                        </p>
+                        <p class="text-sm text-gray-500 mt-1">
+                            💡 새로고침 시 10초간 화면보호기(로고 애니메이션)가 표시됩니다
                         </p>
                     </div>
-                    
-                    <input type="hidden" id="logo-url">
                 </div>
                 
-                <!-- AI 모델 선택 -->
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2">
-                        <i class="fas fa-robot mr-2 text-purple-500"></i>AI 챗봇 모델 선택
-                    </label>
-                    <select id="ai-model" 
-                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="groq">GROQ (llama-3.3-70b-versatile) - 빠른 응답, 고품질</option>
-                        <option value="gemma">Gemma 2 9B (GROQ) - 무료, 빠른 응답</option>
-                        <option value="gemini">Gemini (gemini-2.0-flash-exp) - 고품질 응답</option>
-                    </select>
-                    <p class="text-sm text-gray-500 mt-2">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        예진이 3D 챗봇에서 사용할 AI 모델을 선택합니다
-                    </p>
-                    <p class="text-sm text-gray-400 mt-1">
-                        💡 GROQ Llama: 70B 대형 모델 | Gemma 2 9B: 무료 경량 모델 | Gemini: 자연스러운 대화
-                    </p>
-                </div>
-                
-                <!-- AI 챗봇 API 키 섹션 -->
+                <!-- AI 챗봇 & TTS API 키 섹션 -->
                 <div class="p-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border-2 border-purple-200 shadow-sm">
                     <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-key mr-2 text-purple-600"></i>
                         AI 챗봇 & TTS API 키 설정
                     </h3>
+                    
+                    <!-- AI 모델 선택 -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-robot mr-2 text-purple-500"></i>AI 챗봇 모델 선택
+                        </label>
+                        <select id="ai-model" 
+                                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 bg-white">
+                            <option value="groq">GROQ (llama-3.3-70b-versatile) - 빠른 응답, 고품질</option>
+                            <option value="gemma">Gemma 2 9B (GROQ) - 무료, 빠른 응답</option>
+                            <option value="gemini">Gemini (gemini-2.0-flash-exp) - 고품질 응답</option>
+                        </select>
+                        <p class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            예진이 3D 챗봇에서 사용할 AI 모델을 선택합니다
+                        </p>
+                        <p class="text-sm text-gray-500 mt-1">
+                            💡 GROQ Llama: 70B 대형 모델 | Gemma 2 9B: 무료 경량 모델 | Gemini: 자연스러운 대화
+                        </p>
+                    </div>
                     
                     <!-- GROQ API 키 -->
                     <div class="mb-6">
@@ -13557,26 +13585,6 @@ function renderSystemSettings(settings) {
                             💡 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="hover:underline font-medium">Google Cloud Console</a>에서 발급 가능
                         </p>
                     </div>
-                </div>
-                
-                <!-- 대시보드 자동 새로고침 시간 -->
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2">
-                        <i class="fas fa-sync-alt mr-2 text-orange-500"></i>대시보드 자동 새로고침 시간
-                    </label>
-                    <div class="flex items-center gap-3">
-                        <input type="number" id="refresh-interval" min="1" max="60" step="1"
-                               class="w-32 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                               placeholder="5">
-                        <span class="text-gray-700">분마다 자동 새로고침</span>
-                    </div>
-                    <p class="text-sm text-gray-500 mt-2">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        대시보드가 자동으로 새로고침되는 시간 간격입니다 (1~60분, 기본값: 5분)
-                    </p>
-                    <p class="text-sm text-gray-400 mt-1">
-                        💡 새로고침 시 10초간 화면보호기(로고 애니메이션)가 표시됩니다
-                    </p>
                 </div>
                 
                 <!-- 저장 버튼 -->
