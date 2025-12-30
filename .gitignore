@@ -44,3 +44,6 @@ __pycache__/
 
 # Thumbnails
 backend/thumbnails/
+
+# AI 모델 캐시
+backend/model_cache/

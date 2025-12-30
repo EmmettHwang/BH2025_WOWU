@@ -26,9 +26,17 @@ class SimpleVectorStore:
         # 디렉토리 생성
         os.makedirs(persist_directory, exist_ok=True)
         
-        # 임베딩 모델 로드
+        # 모델 캐시 디렉토리 설정 (프로젝트 내부)
+        model_cache_dir = "./backend/model_cache"
+        os.makedirs(model_cache_dir, exist_ok=True)
+        
+        # 임베딩 모델 로드 (로컬 캐시 사용)
         print(f"🔄 임베딩 모델 로드 중: {embedding_model}")
-        self.embedding_model = SentenceTransformer(embedding_model)
+        print(f"📁 모델 캐시 경로: {model_cache_dir}")
+        self.embedding_model = SentenceTransformer(
+            embedding_model,
+            cache_folder=model_cache_dir
+        )
         self.embedding_dimension = self.embedding_model.get_sentence_embedding_dimension()
         
         # FAISS 인덱스 초기화
