@@ -5507,6 +5507,24 @@ async def serve_css(filename: str):
         return FileResponse(css_path, media_type="text/css")
     raise HTTPException(status_code=404, detail=f"{filename}.css not found")
 
+@app.get("/favicon.ico")
+async def serve_favicon():
+    """favicon.ico 서빙"""
+    from fastapi.responses import FileResponse
+    favicon_path = os.path.join(frontend_dir, "favicon.ico")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path, media_type="image/x-icon")
+    raise HTTPException(status_code=404, detail="favicon.ico not found")
+
+@app.get("/{filename}.png")
+async def serve_png(filename: str):
+    """PNG 이미지 파일 서빙"""
+    from fastapi.responses import FileResponse
+    png_path = os.path.join(frontend_dir, f"{filename}.png")
+    if os.path.exists(png_path):
+        return FileResponse(png_path, media_type="image/png")
+    raise HTTPException(status_code=404, detail=f"{filename}.png not found")
+
 # ==================== FTP 이미지 프록시 ====================
 from fastapi.responses import StreamingResponse
 from urllib.parse import urlparse, unquote
