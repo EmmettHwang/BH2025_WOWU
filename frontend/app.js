@@ -13435,115 +13435,128 @@ function renderSystemSettings(settings) {
                     </p>
                 </div>
                 
-                <!-- GROQ API 키 -->
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2">
-                        <i class="fas fa-bolt mr-2 text-yellow-500"></i>GROQ API 키
-                    </label>
-                    <div class="flex gap-2">
-                        <input type="text" id="groq-api-key" 
-                               class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                               placeholder="GROQ API 키를 입력하세요">
-                        <button type="button" onclick="window.testGroqApiKey()" 
-                                class="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors whitespace-nowrap">
-                            <i class="fas fa-check-circle mr-2"></i>테스트
-                        </button>
+                <!-- AI 챗봇 API 키 섹션 -->
+                <div class="p-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border-2 border-purple-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-key mr-2 text-purple-600"></i>
+                        AI 챗봇 & TTS API 키 설정
+                    </h3>
+                    
+                    <!-- GROQ API 키 -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-bolt mr-2 text-yellow-500"></i>GROQ API 키
+                        </label>
+                        <div class="flex gap-2">
+                            <input type="text" id="groq-api-key" 
+                                   class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 bg-white"
+                                   placeholder="GROQ API 키를 입력하세요">
+                            <button type="button" onclick="window.testGroqApiKey()" 
+                                    class="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors whitespace-nowrap">
+                                <i class="fas fa-check-circle mr-2"></i>테스트
+                            </button>
+                        </div>
+                        <div id="groq-api-test-result" class="mt-2 text-sm hidden"></div>
+                        <p class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Llama 3.3 70B, Gemma 2 9B 모델 사용
+                        </p>
+                        <p class="text-sm text-blue-600 mt-1">
+                            💡 <a href="https://console.groq.com/keys" target="_blank" class="hover:underline font-medium">GROQ Console</a>에서 무료 발급 (분당 30개 요청)
+                        </p>
                     </div>
-                    <div id="groq-api-test-result" class="mt-2 text-sm hidden"></div>
-                    <p class="text-sm text-gray-500 mt-2">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        GROQ AI 챗봇을 사용하려면 API 키가 필요합니다
-                    </p>
-                    <p class="text-sm text-gray-400 mt-1">
-                        💡 <a href="https://console.groq.com/keys" target="_blank" class="text-blue-500 hover:underline">GROQ Console</a>에서 무료 발급 가능
-                    </p>
+                    
+                    <!-- Gemini API 키 -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-brain mr-2 text-purple-500"></i>Gemini / Google Cloud TTS API 키
+                        </label>
+                        <div class="flex gap-2">
+                            <input type="text" id="gemini-api-key" 
+                                   class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 bg-white"
+                                   placeholder="Gemini/Google Cloud API 키를 입력하세요">
+                            <button type="button" onclick="window.testGeminiApiKey()" 
+                                    class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors whitespace-nowrap">
+                                <i class="fas fa-check-circle mr-2"></i>테스트
+                            </button>
+                        </div>
+                        <div id="gemini-api-test-result" class="mt-2 text-sm hidden"></div>
+                        <p class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Gemini AI 챗봇 + Google Cloud TTS 고품질 음성 합성
+                        </p>
+                        <p class="text-sm text-blue-600 mt-1">
+                            💡 <a href="https://aistudio.google.com/app/apikey" target="_blank" class="hover:underline font-medium">Google AI Studio</a>에서 무료 발급 (분당 15개 요청)
+                        </p>
+                    </div>
                 </div>
                 
-                <!-- Gemini API 키 (Google Cloud TTS와 공통) -->
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2">
-                        <i class="fas fa-brain mr-2 text-purple-500"></i>Gemini / Google Cloud API 키
-                    </label>
-                    <div class="flex gap-2">
-                        <input type="text" id="gemini-api-key" 
-                               class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                               placeholder="Gemini/Google Cloud API 키를 입력하세요">
-                        <button type="button" onclick="window.testGeminiApiKey()" 
-                                class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors whitespace-nowrap">
-                            <i class="fas fa-check-circle mr-2"></i>테스트
-                        </button>
+                <!-- 백그라운드 뮤직 설정 섹션 -->
+                <div class="p-6 bg-gradient-to-r from-pink-50 to-red-50 rounded-xl border-2 border-pink-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-music mr-2 text-pink-600"></i>
+                        백그라운드 뮤직 설정
+                    </h3>
+                    
+                    <!-- 백그라운드 뮤직 장르 선택 -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-compact-disc mr-2 text-pink-500"></i>BGM 장르 선택
+                        </label>
+                        <select id="bgm-genre" 
+                                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-pink-500 bg-white"
+                                onchange="window.searchYouTubeBGM()">
+                            <option value="">BGM 끄기</option>
+                            <option value="classical">클래식 (Classical Music)</option>
+                            <option value="piano">피아노 연주 (Piano Instrumental)</option>
+                            <option value="meditation">명상 음악 (Meditation Music)</option>
+                            <option value="oldpop">고전 팝송 (Classic Pop)</option>
+                        </select>
+                        <p class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            대시보드에서 재생될 BGM 장르를 선택합니다
+                        </p>
                     </div>
-                    <div id="gemini-api-test-result" class="mt-2 text-sm hidden"></div>
-                    <p class="text-sm text-gray-500 mt-2">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Gemini AI 챗봇과 Google Cloud TTS(음성 합성)에 공통으로 사용됩니다
-                    </p>
-                    <p class="text-sm text-gray-400 mt-1">
-                        💡 <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-500 hover:underline">Google AI Studio</a>에서 무료 발급 가능
-                    </p>
-                </div>
-                
-                <!-- YouTube API 키 -->
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2">
-                        <i class="fab fa-youtube mr-2 text-red-500"></i>YouTube API 키
-                    </label>
-                    <div class="flex gap-2">
-                        <input type="text" id="youtube-api-key" 
-                               class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                               placeholder="YouTube Data API v3 키를 입력하세요">
-                        <button type="button" onclick="window.testYouTubeApiKey()" 
-                                class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors whitespace-nowrap">
-                            <i class="fas fa-check-circle mr-2"></i>테스트
-                        </button>
+                    
+                    <!-- BGM 볼륨 조절 -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-volume-up mr-2 text-green-500"></i>BGM 볼륨
+                        </label>
+                        <div class="flex items-center gap-4">
+                            <input type="range" id="bgm-volume" min="0" max="100" value="30" 
+                                   class="flex-1" oninput="document.getElementById('volume-value').textContent = this.value + '%'">
+                            <span id="volume-value" class="text-gray-700 font-semibold w-12">30%</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            BGM 재생 볼륨을 조절합니다 (0-100%)
+                        </p>
                     </div>
-                    <div id="api-test-result" class="mt-2 text-sm hidden"></div>
-                    <p class="text-sm text-gray-500 mt-2">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        YouTube에서 BGM을 검색하려면 API 키가 필요합니다
-                    </p>
-                    <p class="text-sm text-gray-400 mt-1">
-                        💡 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="text-blue-500 hover:underline">Google Cloud Console</a>에서 발급 가능
-                    </p>
-                </div>
-                
-                <!-- 백그라운드 뮤직 장르 선택 -->
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2">
-                        <i class="fas fa-music mr-2 text-pink-500"></i>백그라운드 뮤직 장르
-                    </label>
-                    <select id="bgm-genre" 
-                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                            onchange="window.searchYouTubeBGM()">
-                        <option value="">BGM 끄기</option>
-                        <option value="classical">클래식 (Classical Music)</option>
-                        <option value="piano">피아노 연주 (Piano Instrumental)</option>
-                        <option value="meditation">명상 음악 (Meditation Music)</option>
-                        <option value="oldpop">고전 팝송 (Classic Pop)</option>
-                    </select>
-                    <p class="text-sm text-gray-500 mt-2">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        대시보드에서 재생될 BGM 장르를 선택합니다
-                    </p>
-                    <p class="text-sm text-gray-400 mt-1">
-                        💡 장르 선택 시 YouTube에서 자동으로 검색하여 재생합니다
-                    </p>
-                </div>
-                
-                <!-- BGM 볼륨 조절 -->
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2">
-                        <i class="fas fa-volume-up mr-2 text-green-500"></i>BGM 볼륨
-                    </label>
-                    <div class="flex items-center gap-4">
-                        <input type="range" id="bgm-volume" min="0" max="100" value="30" 
-                               class="flex-1" oninput="document.getElementById('volume-value').textContent = this.value + '%'">
-                        <span id="volume-value" class="text-gray-700 font-semibold w-12">30%</span>
+                    
+                    <!-- YouTube API 키 -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fab fa-youtube mr-2 text-red-500"></i>YouTube API 키
+                        </label>
+                        <div class="flex gap-2">
+                            <input type="text" id="youtube-api-key" 
+                                   class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 bg-white"
+                                   placeholder="YouTube Data API v3 키를 입력하세요">
+                            <button type="button" onclick="window.testYouTubeApiKey()" 
+                                    class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors whitespace-nowrap">
+                                <i class="fas fa-check-circle mr-2"></i>테스트
+                            </button>
+                        </div>
+                        <div id="api-test-result" class="mt-2 text-sm hidden"></div>
+                        <p class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            YouTube에서 BGM을 검색하려면 API 키가 필요합니다
+                        </p>
+                        <p class="text-sm text-blue-600 mt-1">
+                            💡 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="hover:underline font-medium">Google Cloud Console</a>에서 발급 가능
+                        </p>
                     </div>
-                    <p class="text-sm text-gray-500 mt-2">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        BGM 재생 볼륨을 조절합니다 (0-100%)
-                    </p>
                 </div>
                 
                 <!-- 대시보드 자동 새로고침 시간 -->
