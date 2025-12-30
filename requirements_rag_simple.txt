@@ -1,0 +1,8 @@
+# 간소화된 RAG 패키지 (Python 3.14 호환)
+langchain>=0.1.0
+sentence-transformers>=2.3.1
+pypdf2>=3.0.1
+python-docx>=1.1.0
+python-multipart>=0.0.6
+tiktoken>=0.5.2
+faiss-cpu>=1.8.0
