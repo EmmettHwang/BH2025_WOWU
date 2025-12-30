@@ -2676,10 +2676,11 @@ window.sendChatMessage = async function() {
             console.log('RAG 모드로 질문:', message);
             
             const groqApiKey = localStorage.getItem('groq_api_key') || '';
+            const ragTopK = parseInt(localStorage.getItem('rag_top_k') || '3');
             
             const response = await axios.post(`${API_BASE_URL}/api/rag/chat`, {
                 message: message,
-                k: 3
+                k: ragTopK
             }, {
                 headers: {
                     'X-GROQ-API-Key': groqApiKey
@@ -13563,6 +13564,87 @@ function renderSystemSettings(settings) {
                     </div>
                 </div>
                 
+                <!-- RAG 지식 검색 설정 섹션 -->
+                <div class="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-book-reader mr-2 text-green-600"></i>
+                        RAG 지식 검색 설정
+                    </h3>
+                    
+                    <!-- RAG 검색 문서 개수 -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-search mr-2 text-green-500"></i>검색 문서 개수 (Top-K)
+                        </label>
+                        <div class="flex items-center gap-3">
+                            <input type="number" id="rag-top-k" min="1" max="10" step="1"
+                                   class="w-32 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 bg-white"
+                                   placeholder="3">
+                            <span class="text-gray-700">개의 관련 문서 검색</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            질문에 대해 검색할 유사 문서의 개수입니다 (1~10개, 기본값: 3개)
+                        </p>
+                        <p class="text-sm text-gray-500 mt-1">
+                            💡 개수가 많을수록 더 많은 정보를 참고하지만 응답 시간이 늘어날 수 있습니다
+                        </p>
+                    </div>
+                    
+                    <!-- 임베딩 모델 정보 (읽기 전용) -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-brain mr-2 text-blue-500"></i>임베딩 모델
+                        </label>
+                        <div class="px-4 py-3 bg-gray-100 rounded-lg border text-gray-700">
+                            jhgan/ko-sroberta-multitask
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            한국어 문서 검색에 최적화된 임베딩 모델입니다
+                        </p>
+                    </div>
+                    
+                    <!-- 벡터 DB 정보 (읽기 전용) -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-database mr-2 text-purple-500"></i>벡터 데이터베이스
+                        </label>
+                        <div class="px-4 py-3 bg-gray-100 rounded-lg border text-gray-700">
+                            FAISS (Facebook AI Similarity Search)
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            고속 유사도 검색을 위한 벡터 DB입니다
+                        </p>
+                    </div>
+                    
+                    <!-- RAG 상태 표시 -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-chart-bar mr-2 text-orange-500"></i>RAG 시스템 상태
+                        </label>
+                        <div id="rag-status-display" class="px-4 py-3 bg-white rounded-lg border">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-gray-700">초기화 상태:</span>
+                                <span id="rag-init-status" class="font-semibold">확인 중...</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-700">저장된 문서 수:</span>
+                                <span id="rag-doc-count" class="font-semibold text-blue-600">0개</span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="window.refreshRAGStatus()" 
+                                class="mt-3 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                            <i class="fas fa-sync-alt mr-2"></i>상태 새로고침
+                        </button>
+                        <p class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            RAG 시스템 초기화 및 문서 업로드 상태를 확인합니다
+                        </p>
+                    </div>
+                </div>
+                
                 <!-- 백그라운드 뮤직 설정 섹션 -->
                 <div class="p-6 bg-gradient-to-r from-pink-50 to-red-50 rounded-xl border-2 border-pink-200 shadow-sm">
                     <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
@@ -13724,6 +13806,17 @@ function renderSystemSettings(settings) {
             }
             console.log('✅ Gemini/Google Cloud API 키 로드:', geminiKey ? '설정됨 (****' + geminiKey.slice(-4) + ')' : '미설정');
         }
+        
+        // RAG 설정 로드
+        const ragTopKInput = document.getElementById('rag-top-k');
+        const ragTopK = localStorage.getItem('rag_top_k') || '3';
+        if (ragTopKInput) {
+            ragTopKInput.value = ragTopK;
+            console.log('✅ RAG Top-K 로드:', ragTopK + '개');
+        }
+        
+        // RAG 상태 로드
+        window.refreshRAGStatus();
         
         // 대시보드 자동 새로고침 시간 설정 로드 (서버 우선)
         const refreshInterval = settings.dashboard_refresh_interval || localStorage.getItem('dashboard_refresh_interval') || '5';
@@ -13910,6 +14003,17 @@ window.saveSystemSettings = async function() {
     const geminiApiKey = document.getElementById('gemini-api-key')?.value || '';
     localStorage.setItem('gemini_api_key', geminiApiKey);
     console.log('💾 Gemini/Google Cloud API 키 저장:', geminiApiKey ? '설정됨 (****' + geminiApiKey.slice(-4) + ')' : '미설정');
+    
+    // RAG 설정 저장
+    const ragTopK = document.getElementById('rag-top-k')?.value || '3';
+    const topKValue = parseInt(ragTopK);
+    if (topKValue >= 1 && topKValue <= 10) {
+        localStorage.setItem('rag_top_k', ragTopK);
+        console.log('💾 RAG Top-K 저장:', ragTopK + '개');
+    } else {
+        localStorage.setItem('rag_top_k', '3');
+        console.log('⚠️ RAG Top-K 범위 초과, 기본값 3으로 설정');
+    }
     
     // 대시보드 자동 새로고침 시간 저장
     let refreshInterval = 5; // 기본값
@@ -18738,6 +18842,65 @@ window.downloadFile = function(fileUrl, filename) {
 console.log('✅ 파일 관리 함수 로드 완료');
 console.log('- window.openFileModal(url, filename)');
 console.log('- window.downloadFile(url, filename)');
+
+
+// ============================================
+// RAG 시스템 상태 관리 함수들
+// ============================================
+
+/**
+ * RAG 시스템 상태를 새로고침합니다
+ */
+window.refreshRAGStatus = async function() {
+    try {
+        console.log('🔄 RAG 상태 조회 중...');
+        
+        const response = await fetch(`${API_BASE_URL}/api/rag/status`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ RAG 상태 조회 성공:', data);
+        
+        // 상태 표시 업데이트
+        const initStatusElement = document.getElementById('rag-init-status');
+        const docCountElement = document.getElementById('rag-doc-count');
+        
+        if (initStatusElement) {
+            if (data.initialized) {
+                initStatusElement.innerHTML = '<span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>정상</span>';
+            } else {
+                initStatusElement.innerHTML = '<span class="text-red-600"><i class="fas fa-times-circle mr-1"></i>미초기화</span>';
+            }
+        }
+        
+        if (docCountElement) {
+            docCountElement.textContent = `${data.document_count || 0}개`;
+        }
+        
+        showNotification('RAG 상태가 업데이트되었습니다', 'success');
+        
+    } catch (error) {
+        console.error('❌ RAG 상태 조회 실패:', error);
+        
+        const initStatusElement = document.getElementById('rag-init-status');
+        if (initStatusElement) {
+            initStatusElement.innerHTML = '<span class="text-gray-500"><i class="fas fa-exclamation-triangle mr-1"></i>조회 실패</span>';
+        }
+        
+        showNotification('RAG 상태 조회 실패: ' + error.message, 'error');
+    }
+};
+
+console.log('✅ RAG 시스템 상태 관리 함수 로드 완료');
+console.log('- window.refreshRAGStatus()');
 
 
 // ============================================
