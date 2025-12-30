@@ -18904,4 +18904,31 @@ console.log('- window.refreshRAGStatus()');
 
 
 // ============================================
+// RAG 토글 초기화
+// ============================================
+
+// 페이지 로드 시 RAG 토글 상태 확인 및 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    const ragToggle = document.getElementById('rag-mode-toggle');
+    if (ragToggle) {
+        // HTML의 checked 속성 확인
+        console.log('✅ RAG 토글 초기 상태:', ragToggle.checked ? 'ON' : 'OFF');
+        
+        // 명시적으로 checked 설정
+        ragToggle.checked = true;
+        console.log('🔄 RAG 토글을 ON으로 설정');
+        
+        // 토글 변경 이벤트 리스너
+        ragToggle.addEventListener('change', function() {
+            const status = this.checked ? 'ON (문서 기반 답변)' : 'OFF (일반 대화)';
+            console.log('🔄 RAG 모드 변경:', status);
+            showNotification('RAG 모드: ' + status, 'info');
+        });
+    } else {
+        console.warn('⚠️ RAG 토글 요소를 찾을 수 없습니다');
+    }
+});
+
+
+// ============================================
 // API 키 데모 모달 함수들
