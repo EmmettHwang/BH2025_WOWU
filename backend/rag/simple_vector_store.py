@@ -20,11 +20,25 @@ class SimpleVectorStore:
         embedding_model: str = "jhgan/ko-sroberta-multitask"
     ):
         self.collection_name = collection_name
-        self.persist_directory = persist_directory
+        
+        # Windows 한글 경로 문제 해결: ASCII 경로로 강제 변환
+        import sys
+        import tempfile
+        from pathlib import Path
+        
+        if sys.platform == "win32":
+            # Windows: C:/Users/USERNAME/AppData/Local/Temp 사용
+            safe_persist_dir = Path(tempfile.gettempdir()) / "bh2025_vector_db"
+        else:
+            # Linux/Mac: 원래 경로 사용
+            safe_persist_dir = Path(persist_directory)
+        
+        self.persist_directory = str(safe_persist_dir)
         self.embedding_model_name = embedding_model
         
         # 디렉토리 생성
-        os.makedirs(persist_directory, exist_ok=True)
+        os.makedirs(self.persist_directory, exist_ok=True)
+        print(f"[INFO] 벡터 DB 경로: {self.persist_directory}")
         
         # 모델 캐시 디렉토리 설정 (프로젝트 내부)
         model_cache_dir = "./backend/model_cache"
