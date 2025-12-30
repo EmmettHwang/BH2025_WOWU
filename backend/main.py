@@ -7207,9 +7207,15 @@ def init_rag():
         # 문서 로더 초기화
         document_loader = DocumentLoader(chunk_size=1000, chunk_overlap=200)
         
+        # 벡터 DB 경로 (절대 경로로 통일)
+        from pathlib import Path
+        project_root = Path(__file__).parent.parent  # /home/user/webapp
+        vector_db_path = project_root / "backend" / "vector_db"
+        vector_db_path.mkdir(exist_ok=True, parents=True)
+        
         # 벡터 스토어 초기화
         vector_store_manager = VectorStoreManager(
-            persist_directory="./backend/chroma_db",
+            persist_directory=str(vector_db_path),
             collection_name="biohealth_docs"
         )
         
@@ -7226,11 +7232,17 @@ def init_rag():
 
 
 def load_default_documents():
-    """documents 폴더의 기본 문서들을 RAG에 자동 로드"""
+    """documents 폴더의 기본 문서들을 RAG에 자동 로드 (중복 체크)"""
     global vector_store_manager, document_loader
     
     if not vector_store_manager or not document_loader:
         print("[WARN] RAG 시스템이 초기화되지 않아 기본 문서를 로드할 수 없습니다")
+        return
+    
+    # 이미 문서가 있으면 건너뛰기
+    current_doc_count = vector_store_manager.count_documents()
+    if current_doc_count > 0:
+        print(f"[INFO] 이미 {current_doc_count}개 문서가 저장되어 있습니다. 자동 로드 건너뜀")
         return
     
     documents_dir = Path("./documents")
@@ -7238,7 +7250,7 @@ def load_default_documents():
     # documents 폴더가 없으면 생성
     if not documents_dir.exists():
         documents_dir.mkdir(parents=True)
-        print("📁 documents 폴더가 생성되었습니다")
+        print("[INFO] documents 폴더가 생성되었습니다")
         return
     
     # 지원하는 파일 형식
@@ -7250,7 +7262,7 @@ def load_default_documents():
         doc_files.extend(documents_dir.glob(f'*{ext}'))
     
     if not doc_files:
-        print("📁 documents 폴더에 문서가 없습니다")
+        print("[INFO] documents 폴더에 문서가 없습니다")
         print("[TIP] 교재 및 교육자료를 documents 폴더에 넣어주세요")
         return
     
@@ -7262,7 +7274,7 @@ def load_default_documents():
     
     for doc_path in doc_files:
         try:
-            # 파일명에서 메타데이터 추출 (예: "교재_바이오헬스기초_홍길동_2024.pdf")
+            # 파일명에서 메타데이터 추출
             filename = doc_path.stem
             parts = filename.split('_')
             

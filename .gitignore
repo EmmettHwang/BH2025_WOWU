@@ -47,3 +47,6 @@ backend/thumbnails/
 
 # AI 모델 캐시
 backend/model_cache/
+
+# 벡터 DB
+backend/vector_db/
