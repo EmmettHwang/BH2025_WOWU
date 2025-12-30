@@ -3599,8 +3599,8 @@ async def generate_ai_report(data: dict):
 
 # ==================== 헬스 체크 ====================
 
-@app.get("/")
-async def root():
+@app.get("/api/status")
+async def api_status():
     """API 상태 확인"""
     return {
         "message": "학급 관리 시스템 API",
