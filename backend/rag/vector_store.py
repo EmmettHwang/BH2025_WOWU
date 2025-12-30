@@ -32,7 +32,7 @@ class VectorStoreManager:
             embedding_model=embedding_model
         )
         
-        print(f"✅ 벡터 스토어 초기화 완료 (문서 수: {self.vectorstore.count()})")
+        print(f"[OK] 벡터 스토어 초기화 완료 (문서 수: {self.vectorstore.count()})")
     
     def add_documents(self, texts: List[str], metadatas: List[Dict] = None) -> List[str]:
         """
@@ -46,18 +46,18 @@ class VectorStoreManager:
             추가된 문서 ID 리스트
         """
         if not texts:
-            print("⚠️ 추가할 문서가 없습니다")
+            print("[WARN] 추가할 문서가 없습니다")
             return []
         
         print(f"📝 {len(texts)}개 문서 추가 중...")
         
         try:
             ids = self.vectorstore.add_documents(texts, metadatas)
-            print(f"✅ {len(ids)}개 문서 추가 완료")
+            print(f"[OK] {len(ids)}개 문서 추가 완료")
             return ids
             
         except Exception as e:
-            print(f"❌ 문서 추가 실패: {e}")
+            print(f"[ERROR] 문서 추가 실패: {e}")
             return []
     
     def search(self, 
@@ -75,11 +75,11 @@ class VectorStoreManager:
         """
         try:
             results = self.vectorstore.similarity_search(query, k=k)
-            print(f"🔍 검색 완료: {len(results)}개 문서")
+            print(f"[DEBUG] 검색 완료: {len(results)}개 문서")
             return results
             
         except Exception as e:
-            print(f"❌ 검색 실패: {e}")
+            print(f"[ERROR] 검색 실패: {e}")
             return []
     
     def search_with_score(self, 
@@ -106,11 +106,11 @@ class VectorStoreManager:
         """
         try:
             documents = self.vectorstore.get_all_documents()
-            print(f"📚 총 {len(documents)}개 문서")
+            print(f"[DOC] 총 {len(documents)}개 문서")
             return documents
             
         except Exception as e:
-            print(f"❌ 문서 조회 실패: {e}")
+            print(f"[ERROR] 문서 조회 실패: {e}")
             return []
     
     def count_documents(self) -> int:
@@ -126,9 +126,9 @@ class VectorStoreManager:
         """벡터 스토어 초기화 (모든 데이터 삭제)"""
         try:
             self.vectorstore.clear()
-            print("✅ 벡터 스토어 초기화 완료")
+            print("[OK] 벡터 스토어 초기화 완료")
         except Exception as e:
-            print(f"❌ 벡터 스토어 초기화 실패: {e}")
+            print(f"[ERROR] 벡터 스토어 초기화 실패: {e}")
     
     def delete_collection(self):
         """컬렉션 삭제"""

@@ -49,7 +49,7 @@ class DocumentLoader:
                     text += page.extract_text() + "\n"
                 return text.strip()
         except Exception as e:
-            print(f"❌ PDF 로드 실패: {file_path}, 오류: {e}")
+            print(f"[ERROR] PDF 로드 실패: {file_path}, 오류: {e}")
             return ""
     
     def load_docx(self, file_path: str) -> str:
@@ -59,7 +59,7 @@ class DocumentLoader:
             text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
             return text.strip()
         except Exception as e:
-            print(f"❌ DOCX 로드 실패: {file_path}, 오류: {e}")
+            print(f"[ERROR] DOCX 로드 실패: {file_path}, 오류: {e}")
             return ""
     
     def load_txt(self, file_path: str) -> str:
@@ -68,7 +68,7 @@ class DocumentLoader:
             with open(file_path, 'r', encoding='utf-8') as file:
                 return file.read().strip()
         except Exception as e:
-            print(f"❌ TXT 로드 실패: {file_path}, 오류: {e}")
+            print(f"[ERROR] TXT 로드 실패: {file_path}, 오류: {e}")
             return ""
     
     def load_document(self, file_path: str, metadata: Dict = None) -> List[Document]:
@@ -92,11 +92,11 @@ class DocumentLoader:
         elif file_ext == '.txt':
             text = self.load_txt(file_path)
         else:
-            print(f"⚠️ 지원하지 않는 파일 형식: {file_ext}")
+            print(f"[WARN] 지원하지 않는 파일 형식: {file_ext}")
             return []
         
         if not text:
-            print(f"⚠️ 빈 문서: {file_path}")
+            print(f"[WARN] 빈 문서: {file_path}")
             return []
         
         # 메타데이터 설정
@@ -125,7 +125,7 @@ class DocumentLoader:
             )
             documents.append(doc)
         
-        print(f"✅ 문서 로드 완료: {os.path.basename(file_path)} ({len(documents)}개 청크)")
+        print(f"[OK] 문서 로드 완료: {os.path.basename(file_path)} ({len(documents)}개 청크)")
         return documents
     
     def load_directory(self, directory_path: str, metadata: Dict = None) -> List[Document]:
@@ -150,7 +150,7 @@ class DocumentLoader:
                     docs = self.load_document(file_path, metadata)
                     all_documents.extend(docs)
         
-        print(f"📚 디렉토리 로드 완료: {len(all_documents)}개 청크")
+        print(f"[DOC] 디렉토리 로드 완료: {len(all_documents)}개 청크")
         return all_documents
 
 
@@ -179,6 +179,6 @@ if __name__ == "__main__":
     
     print("\n=== 로드된 문서 ===")
     for i, doc in enumerate(docs):
-        print(f"\n📄 청크 {i+1}:")
+        print(f"\n[FILE] 청크 {i+1}:")
         print(f"내용: {doc.page_content[:100]}...")
         print(f"메타데이터: {doc.metadata}")

@@ -31,7 +31,7 @@ class SimpleVectorStore:
         os.makedirs(model_cache_dir, exist_ok=True)
         
         # 임베딩 모델 로드 (로컬 캐시 사용)
-        print(f"🔄 임베딩 모델 로드 중: {embedding_model}")
+        print(f"[INFO] 임베딩 모델 로드 중: {embedding_model}")
         print(f"📁 모델 캐시 경로: {model_cache_dir}")
         self.embedding_model = SentenceTransformer(
             embedding_model,
@@ -49,7 +49,7 @@ class SimpleVectorStore:
         # 저장된 인덱스 로드 시도
         self._load_index()
         
-        print(f"✅ 벡터 스토어 초기화 완료 (문서 수: {len(self.documents)})")
+        print(f"[OK] 벡터 스토어 초기화 완료 (문서 수: {len(self.documents)})")
     
     def add_documents(
         self,
@@ -61,7 +61,7 @@ class SimpleVectorStore:
             metadatas = [{}] * len(texts)
         
         # 임베딩 생성
-        print(f"🔄 {len(texts)}개 문서 임베딩 생성 중...")
+        print(f"[INFO] {len(texts)}개 문서 임베딩 생성 중...")
         embeddings = self.embedding_model.encode(
             texts,
             show_progress_bar=True,
@@ -86,7 +86,7 @@ class SimpleVectorStore:
         # 인덱스 저장
         self._save_index()
         
-        print(f"✅ {len(texts)}개 문서 추가 완료")
+        print(f"[OK] {len(texts)}개 문서 추가 완료")
         return document_ids
     
     def similarity_search(
@@ -135,7 +135,7 @@ class SimpleVectorStore:
         self.documents = []
         self.metadatas = []
         self._save_index()
-        print("✅ 벡터 스토어 초기화 완료")
+        print("[OK] 벡터 스토어 초기화 완료")
     
     def count(self) -> int:
         """문서 개수"""
@@ -173,7 +173,7 @@ class SimpleVectorStore:
                     self.documents = data['documents']
                     self.metadatas = data['metadatas']
                 
-                print(f"✅ 저장된 인덱스 로드 완료 (문서 수: {len(self.documents)})")
+                print(f"[OK] 저장된 인덱스 로드 완료 (문서 수: {len(self.documents)})")
             except Exception as e:
-                print(f"⚠️  인덱스 로드 실패: {e}")
+                print(f"[WARN]  인덱스 로드 실패: {e}")
                 print("새 인덱스를 생성합니다.")

@@ -158,8 +158,8 @@ class RAGChain:
         """
         try:
             # 1. 관련 문서 검색
-            print(f"🔍 질문: {question}")
-            print(f"📚 {k}개 문서 검색 중...")
+            print(f"[DEBUG] 질문: {question}")
+            print(f"[DOC] {k}개 문서 검색 중...")
             
             documents = self.vector_store.search_with_score(question, k=k)
             
@@ -179,13 +179,13 @@ class RAGChain:
             
             context = "\n\n".join(context_parts)
             
-            print(f"✅ {len(documents)}개 문서 검색 완료")
+            print(f"[OK] {len(documents)}개 문서 검색 완료")
             
             # 3. 프롬프트 생성
             prompt = self._build_prompt(question, context, system_message)
             
             # 4. AI API 호출
-            print(f"🤖 {self.api_type.upper()} API 호출 중...")
+            print(f"[AI] {self.api_type.upper()} API 호출 중...")
             
             if self.api_type == 'groq' or self.api_type == 'gemma':
                 answer = await self._call_groq_api(prompt)
@@ -194,7 +194,7 @@ class RAGChain:
             else:
                 answer = "지원하지 않는 API 타입입니다."
             
-            print(f"✅ 응답 생성 완료")
+            print(f"[OK] 응답 생성 완료")
             
             # 5. 출처 정보 추출 (SimpleVectorStore 형식)
             sources = []
@@ -214,7 +214,7 @@ class RAGChain:
             }
             
         except Exception as e:
-            print(f"❌ RAG 질문 처리 실패: {e}")
+            print(f"[ERROR] RAG 질문 처리 실패: {e}")
             return {
                 'answer': f"오류가 발생했습니다: {str(e)}",
                 'sources': [],
@@ -279,12 +279,12 @@ if __name__ == "__main__":
         
         # 질문
         question = "mRNA 백신이 무엇인가요?"
-        print(f"\n💬 질문: {question}\n")
+        print(f"\n[Q] 질문: {question}\n")
         
         result = await rag_chain.query(question, k=2)
         
-        print(f"\n🤖 답변:\n{result['answer']}\n")
-        print(f"\n📚 참고 문서:")
+        print(f"\n[AI] 답변:\n{result['answer']}\n")
+        print(f"\n[DOC] 참고 문서:")
         for i, source in enumerate(result['sources'], 1):
             print(f"\n  {i}. {source['source']} (유사도: {source['similarity']:.4f})")
             print(f"     {source['content']}")
