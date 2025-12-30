@@ -7513,12 +7513,16 @@ async def list_rag_documents(limit: int = 100):
 @app.post("/api/rag/chat")
 async def rag_chat(request: Request):
     """
-    RAG 기반 채팅
+    RAG 기반 채팅 (개선된 버전)
     
     Body:
         - message: 사용자 질문
-        - k: 검색할 문서 수 (기본 3)
+        - k: 검색할 문서 수 (기본 5)
         - model: AI 모델 (groq, gemini, gemma)
+    
+    특수 기능:
+        - 통계/숫자 질문 감지 시 DB 직접 조회
+        - 유사도 임계값 체크
     """
     if not vector_store_manager:
         raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
@@ -7526,12 +7530,117 @@ async def rag_chat(request: Request):
     try:
         data = await request.json()
         message = data.get('message', '').strip()
-        k = data.get('k', 3)
+        k = data.get('k', 5)  # 기본값 3에서 5로 증가
         model = data.get('model', 'groq').lower()
         
         if not message:
             raise HTTPException(status_code=400, detail="메시지를 입력해주세요")
         
+        # ==================== 통계/숫자 질문 감지 ====================
+        message_lower = message.lower()
+        
+        # 강사 수 질문 감지
+        if any(keyword in message_lower for keyword in ['강사', '강사수', '강사 수', '강사는', '강사 수는', '몇 명', '몇명', '인원']):
+            if any(keyword in message_lower for keyword in ['수', '명', '얼마', '몇', '많', '인원']):
+                try:
+                    conn = get_db_connection()
+                    cursor = conn.cursor(pymysql.cursors.DictCursor)
+                    
+                    # 강사 수 조회
+                    cursor.execute("SELECT COUNT(*) as count FROM instructors")
+                    result = cursor.fetchone()
+                    instructor_count = result['count'] if result else 0
+                    
+                    # 추가 통계
+                    cursor.execute("""
+                        SELECT 
+                            COUNT(CASE WHEN role = 'admin' THEN 1 END) as admin_count,
+                            COUNT(CASE WHEN role = 'instructor' THEN 1 END) as instructor_count,
+                            COUNT(CASE WHEN role = 'assistant' THEN 1 END) as assistant_count
+                        FROM instructors
+                    """)
+                    role_stats = cursor.fetchone()
+                    
+                    conn.close()
+                    
+                    # 답변 생성
+                    answer = f"현재 시스템에 등록된 강사 수는 **총 {instructor_count}명**입니다.\n\n"
+                    
+                    if role_stats:
+                        answer += "📊 **역할별 현황:**\n"
+                        if role_stats.get('admin_count', 0) > 0:
+                            answer += f"- 관리자: {role_stats['admin_count']}명\n"
+                        if role_stats.get('instructor_count', 0) > 0:
+                            answer += f"- 강사: {role_stats['instructor_count']}명\n"
+                        if role_stats.get('assistant_count', 0) > 0:
+                            answer += f"- 조교: {role_stats['assistant_count']}명\n"
+                    
+                    answer += "\n💡 *이 정보는 데이터베이스에서 실시간으로 조회되었습니다.*"
+                    
+                    return {
+                        "success": True,
+                        "model": "database",
+                        "answer": answer,
+                        "sources": [{
+                            'source': 'instructors 테이블 (DB 직접 조회)',
+                            'similarity': 1.0,
+                            'content': f"총 강사 수: {instructor_count}명"
+                        }],
+                        "message": message,
+                        "query_type": "statistics"
+                    }
+                except Exception as e:
+                    print(f"[ERROR] 강사 수 조회 실패: {e}")
+                    # 실패 시 RAG로 폴백
+        
+        # 학생 수 질문 감지
+        if any(keyword in message_lower for keyword in ['학생', '학생수', '학생 수', '수강생', '훈련생']):
+            if any(keyword in message_lower for keyword in ['수', '명', '얼마', '몇', '많', '인원']):
+                try:
+                    conn = get_db_connection()
+                    cursor = conn.cursor(pymysql.cursors.DictCursor)
+                    
+                    cursor.execute("SELECT COUNT(*) as count FROM students")
+                    result = cursor.fetchone()
+                    student_count = result['count'] if result else 0
+                    
+                    # 과정별 통계
+                    cursor.execute("""
+                        SELECT course_code, COUNT(*) as count 
+                        FROM students 
+                        GROUP BY course_code 
+                        ORDER BY count DESC 
+                        LIMIT 5
+                    """)
+                    course_stats = cursor.fetchall()
+                    
+                    conn.close()
+                    
+                    answer = f"현재 시스템에 등록된 학생 수는 **총 {student_count}명**입니다.\n\n"
+                    
+                    if course_stats:
+                        answer += "📊 **과정별 학생 수 (상위 5개):**\n"
+                        for stat in course_stats:
+                            answer += f"- {stat['course_code']}: {stat['count']}명\n"
+                    
+                    answer += "\n💡 *이 정보는 데이터베이스에서 실시간으로 조회되었습니다.*"
+                    
+                    return {
+                        "success": True,
+                        "model": "database",
+                        "answer": answer,
+                        "sources": [{
+                            'source': 'students 테이블 (DB 직접 조회)',
+                            'similarity': 1.0,
+                            'content': f"총 학생 수: {student_count}명"
+                        }],
+                        "message": message,
+                        "query_type": "statistics"
+                    }
+                except Exception as e:
+                    print(f"[ERROR] 학생 수 조회 실패: {e}")
+        
+        # ==================== RAG 처리 ====================
         # API 키 가져오기 (DB → 헤더 → 환경변수 순서)
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -7565,16 +7674,17 @@ async def rag_chat(request: Request):
         # RAG 체인 생성
         rag_chain = RAGChain(vector_store_manager, api_key, api_type)
         
-        # RAG 질문 처리
+        # RAG 질문 처리 (유사도 임계값 0.3)
         print(f"💬 RAG 질문: {message}")
-        result = await rag_chain.query(message, k=k)
+        result = await rag_chain.query(message, k=k, min_similarity=0.3)
         
         return {
             "success": True,
             "model": model,
             "answer": result['answer'],
             "sources": result['sources'],
-            "message": message
+            "message": message,
+            "query_type": "rag"
         }
         
     except HTTPException as he:

@@ -51,7 +51,7 @@ class RAGChain:
     
     def _build_prompt(self, query: str, context: str, system_message: Optional[str] = None) -> str:
         """
-        RAG 프롬프트 생성
+        RAG 프롬프트 생성 (개선된 버전)
         
         Args:
             query: 사용자 질문
@@ -63,8 +63,7 @@ class RAGChain:
         """
         if system_message is None:
             system_message = """당신은 바이오헬스 분야 전문 교육 어시스턴트입니다.
-제공된 문서를 기반으로 정확하고 자세하게 답변해주세요.
-문서에 없는 내용은 "문서에서 해당 정보를 찾을 수 없습니다"라고 답변하세요."""
+제공된 문서를 기반으로 정확하고 간결하게 답변해주세요."""
         
         prompt = f"""{system_message}
 
@@ -74,8 +73,15 @@ class RAGChain:
 === 질문 ===
 {query}
 
+=== 답변 규칙 ===
+1. 문서에 명확한 답이 있으면 정확히 인용하여 답변하세요
+2. 문서에 답이 없으면 "죄송합니다. 제공된 문서에서 관련 정보를 찾을 수 없습니다"라고 명시하세요
+3. 추측하거나 같은 내용을 반복하지 마세요
+4. 구체적인 숫자나 데이터가 있으면 반드시 포함하세요
+5. 간결하고 명확하게 답변하세요 (불필요한 반복 금지)
+
 === 답변 ===
-위 문서를 참고하여 질문에 답변해주세요:"""
+"""
         
         return prompt
     
@@ -139,15 +145,17 @@ class RAGChain:
     
     async def query(self, 
                     question: str, 
-                    k: int = 3,
-                    system_message: Optional[str] = None) -> Dict:
+                    k: int = 5,  # 3에서 5로 증가
+                    system_message: Optional[str] = None,
+                    min_similarity: float = 0.3) -> Dict:  # 최소 유사도 임계값 추가
         """
-        RAG 질문 처리
+        RAG 질문 처리 (개선된 버전)
         
         Args:
             question: 사용자 질문
-            k: 검색할 문서 수
+            k: 검색할 문서 수 (기본값 5로 증가)
             system_message: 커스텀 시스템 메시지
+            min_similarity: 최소 유사도 임계값 (0.0~1.0, 기본값 0.3)
             
         Returns:
             {
@@ -165,33 +173,45 @@ class RAGChain:
             
             if not documents:
                 return {
-                    'answer': "관련 문서를 찾을 수 없습니다. 문서를 업로드하거나 다른 질문을 시도해보세요.",
+                    'answer': "죄송합니다. 관련 문서를 찾을 수 없습니다. 문서를 업로드하거나 다른 질문을 시도해보세요.",
                     'sources': [],
                     'context': ""
                 }
             
-            # 2. 컨텍스트 포맷팅 (SimpleVectorStore 형식)
+            # 2. 유사도 체크 - 모든 문서의 유사도가 너무 낮으면 경고
+            max_similarity = max([doc_dict.get('score', 0) for doc_dict in documents])
+            print(f"[INFO] 최대 유사도: {max_similarity:.2%}")
+            
+            if max_similarity < min_similarity:
+                return {
+                    'answer': f"죄송합니다. 질문과 관련된 정보를 문서에서 찾을 수 없습니다.\n\n💡 팁: 다른 키워드로 질문하거나, 더 구체적으로 질문해주세요.\n(검색된 문서의 최대 유사도: {max_similarity:.1%})",
+                    'sources': [],
+                    'context': ""
+                }
+            
+            # 3. 컨텍스트 포맷팅 (SimpleVectorStore 형식)
             context_parts = []
             for i, doc_dict in enumerate(documents, 1):
                 metadata = doc_dict.get('metadata', {})
                 source = metadata.get('original_filename') or metadata.get('filename', '알 수 없음')
                 subject = metadata.get('subject', '')
                 content = doc_dict.get('content', '').strip()
+                similarity = doc_dict.get('score', 0)
                 
                 source_info = f"{source}"
                 if subject:
                     source_info += f" ({subject})"
                 
-                context_parts.append(f"[문서 {i}] 출처: {source_info}\n{content}")
+                context_parts.append(f"[문서 {i}] 출처: {source_info} (유사도: {similarity:.1%})\n{content}")
             
             context = "\n\n".join(context_parts)
             
             print(f"[OK] {len(documents)}개 문서 검색 완료")
             
-            # 3. 프롬프트 생성
+            # 4. 프롬프트 생성
             prompt = self._build_prompt(question, context, system_message)
             
-            # 4. AI API 호출
+            # 5. AI API 호출
             print(f"[AI] {self.api_type.upper()} API 호출 중...")
             
             if self.api_type == 'groq' or self.api_type == 'gemma':
@@ -203,7 +223,7 @@ class RAGChain:
             
             print(f"[OK] 응답 생성 완료")
             
-            # 5. 출처 정보 추출 (SimpleVectorStore 형식)
+            # 6. 출처 정보 추출 (SimpleVectorStore 형식)
             sources = []
             for doc_dict in documents:
                 metadata = doc_dict.get('metadata', {})
@@ -217,7 +237,7 @@ class RAGChain:
                 sources.append({
                     'source': source_display,
                     'content': doc_dict.get('content', '')[:200] + '...',
-                    'similarity': float(doc_dict.get('score', 0)) * 100,  # 퍼센트로 변환
+                    'similarity': float(doc_dict.get('score', 0)),  # 0~1 범위로 반환
                     'metadata': metadata
                 })
             
