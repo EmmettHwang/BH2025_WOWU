@@ -7215,10 +7215,95 @@ def init_rag():
         print("✅ RAG 시스템 초기화 완료")
         print(f"📚 저장된 문서 수: {vector_store_manager.count_documents()}")
         
+        # 기본 문서 자동 로드
+        load_default_documents()
+        
     except Exception as e:
         print(f"❌ RAG 시스템 초기화 실패: {e}")
         print("⚠️ RAG 기능을 사용하려면 필요한 패키지를 설치하세요:")
         print("   pip install -r requirements_rag.txt")
+
+
+def load_default_documents():
+    """documents 폴더의 기본 문서들을 RAG에 자동 로드"""
+    global vector_store_manager, document_loader
+    
+    if not vector_store_manager or not document_loader:
+        print("⚠️ RAG 시스템이 초기화되지 않아 기본 문서를 로드할 수 없습니다")
+        return
+    
+    documents_dir = Path("./documents")
+    
+    # documents 폴더가 없으면 생성
+    if not documents_dir.exists():
+        documents_dir.mkdir(parents=True)
+        print("📁 documents 폴더가 생성되었습니다")
+        return
+    
+    # 지원하는 파일 형식
+    supported_extensions = ['.pdf', '.docx', '.doc', '.txt']
+    
+    # documents 폴더의 모든 파일 검색
+    doc_files = []
+    for ext in supported_extensions:
+        doc_files.extend(documents_dir.glob(f'*{ext}'))
+    
+    if not doc_files:
+        print("📁 documents 폴더에 문서가 없습니다")
+        print("💡 교재 및 교육자료를 documents 폴더에 넣어주세요")
+        return
+    
+    print(f"\n📚 기본 문서 자동 로드 시작 ({len(doc_files)}개 파일)")
+    print("=" * 60)
+    
+    loaded_count = 0
+    skipped_count = 0
+    
+    for doc_path in doc_files:
+        try:
+            # 파일명에서 메타데이터 추출 (예: "교재_바이오헬스기초_홍길동_2024.pdf")
+            filename = doc_path.stem
+            parts = filename.split('_')
+            
+            metadata = {
+                'original_filename': doc_path.name,
+                'upload_date': datetime.now().strftime('%Y-%m-%d'),
+                'file_size': doc_path.stat().st_size,
+                'auto_loaded': True
+            }
+            
+            # 파일명에서 과목, 강사명 등 추출 시도
+            if len(parts) >= 2:
+                metadata['subject'] = parts[1] if len(parts) > 1 else ''
+                metadata['instructor'] = parts[2] if len(parts) > 2 else ''
+            
+            # 문서 로드
+            documents = document_loader.load_document(str(doc_path), metadata)
+            
+            if not documents:
+                print(f"⚠️ {doc_path.name}: 텍스트를 추출할 수 없습니다")
+                skipped_count += 1
+                continue
+            
+            # 텍스트와 메타데이터 분리
+            texts = [doc.page_content for doc in documents]
+            metadatas = [doc.metadata for doc in documents]
+            
+            # 벡터 스토어에 추가
+            doc_ids = vector_store_manager.add_documents(texts, metadatas)
+            
+            print(f"✅ {doc_path.name}: {len(documents)}개 청크 로드 완료")
+            loaded_count += 1
+            
+        except Exception as e:
+            print(f"❌ {doc_path.name}: 로드 실패 - {str(e)}")
+            skipped_count += 1
+    
+    print("=" * 60)
+    print(f"📊 기본 문서 로드 완료: {loaded_count}개 성공, {skipped_count}개 실패")
+    print(f"📚 현재 총 문서 수: {vector_store_manager.count_documents()}")
+    print()
+
 
 # 앱 시작 시 RAG 초기화
 try:
