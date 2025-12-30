@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+import sys
+import io
+
+# Windows에서 UTF-8 인코딩 강제 설정
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
@@ -5,7 +14,6 @@ from fastapi.staticfiles import StaticFiles
 from typing import Optional, List
 import pymysql
 import pandas as pd
-import io
 import os
 from datetime import datetime, timedelta, date
 from openai import OpenAI
