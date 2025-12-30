@@ -173,9 +173,16 @@ class RAGChain:
             # 2. 컨텍스트 포맷팅 (SimpleVectorStore 형식)
             context_parts = []
             for i, doc_dict in enumerate(documents, 1):
-                source = doc_dict.get('metadata', {}).get('filename', '알 수 없음')
+                metadata = doc_dict.get('metadata', {})
+                source = metadata.get('original_filename') or metadata.get('filename', '알 수 없음')
+                subject = metadata.get('subject', '')
                 content = doc_dict.get('content', '').strip()
-                context_parts.append(f"[문서 {i}] 출처: {source}\n{content}")
+                
+                source_info = f"{source}"
+                if subject:
+                    source_info += f" ({subject})"
+                
+                context_parts.append(f"[문서 {i}] 출처: {source_info}\n{content}")
             
             context = "\n\n".join(context_parts)
             
@@ -200,10 +207,17 @@ class RAGChain:
             sources = []
             for doc_dict in documents:
                 metadata = doc_dict.get('metadata', {})
+                source_name = metadata.get('original_filename') or metadata.get('filename', '알 수 없음')
+                subject = metadata.get('subject', '')
+                
+                source_display = source_name
+                if subject:
+                    source_display = f"{source_name} - {subject}"
+                
                 sources.append({
-                    'source': metadata.get('filename', '알 수 없음'),
+                    'source': source_display,
                     'content': doc_dict.get('content', '')[:200] + '...',
-                    'similarity': float(doc_dict.get('score', 0)),
+                    'similarity': float(doc_dict.get('score', 0)) * 100,  # 퍼센트로 변환
                     'metadata': metadata
                 })
             
