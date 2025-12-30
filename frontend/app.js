@@ -2941,6 +2941,11 @@ window.showTab = function(tab, addToHistory = true) {
             removeDashboardActivityListeners();
             loadNotices();
             break;
+        case 'rag-documents':
+            stopDashboardAutoRefresh();
+            removeDashboardActivityListeners();
+            renderRAGDocuments();
+            break;
         case 'backup-manager':
             stopDashboardAutoRefresh();
             removeDashboardActivityListeners();
@@ -14115,6 +14120,311 @@ async function loadNotices() {
         window.hideLoading();
         console.error('공지사항 로드 실패:', error);
         await window.showError('공지사항을 불러오는데 실패했습니다.\n\n' + error.message, '로드 실패');
+    }
+}
+
+// RAG 문서 관리 렌더링
+function renderRAGDocuments() {
+    const app = document.getElementById('app');
+    
+    app.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-file-alt mr-2"></i>문서 관리 (RAG)
+                </h2>
+                <button onclick="window.location.reload()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-sync-alt mr-2"></i>새로고침
+                </button>
+            </div>
+
+            <!-- 문서 업로드 영역 -->
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 mb-6 border-2 border-dashed border-blue-300" id="upload-area">
+                <div class="text-center">
+                    <i class="fas fa-cloud-upload-alt text-6xl text-blue-400 mb-4"></i>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">파일을 드래그하거나 클릭하여 업로드</h3>
+                    <p class="text-gray-500 mb-4">PDF, DOCX, TXT 파일 지원 (최대 50MB)</p>
+                    <input type="file" id="file-input" accept=".pdf,.docx,.doc,.txt" multiple class="hidden">
+                    <button onclick="document.getElementById('file-input').click()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
+                        <i class="fas fa-folder-open mr-2"></i>파일 선택
+                    </button>
+                </div>
+                
+                <!-- 업로드 진행률 -->
+                <div id="upload-progress" class="hidden mt-4">
+                    <div class="bg-white rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-semibold text-gray-700">업로드 중...</span>
+                            <span id="upload-percent" class="text-sm text-blue-600">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="upload-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <p id="upload-file-name" class="text-xs text-gray-500 mt-2"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RAG 시스템 상태 -->
+            <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 mb-6 border border-green-200">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <i class="fas fa-database text-2xl text-green-600 mr-3"></i>
+                        <div>
+                            <h3 class="font-semibold text-gray-700">RAG 시스템 상태</h3>
+                            <p id="rag-status-text" class="text-sm text-gray-600">로딩 중...</p>
+                        </div>
+                    </div>
+                    <button onclick="clearVectorDB()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">
+                        <i class="fas fa-trash mr-2"></i>벡터 DB 초기화
+                    </button>
+                </div>
+            </div>
+
+            <!-- 업로드된 문서 목록 -->
+            <div class="bg-gray-50 rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">
+                    <i class="fas fa-list mr-2"></i>업로드된 문서 (<span id="document-count">0</span>개)
+                </h3>
+                <div id="documents-list" class="space-y-3">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-folder-open text-4xl mb-2"></i>
+                        <p>업로드된 문서가 없습니다</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 이벤트 리스너 설정
+    setupRAGUploadListeners();
+    
+    // 문서 목록 및 상태 로드
+    loadRAGStatus();
+    loadRAGDocuments();
+}
+
+// RAG 업로드 리스너 설정
+function setupRAGUploadListeners() {
+    const uploadArea = document.getElementById('upload-area');
+    const fileInput = document.getElementById('file-input');
+
+    // 드래그 앤 드롭
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('border-blue-500', 'bg-blue-100');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('border-blue-500', 'bg-blue-100');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('border-blue-500', 'bg-blue-100');
+        const files = Array.from(e.dataTransfer.files);
+        handleRAGFileUpload(files);
+    });
+
+    // 파일 선택
+    fileInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        handleRAGFileUpload(files);
+    });
+}
+
+// RAG 파일 업로드 처리
+async function handleRAGFileUpload(files) {
+    const validExtensions = ['.pdf', '.docx', '.doc', '.txt'];
+    const maxSize = 50 * 1024 * 1024; // 50MB
+
+    for (const file of files) {
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        
+        // 파일 형식 검증
+        if (!validExtensions.includes(ext)) {
+            showNotification(`${file.name}: 지원하지 않는 파일 형식입니다`, 'error');
+            continue;
+        }
+
+        // 파일 크기 검증
+        if (file.size > maxSize) {
+            showNotification(`${file.name}: 파일 크기가 50MB를 초과합니다`, 'error');
+            continue;
+        }
+
+        // 업로드 진행
+        await uploadRAGFile(file);
+    }
+
+    // 문서 목록 새로고침
+    loadRAGDocuments();
+    loadRAGStatus();
+}
+
+// RAG 파일 업로드
+async function uploadRAGFile(file) {
+    const progressDiv = document.getElementById('upload-progress');
+    const progressBar = document.getElementById('upload-bar');
+    const progressPercent = document.getElementById('upload-percent');
+    const fileName = document.getElementById('upload-file-name');
+
+    progressDiv.classList.remove('hidden');
+    fileName.textContent = file.name;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/rag/upload`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            progressBar.style.width = '100%';
+            progressPercent.textContent = '100%';
+            
+            const data = await response.json();
+            showNotification(`${file.name} 업로드 완료 (${data.chunks_count}개 청크)`, 'success');
+            
+            setTimeout(() => {
+                progressDiv.classList.add('hidden');
+                progressBar.style.width = '0%';
+                progressPercent.textContent = '0%';
+            }, 1000);
+        } else {
+            const error = await response.json();
+            showNotification(`${file.name} 업로드 실패: ${error.detail}`, 'error');
+            progressDiv.classList.add('hidden');
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        showNotification(`${file.name} 업로드 실패: ${error.message}`, 'error');
+        progressDiv.classList.add('hidden');
+    }
+}
+
+// RAG 상태 로드
+async function loadRAGStatus() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/rag/status`);
+        if (response.ok) {
+            const data = await response.json();
+            const statusText = document.getElementById('rag-status-text');
+            if (statusText) {
+                statusText.innerHTML = `
+                    <span class="text-green-600 font-semibold">✅ 정상 작동</span> | 
+                    문서: ${data.document_count}개 | 
+                    모델: ${data.embedding_model}
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('Status load error:', error);
+    }
+}
+
+// RAG 문서 목록 로드
+async function loadRAGDocuments() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/rag/documents`);
+        if (response.ok) {
+            const data = await response.json();
+            const documentsList = document.getElementById('documents-list');
+            const documentCount = document.getElementById('document-count');
+            
+            if (documentCount) {
+                documentCount.textContent = data.unique_documents || 0;
+            }
+
+            if (documentsList) {
+                if (!data.documents || data.documents.length === 0) {
+                    documentsList.innerHTML = `
+                        <div class="text-center text-gray-500 py-8">
+                            <i class="fas fa-folder-open text-4xl mb-2"></i>
+                            <p>업로드된 문서가 없습니다</p>
+                        </div>
+                    `;
+                } else {
+                    documentsList.innerHTML = data.documents.map(doc => `
+                        <div class="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center flex-1">
+                                    <i class="fas fa-file-alt text-2xl text-blue-500 mr-3"></i>
+                                    <div>
+                                        <h4 class="font-semibold text-gray-800">${doc.filename || '알 수 없음'}</h4>
+                                        <p class="text-sm text-gray-500">
+                                            ${doc.chunks_count || 0}개 청크 | 
+                                            ${doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString('ko-KR') : ''}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button onclick="deleteRAGDocument('${doc.document_id}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">
+                                    <i class="fas fa-trash"></i> 삭제
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Documents load error:', error);
+    }
+}
+
+// RAG 문서 삭제
+async function deleteRAGDocument(documentId) {
+    if (!confirm('이 문서를 삭제하시겠습니까?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/rag/documents/${documentId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showNotification('문서가 삭제되었습니다', 'success');
+            loadRAGDocuments();
+            loadRAGStatus();
+        } else {
+            const error = await response.json();
+            showNotification(`삭제 실패: ${error.detail}`, 'error');
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        showNotification(`삭제 실패: ${error.message}`, 'error');
+    }
+}
+
+// 벡터 DB 초기화
+async function clearVectorDB() {
+    if (!confirm('벡터 DB를 초기화하시겠습니까? 모든 문서가 삭제됩니다.')) {
+        return;
+    }
+
+    if (!confirm('정말로 모든 문서를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/rag/clear`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showNotification('벡터 DB가 초기화되었습니다', 'success');
+            loadRAGDocuments();
+            loadRAGStatus();
+        } else {
+            const error = await response.json();
+            showNotification(`초기화 실패: ${error.detail}`, 'error');
+        }
+    } catch (error) {
+        console.error('Clear error:', error);
+        showNotification(`초기화 실패: ${error.message}`, 'error');
     }
 }
 
