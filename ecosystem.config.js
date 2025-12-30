@@ -3,15 +3,17 @@ module.exports = {
     {
       name: 'backend-server',
       script: 'python',
-      args: '-m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload',
+      args: '-m uvicorn backend.main:app --host 0.0.0.0 --port 8000',
       cwd: './',
+      interpreter: 'none',
       instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
-        PORT: 8000
+        PORT: 8000,
+        CONDA_DEFAULT_ENV: 'bh2025_WOWU'
       },
       error_file: './logs/backend-error.log',
       out_file: './logs/backend-out.log',
