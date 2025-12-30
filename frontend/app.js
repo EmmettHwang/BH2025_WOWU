@@ -16965,66 +16965,76 @@ window.sendTextMessage = async function() {
     }
 };
 
-// TTS 음성 재생 함수
+// TTS 음성 재생 함수 (브라우저 내장 TTS 사용)
 async function playTTS(text, characterName) {
     try {
-        console.log('🔊 TTS 재생 시작:', characterName);
+        console.log('🔊 브라우저 TTS 재생 시작:', characterName);
         
-        // Gemini API 키 가져오기 (Google Cloud TTS와 공통)
-        const geminiApiKey = localStorage.getItem('gemini_api_key') || '';
-        
-        if (!geminiApiKey) {
-            console.warn('⚠️ Gemini/Google Cloud API 키가 없어 TTS를 재생할 수 없습니다');
+        // Web Speech API 지원 확인
+        if (!('speechSynthesis' in window)) {
+            console.warn('⚠️ 브라우저가 음성 합성을 지원하지 않습니다');
             return;
         }
         
-        // 백엔드 TTS API 호출
-        const response = await fetch('/api/tts', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Gemini-API-Key': geminiApiKey
-            },
-            body: JSON.stringify({
-                text: text,
-                character: characterName
-            })
-        });
+        // 이미 재생 중이면 중지
+        window.speechSynthesis.cancel();
         
-        if (!response.ok) {
-            throw new Error('TTS API 호출 실패');
+        // 음성 합성 객체 생성
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // 캐릭터별 음성 설정
+        if (characterName === '데이빗' || characterName === 'PM 정운표') {
+            // 남성 목소리
+            utterance.pitch = 0.8;  // 낮은 톤
+            utterance.rate = 0.9;   // 조금 느린 속도
+        } else {
+            // 여성 목소리 (예진이)
+            utterance.pitch = 1.2;  // 높은 톤
+            utterance.rate = 1.0;   // 보통 속도
         }
         
-        const data = await response.json();
+        utterance.lang = 'ko-KR';  // 한국어
+        utterance.volume = 1.0;    // 최대 볼륨
         
-        if (!data.audioContent) {
-            throw new Error('audioContent가 없습니다');
+        // 음성 선택 (한국어 음성 찾기)
+        const voices = window.speechSynthesis.getVoices();
+        const koreanVoice = voices.find(voice => voice.lang.startsWith('ko'));
+        if (koreanVoice) {
+            utterance.voice = koreanVoice;
+            console.log('🎤 선택된 음성:', koreanVoice.name);
         }
         
-        // Base64 디코딩하여 오디오 재생
-        const audioBlob = base64ToBlob(data.audioContent, 'audio/mp3');
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        
-        audio.onplay = () => {
+        utterance.onstart = () => {
             console.log('🔊 음성 재생 시작');
         };
         
-        audio.onended = () => {
+        utterance.onend = () => {
             console.log('✅ 음성 재생 완료');
-            URL.revokeObjectURL(audioUrl);
         };
         
-        audio.onerror = (error) => {
+        utterance.onerror = (error) => {
             console.error('❌ 음성 재생 오류:', error);
         };
         
-        await audio.play();
+        // 음성 재생
+        window.speechSynthesis.speak(utterance);
         
     } catch (error) {
         console.error('❌ TTS 재생 실패:', error);
-        throw error;
+        // TTS 실패해도 텍스트는 표시되었으므로 에러를 throw하지 않음
     }
+}
+
+// 브라우저 TTS 음성 목록 초기화 (페이지 로드 시)
+if ('speechSynthesis' in window) {
+    // 음성 목록이 로드될 때까지 대기
+    window.speechSynthesis.onvoiceschanged = () => {
+        const voices = window.speechSynthesis.getVoices();
+        console.log('🎤 사용 가능한 TTS 음성:', voices.length + '개');
+        const koreanVoices = voices.filter(v => v.lang.startsWith('ko'));
+        console.log('🇰🇷 한국어 TTS 음성:', koreanVoices.map(v => v.name).join(', '));
+    };
+}
 }
 
 // Base64를 Blob으로 변환
