@@ -2676,7 +2676,7 @@ window.sendChatMessage = async function() {
             console.log('RAG 모드로 질문:', message);
             
             const groqApiKey = localStorage.getItem('groq_api_key') || '';
-            const ragTopK = parseInt(localStorage.getItem('rag_top_k') || '3');
+            const ragTopK = parseInt(localStorage.getItem('rag_top_k') || '10');  // 기본값 3→10
             
             const response = await axios.post(`${API_BASE_URL}/api/rag/chat`, {
                 message: message,

@@ -7551,29 +7551,29 @@ async def rag_chat(request: Request):
                     result = cursor.fetchone()
                     instructor_count = result['count'] if result else 0
                     
-                    # 추가 통계
+                    # 강사 이름 목록 (상위 10명)
                     cursor.execute("""
-                        SELECT 
-                            COUNT(CASE WHEN role = 'admin' THEN 1 END) as admin_count,
-                            COUNT(CASE WHEN role = 'instructor' THEN 1 END) as instructor_count,
-                            COUNT(CASE WHEN role = 'assistant' THEN 1 END) as assistant_count
-                        FROM instructors
+                        SELECT name, email 
+                        FROM instructors 
+                        ORDER BY id 
+                        LIMIT 10
                     """)
-                    role_stats = cursor.fetchone()
+                    instructor_list = cursor.fetchall()
                     
                     conn.close()
                     
                     # 답변 생성
                     answer = f"현재 시스템에 등록된 강사 수는 **총 {instructor_count}명**입니다.\n\n"
                     
-                    if role_stats:
-                        answer += "📊 **역할별 현황:**\n"
-                        if role_stats.get('admin_count', 0) > 0:
-                            answer += f"- 관리자: {role_stats['admin_count']}명\n"
-                        if role_stats.get('instructor_count', 0) > 0:
-                            answer += f"- 강사: {role_stats['instructor_count']}명\n"
-                        if role_stats.get('assistant_count', 0) > 0:
-                            answer += f"- 조교: {role_stats['assistant_count']}명\n"
+                    if instructor_list and len(instructor_list) > 0:
+                        answer += "📋 **등록된 강사 (상위 10명):**\n"
+                        for idx, instructor in enumerate(instructor_list, 1):
+                            name = instructor.get('name', '이름없음')
+                            email = instructor.get('email', '')
+                            if email:
+                                answer += f"{idx}. {name} ({email})\n"
+                            else:
+                                answer += f"{idx}. {name}\n"
                     
                     answer += "\n💡 *이 정보는 데이터베이스에서 실시간으로 조회되었습니다.*"
                     
@@ -7674,9 +7674,9 @@ async def rag_chat(request: Request):
         # RAG 체인 생성
         rag_chain = RAGChain(vector_store_manager, api_key, api_type)
         
-        # RAG 질문 처리 (유사도 임계값 0.3)
+        # RAG 질문 처리 (유사도 임계값 0.008 = 0.8%)
         print(f"💬 RAG 질문: {message}")
-        result = await rag_chain.query(message, k=k, min_similarity=0.3)
+        result = await rag_chain.query(message, k=k, min_similarity=0.008)
         
         return {
             "success": True,
