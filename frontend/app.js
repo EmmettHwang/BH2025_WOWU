@@ -2658,85 +2658,104 @@ window.toggleChatbot = function() {
 window.sendChatMessage = async function() {
     const input = document.getElementById('chatbot-input');
     const message = input.value.trim();
+    const ragToggle = document.getElementById('rag-mode-toggle');
+    const useRAG = ragToggle ? ragToggle.checked : false;
     
     if (!message) return;
     
     // 사용자 메시지 추가
-    appendChatMessage(message, 'user');
+    appendChatMessage(message, 'user', useRAG);
     input.value = '';
     
     // 로딩 표시
-    const loadingId = appendChatMessage('...', 'bot', true);
+    const loadingId = appendChatMessage('...', 'bot', false, true);
     
     try {
-        // 선택된 AI 모델 가져오기
-        const selectedModel = localStorage.getItem('ai_model') || 'groq';
-        
-        // 현재 선택된 캐릭터 가져오기 (기본값: 예진이)
-        let currentCharacter = '예진이';
-        if (window.currentCharacterName) {
-            currentCharacter = window.currentCharacterName;
-        }
-        
-        // API 키 가져오기
-        const groqApiKey = localStorage.getItem('groq_api_key') || '';
-        const geminiApiKey = localStorage.getItem('gemini_api_key') || '';
-        
-        console.log('플로팅 챗봇 API 호출:', { 
-            message, 
-            character: currentCharacter, 
-            model: selectedModel,
-            hasGroqKey: groqApiKey ? '설정됨' : '미설정',
-            hasGeminiKey: geminiApiKey ? '설정됨' : '미설정'
-        });
-        
-        // API 호출 (헤더에 API 키 포함)
-        const response = await axios.post(`${API_BASE_URL}/api/aesong-chat`, {
-            message: message,
-            character: currentCharacter,
-            model: selectedModel
-        }, {
-            headers: {
-                'X-GROQ-API-Key': groqApiKey,
-                'X-Gemini-API-Key': geminiApiKey
-            }
-        });
-        
-        console.log('플로팅 챗봇 API 응답:', response.data);
-        
-        // 로딩 메시지 제거
-        document.getElementById(loadingId).remove();
-        
-        // 에러 응답 확인
-        if (response.data.model === 'error') {
-            // 에러 메시지 한글 번역
-            const translatedError = translateApiError(response.data.error);
-            appendChatMessage(`죄송합니다. AI 응답 중 오류가 발생했습니다.\n\n${translatedError}`, 'bot');
+        if (useRAG) {
+            // RAG 모드: 문서 기반 답변
+            console.log('RAG 모드로 질문:', message);
+            
+            const groqApiKey = localStorage.getItem('groq_api_key') || '';
+            
+            const response = await axios.post(`${API_BASE_URL}/api/rag/chat`, {
+                message: message,
+                k: 3
+            }, {
+                headers: {
+                    'X-GROQ-API-Key': groqApiKey
+                }
+            });
+            
+            console.log('RAG 응답:', response.data);
+            
+            // 로딩 메시지 제거
+            document.getElementById(loadingId).remove();
+            
+            // RAG 응답 추가 (출처 포함)
+            appendChatMessage(response.data.answer, 'bot', false, false, response.data.sources);
+            
         } else {
-            // AI 응답 추가
-            appendChatMessage(response.data.response, 'bot');
+            // 일반 챗봇 모드
+            const selectedModel = localStorage.getItem('ai_model') || 'groq';
+            
+            let currentCharacter = '예진이';
+            if (window.currentCharacterName) {
+                currentCharacter = window.currentCharacterName;
+            }
+            
+            const groqApiKey = localStorage.getItem('groq_api_key') || '';
+            const geminiApiKey = localStorage.getItem('gemini_api_key') || '';
+            
+            console.log('플로팅 챗봇 API 호출:', { 
+                message, 
+                character: currentCharacter, 
+                model: selectedModel
+            });
+            
+            const response = await axios.post(`${API_BASE_URL}/api/aesong-chat`, {
+                message: message,
+                character: currentCharacter,
+                model: selectedModel
+            }, {
+                headers: {
+                    'X-GROQ-API-Key': groqApiKey,
+                    'X-Gemini-API-Key': geminiApiKey
+                }
+            });
+            
+            console.log('플로팅 챗봇 API 응답:', response.data);
+            
+            // 로딩 메시지 제거
+            document.getElementById(loadingId).remove();
+            
+            if (response.data.model === 'error') {
+                const translatedError = translateApiError(response.data.error);
+                appendChatMessage(`죄송합니다. AI 응답 중 오류가 발생했습니다.\n\n${translatedError}`, 'bot');
+            } else {
+                appendChatMessage(response.data.response, 'bot');
+            }
         }
         
     } catch (error) {
         console.error('챗봇 오류:', error);
         document.getElementById(loadingId).remove();
         
-        // 에러 메시지 한글 번역
         const translatedError = translateApiError(error.message || error.toString());
         appendChatMessage(`죄송합니다. 응답 중 오류가 발생했습니다.\n\n${translatedError}`, 'bot');
     }
 };
 
-function appendChatMessage(message, type, isLoading = false) {
+function appendChatMessage(message, type, isRAG = false, isLoading = false, sources = null) {
     const messagesContainer = document.getElementById('chatbot-messages');
     const messageId = 'msg-' + Date.now();
     
     if (type === 'user') {
-        // 사용자 메시지
+        // 사용자 메시지 (RAG 표시 포함)
+        const ragBadge = isRAG ? '<span style="background: #667eea; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 6px;">📚 지식검색</span>' : '';
         const messageHTML = `
             <div class="chatbot-message user-message" style="display: flex; gap: 10px; margin-bottom: 15px; justify-content: flex-end;">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 15px; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 70%;">
-                    <div style="font-size: 14px;">${message}</div>
+                    <div style="font-size: 14px;">${message}${ragBadge}</div>
                 </div>
             </div>
         `;
@@ -2744,6 +2763,25 @@ function appendChatMessage(message, type, isLoading = false) {
     } else {
         // 봇 메시지
         const loadingAnimation = isLoading ? 'style="animation: pulse 1.5s ease-in-out infinite;"' : '';
+        
+        // 출처 정보 HTML 생성
+        let sourcesHTML = '';
+        if (sources && sources.length > 0) {
+            sourcesHTML = `
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
+                    <div style="font-size: 11px; color: #6b7280; font-weight: 600; margin-bottom: 5px;">
+                        <i class="fas fa-book" style="margin-right: 4px;"></i>참고 문서
+                    </div>
+                    ${sources.map((src, idx) => `
+                        <div style="font-size: 11px; color: #6b7280; margin-top: 3px;">
+                            ${idx + 1}. ${src.source || '알 수 없음'} 
+                            <span style="color: #9ca3af;">(유사도: ${(src.similarity * 100).toFixed(1)}%)</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
         const messageHTML = `
             <div id="${messageId}" class="chatbot-message bot-message" style="display: flex; gap: 10px; margin-bottom: 15px;">
                 <div style="width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">
@@ -2751,6 +2789,7 @@ function appendChatMessage(message, type, isLoading = false) {
                 </div>
                 <div ${loadingAnimation} style="background: white; padding: 10px 15px; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 70%;">
                     <div style="font-size: 14px; color: #374151;">${message}</div>
+                    ${sourcesHTML}
                 </div>
             </div>
         `;

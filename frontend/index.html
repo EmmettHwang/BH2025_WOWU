@@ -63,6 +63,25 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
+        /* RAG Toggle Switch */
+        .switch input:checked + .slider {
+            background-color: #667eea;
+        }
+        .switch input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
     </style>
     
     <!-- 디바이스 감지 및 리다이렉션 (최우선 실행) -->
@@ -504,6 +523,18 @@
                 
                 <!-- 챗봇 입력 영역 -->
                 <div style="padding: 15px; border-top: 1px solid #e5e7eb; background: white; border-radius: 0 0 15px 15px;">
+                    <!-- RAG 토글 -->
+                    <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f3f4f6; border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-database" style="color: #667eea; font-size: 14px;"></i>
+                            <span style="font-size: 13px; color: #374151; font-weight: 500;">지식 검색 사용</span>
+                        </div>
+                        <label class="switch" style="position: relative; display: inline-block; width: 44px; height: 24px;">
+                            <input type="checkbox" id="rag-mode-toggle" style="opacity: 0; width: 0; height: 0;">
+                            <span class="slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 24px;"></span>
+                        </label>
+                    </div>
+                    
                     <div style="display: flex; gap: 10px;">
                         <input type="text" id="chatbot-input" placeholder="메시지를 입력하세요..." 
                                style="flex: 1; padding: 10px 15px; border: 2px solid #e5e7eb; border-radius: 25px; outline: none; font-size: 14px;"
