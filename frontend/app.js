@@ -18885,7 +18885,8 @@ window.refreshRAGStatus = async function() {
             docCountElement.textContent = `${data.document_count || 0}개`;
         }
         
-        showNotification('RAG 상태가 업데이트되었습니다', 'success');
+        // showNotification('RAG 상태가 업데이트되었습니다', 'success');
+        console.log('✅ RAG 상태 업데이트 완료');
         
     } catch (error) {
         console.error('❌ RAG 상태 조회 실패:', error);
@@ -18895,7 +18896,8 @@ window.refreshRAGStatus = async function() {
             initStatusElement.innerHTML = '<span class="text-gray-500"><i class="fas fa-exclamation-triangle mr-1"></i>조회 실패</span>';
         }
         
-        showNotification('RAG 상태 조회 실패: ' + error.message, 'error');
+        // showNotification('RAG 상태 조회 실패: ' + error.message, 'error');
+        console.error('RAG 상태 조회 실패:', error.message);
     }
 };
 
