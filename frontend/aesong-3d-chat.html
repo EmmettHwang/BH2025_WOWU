@@ -18,6 +18,96 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
+        /* RAG Toggle Styles */
+        .rag-toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 8px 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .rag-toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: white;
+            font-weight: 500;
+        }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        .switch input:checked + .slider {
+            background-color: #10b981;
+        }
+        
+        .switch input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+        
+        /* Source Display Styles */
+        .source-item {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #333;
+        }
+        
+        .source-title {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+        
+        .similarity-score {
+            background: #10b981;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            margin-left: 6px;
+        }
+        
         #canvas-container {
             position: fixed;
             top: 0;
@@ -80,6 +170,8 @@
             color: #333;
             text-align: left;
             margin-right: 20%;
+            word-wrap: break-word;
+            white-space: pre-wrap;
         }
         
         @keyframes fadeIn {
@@ -189,6 +281,18 @@
         
         <!-- 채팅 컨테이너 -->
         <div class="chat-container">
+            <!-- RAG 토글 -->
+            <div class="rag-toggle-container">
+                <div class="rag-toggle-label">
+                    <i class="fas fa-database" style="font-size: 14px;"></i>
+                    <span>RAG 검색 사용</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="rag-mode-toggle-3d" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
             <div class="chat-messages" id="chat-messages">
                 <div class="message bot">
                     안녕하세요! 저는 예진이예요! 🐰<br>
@@ -432,11 +536,42 @@
         };
         
         // 메시지 추가
-        function addMessage(text, sender) {
+        function addMessage(text, sender, sources = null) {
             const messagesDiv = document.getElementById('chat-messages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${sender}`;
-            messageDiv.textContent = text;
+            
+            // 메시지 포맷팅
+            let formattedText = text;
+            
+            // 객관식 문제 포맷팅
+            formattedText = formattedText.replace(/([A-D])\)\s+([^\n]+)/g, '<span style="display: block; margin-left: 20px;">$1) $2</span>');
+            formattedText = formattedText.replace(/(정답:\s*\n*[^\n]+)/g, '<strong style="color: #10b981; display: block; margin-top: 8px;">$1</strong>');
+            formattedText = formattedText.replace(/(설명:|해설:)([^\n]+)/g, '<em style="color: #6b7280; display: block; margin-bottom: 10px;">$1$2</em>');
+            formattedText = formattedText.replace(/\n/g, '<br>');
+            
+            messageDiv.innerHTML = formattedText;
+            
+            // RAG 출처 표시
+            if (sources && sources.length > 0) {
+                const sourcesDiv = document.createElement('div');
+                sourcesDiv.style.marginTop = '10px';
+                sourcesDiv.innerHTML = '<div class="source-title">📚 참고 문서:</div>';
+                
+                sources.forEach((source, index) => {
+                    const sourceItem = document.createElement('div');
+                    sourceItem.className = 'source-item';
+                    const similarity = (source.similarity * 100).toFixed(1);
+                    sourceItem.innerHTML = `
+                        ${index + 1}. ${source.source}
+                        <span class="similarity-score">${similarity}% 유사</span>
+                    `;
+                    sourcesDiv.appendChild(sourceItem);
+                });
+                
+                messageDiv.appendChild(sourcesDiv);
+            }
+            
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
@@ -446,17 +581,52 @@
             updateStatus('생각하는 중...', true);
             
             try {
-                const response = await fetch(`${API_BASE_URL}/api/aesong-chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: userMessage })
-                });
+                // RAG 토글 상태 확인
+                const ragToggle = document.getElementById('rag-mode-toggle-3d');
+                const useRAG = ragToggle ? ragToggle.checked : false;
                 
-                const data = await response.json();
-                const botMessage = data.response || '죄송해요, 잘 못 들었어요.';
-                
-                addMessage(botMessage, 'bot');
-                speak(botMessage);
+                if (useRAG) {
+                    // RAG 모드: 문서 기반 답변
+                    console.log('🔍 RAG 모드로 질문:', userMessage);
+                    
+                    const ragTopK = parseInt(localStorage.getItem('rag_top_k') || '3');
+                    const groqApiKey = localStorage.getItem('groq_api_key') || '';
+                    
+                    const response = await fetch(`${API_BASE_URL}/api/rag/chat`, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-GROQ-API-Key': groqApiKey
+                        },
+                        body: JSON.stringify({ 
+                            message: userMessage,
+                            k: ragTopK
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    const botMessage = data.answer || '죄송해요, 답변을 생성하지 못했어요.';
+                    const sources = data.sources || [];
+                    
+                    console.log('✅ RAG 응답:', { answer: botMessage, sources });
+                    
+                    addMessage(botMessage, 'bot', sources);
+                    speak(botMessage);
+                    
+                } else {
+                    // 일반 챗봇 모드
+                    const response = await fetch(`${API_BASE_URL}/api/aesong-chat`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: userMessage })
+                    });
+                    
+                    const data = await response.json();
+                    const botMessage = data.response || '죄송해요, 잘 못 들었어요.';
+                    
+                    addMessage(botMessage, 'bot');
+                    speak(botMessage);
+                }
                 
                 updateStatus('준비 완료', false);
                 
