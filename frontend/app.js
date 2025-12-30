@@ -13568,7 +13568,7 @@ function renderSystemSettings(settings) {
                 <div class="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 shadow-sm">
                     <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-book-reader mr-2 text-green-600"></i>
-                        RAG 지식 검색 설정
+                        RAG (Retrieval-Augmented Generation) - 검색 증강 생성 지식 검색 설정
                     </h3>
                     
                     <!-- RAG 검색 문서 개수 -->
