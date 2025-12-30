@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'backend-server',
-      script: 'python',
+      script: 'D:/miniconda3/envs/bh2025_WOWU/python.exe',
       args: '-m uvicorn backend.main:app --host 0.0.0.0 --port 8000',
       cwd: './',
       interpreter: 'none',
@@ -12,8 +12,7 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
-        PORT: 8000,
-        CONDA_DEFAULT_ENV: 'bh2025_WOWU'
+        PORT: 8000
       },
       error_file: './logs/backend-error.log',
       out_file: './logs/backend-out.log',
