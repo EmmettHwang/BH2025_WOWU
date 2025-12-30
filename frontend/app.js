@@ -2765,11 +2765,10 @@ function appendChatMessage(message, type, isRAG = false, isLoading = false, sour
         // 봇 메시지 포맷팅
         let formattedMessage = message;
         
-        // 객관식 문제 포맷팅
-        formattedMessage = formattedMessage.replace(/(\d+\.\s+[^\n]+)\n([A-D]\))/g, '$1\n\n$2');
-        formattedMessage = formattedMessage.replace(/([A-D]\)\s+[^\n]+)/g, '<span style="display: block; margin-left: 20px; margin-bottom: 5px;">$1</span>');
-        formattedMessage = formattedMessage.replace(/(정답:\s+[^\n]+)/g, '<strong style="color: #10b981; display: block; margin-top: 10px;">$1</strong>');
-        formattedMessage = formattedMessage.replace(/(해설:\s+[^\n]+)/g, '<em style="color: #6b7280; display: block; margin-bottom: 15px;">$1</em>');
+        // 객관식 문제 포맷팅 (줄바꿈만 적용, 여백 최소화)
+        formattedMessage = formattedMessage.replace(/([A-D]\)\s+[^\n]+)/g, '<span style="display: block; margin-left: 20px;">$1</span>');
+        formattedMessage = formattedMessage.replace(/(정답:\s*\n*[^\n]+)/g, '<strong style="color: #10b981; display: block; margin-top: 8px;">$1</strong>');
+        formattedMessage = formattedMessage.replace(/(설명:|해설:)([^\n]+)/g, '<em style="color: #6b7280; display: block; margin-bottom: 10px;">$1$2</em>');
         
         // 줄바꿈을 <br>로 변환
         formattedMessage = formattedMessage.replace(/\n/g, '<br>');
