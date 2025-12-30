@@ -11,6 +11,17 @@ from pathlib import Path
 # API 기본 URL
 BASE_URL = "http://localhost:8000"
 
+def get_api_key_from_system():
+    """시스템 설정에서 GROQ API 키 가져오기"""
+    try:
+        response = requests.get(f"{BASE_URL}/api/system-settings")
+        if response.status_code == 200:
+            data = response.json()
+            return data.get('groq_api_key', '')
+    except:
+        pass
+    return None
+
 def print_section(title):
     """섹션 헤더 출력"""
     print("\n" + "="*60)
@@ -257,12 +268,13 @@ def test_rag_search(query):
         )
         
         if response.status_code == 200:
-            results = response.json()
+            data = response.json()
+            results = data.get('results', [])
             print(f"✅ 검색 완료 (상위 {len(results)}개 결과):\n")
             
             for i, result in enumerate(results, 1):
                 print(f"{i}. 문서: {result.get('metadata', {}).get('filename', 'Unknown')}")
-                print(f"   유사도: {result.get('score', 0):.4f}")
+                print(f"   유사도: {result.get('similarity', 0):.4f}")
                 print(f"   내용: {result.get('content', '')[:200]}...")
                 print()
         else:
@@ -334,11 +346,16 @@ def main():
     print("\n" + "="*60)
     print("  RAG 챗봇 테스트 (API 키 필요)")
     print("="*60)
-    print("\n⚠️  API 키가 설정되어 있지 않으면 챗봇 테스트는 실패합니다.")
-    print("   API 키는 시스템 설정에서 입력할 수 있습니다.\n")
     
-    # API 키 입력 (선택사항)
-    api_key_input = input("GROQ API 키를 입력하세요 (Enter로 건너뛰기): ").strip()
+    # 시스템 설정에서 API 키 자동 가져오기
+    api_key_from_system = get_api_key_from_system()
+    
+    if api_key_from_system:
+        print(f"\n✅ 시스템 설정에서 GROQ API 키를 찾았습니다: {api_key_from_system[:10]}...")
+        api_key_input = api_key_from_system
+    else:
+        print("\n⚠️  시스템 설정에서 API 키를 찾을 수 없습니다.")
+        api_key_input = input("GROQ API 키를 입력하세요 (Enter로 건너뛰기): ").strip()
     
     test_questions = [
         "mRNA 백신은 어떻게 작동하나요?",

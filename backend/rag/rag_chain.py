@@ -135,7 +135,6 @@ class RAGChain:
     async def query(self, 
                     question: str, 
                     k: int = 3,
-                    filter: Optional[Dict] = None,
                     system_message: Optional[str] = None) -> Dict:
         """
         RAG 질문 처리
@@ -143,7 +142,6 @@ class RAGChain:
         Args:
             question: 사용자 질문
             k: 검색할 문서 수
-            filter: 메타데이터 필터
             system_message: 커스텀 시스템 메시지
             
         Returns:
@@ -158,7 +156,7 @@ class RAGChain:
             print(f"🔍 질문: {question}")
             print(f"📚 {k}개 문서 검색 중...")
             
-            documents = self.vector_store.search_with_score(question, k=k, filter=filter)
+            documents = self.vector_store.search_with_score(question, k=k)
             
             if not documents:
                 return {
@@ -167,9 +165,14 @@ class RAGChain:
                     'context': ""
                 }
             
-            # 2. 컨텍스트 포맷팅
-            docs_only = [doc for doc, score in documents]
-            context = self._format_context(docs_only)
+            # 2. 컨텍스트 포맷팅 (SimpleVectorStore 형식)
+            context_parts = []
+            for i, doc_dict in enumerate(documents, 1):
+                source = doc_dict.get('metadata', {}).get('filename', '알 수 없음')
+                content = doc_dict.get('content', '').strip()
+                context_parts.append(f"[문서 {i}] 출처: {source}\n{content}")
+            
+            context = "\n\n".join(context_parts)
             
             print(f"✅ {len(documents)}개 문서 검색 완료")
             
@@ -188,14 +191,15 @@ class RAGChain:
             
             print(f"✅ 응답 생성 완료")
             
-            # 5. 출처 정보 추출
+            # 5. 출처 정보 추출 (SimpleVectorStore 형식)
             sources = []
-            for doc, score in documents:
+            for doc_dict in documents:
+                metadata = doc_dict.get('metadata', {})
                 sources.append({
-                    'source': doc.metadata.get('source', '알 수 없음'),
-                    'content': doc.page_content[:200] + '...',
-                    'similarity': float(score),
-                    'metadata': doc.metadata
+                    'source': metadata.get('filename', '알 수 없음'),
+                    'content': doc_dict.get('content', '')[:200] + '...',
+                    'similarity': float(doc_dict.get('score', 0)),
+                    'metadata': metadata
                 })
             
             return {
