@@ -5328,7 +5328,8 @@ async def change_password(data: dict):
 async def serve_index():
     """프론트엔드 index.html 서빙"""
     try:
-        with open("../frontend/index.html", "r", encoding="utf-8") as f:
+        index_path = os.path.join(frontend_dir, "index.html")
+        with open(index_path, "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read())
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Frontend not found")
@@ -5461,10 +5462,41 @@ async def delete_team_activity_log(log_id: int):
 async def serve_login():
     """로그인 페이지 서빙"""
     try:
-        with open("../frontend/login.html", "r", encoding="utf-8") as f:
+        login_path = os.path.join(frontend_dir, "login.html")
+        with open(login_path, "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read())
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Login page not found")
+
+@app.get("/{filename}.html", response_class=HTMLResponse)
+async def serve_html(filename: str):
+    """프론트엔드 HTML 파일 서빙"""
+    try:
+        html_path = os.path.join(frontend_dir, f"{filename}.html")
+        if not os.path.exists(html_path):
+            raise HTTPException(status_code=404, detail=f"{filename}.html not found")
+        with open(html_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"{filename}.html not found")
+
+@app.get("/{filename:path}.js")
+async def serve_js(filename: str):
+    """프론트엔드 JS 파일 서빙"""
+    from fastapi.responses import FileResponse
+    js_path = os.path.join(frontend_dir, f"{filename}.js")
+    if os.path.exists(js_path):
+        return FileResponse(js_path, media_type="application/javascript")
+    raise HTTPException(status_code=404, detail=f"{filename}.js not found")
+
+@app.get("/{filename:path}.css")
+async def serve_css(filename: str):
+    """프론트엔드 CSS 파일 서빙"""
+    from fastapi.responses import FileResponse
+    css_path = os.path.join(frontend_dir, f"{filename}.css")
+    if os.path.exists(css_path):
+        return FileResponse(css_path, media_type="text/css")
+    raise HTTPException(status_code=404, detail=f"{filename}.css not found")
 
 # ==================== FTP 이미지 프록시 ====================
 from fastapi.responses import StreamingResponse
