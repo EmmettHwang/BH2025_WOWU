@@ -7673,3 +7673,494 @@ async def rag_status():
             "error": str(e)
         }
 
+
+# ====================문제은행 API====================
+
+@app.post("/api/exam-bank/generate")
+async def generate_exam_questions(request: Request):
+    """RAG 기반 문제 생성"""
+    try:
+        data = await request.json()
+        exam_name = data.get('exam_name')
+        subject = data.get('subject')
+        exam_date = data.get('exam_date')
+        num_questions = int(data.get('num_questions', 10))
+        question_type = data.get('question_type', 'multiple_choice')
+        difficulty = data.get('difficulty', 'medium')
+        instructor_code = data.get('instructor_code', '')
+        description = data.get('description', '')
+        
+        # RAG 시스템 확인
+        if not vector_store_manager or not rag_chain:
+            raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
+        
+        # GROQ API 키 가져오기
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT setting_value FROM system_settings WHERE setting_key = 'groq_api_key'")
+        result = cursor.fetchone()
+        groq_api_key = result['setting_value'] if result else os.getenv('GROQ_API_KEY', '')
+        conn.close()
+        
+        if not groq_api_key:
+            raise HTTPException(status_code=400, detail="GROQ API 키가 설정되지 않았습니다")
+        
+        # 난이도에 따른 프롬프트 조정
+        difficulty_prompts = {
+            'easy': '기본적이고 쉬운 수준의',
+            'medium': '중간 수준의',
+            'hard': '심화되고 어려운 수준의'
+        }
+        difficulty_text = difficulty_prompts.get(difficulty, '중간 수준의')
+        
+        # 문제 유형에 따른 프롬프트
+        type_prompts = {
+            'multiple_choice': f'''
+{num_questions}개의 {difficulty_text} 객관식 문제를 생성해주세요.
+각 문제는 다음 형식을 따라야 합니다:
+
+문제 1:
+[문제 내용]
+
+A) [선택지 1]
+B) [선택지 2]
+C) [선택지 3]
+D) [선택지 4]
+
+정답: [A/B/C/D]
+해설: [정답에 대한 설명]
+참고: [출처 문서명]
+
+각 문제는 반드시 위 형식을 정확히 따라주세요.
+''',
+            'short_answer': f'{num_questions}개의 {difficulty_text} 단답형 문제를 생성해주세요. 각 문제는 "문제:", "정답:", "해설:", "참고:" 형식으로 작성해주세요.',
+            'essay': f'{num_questions}개의 {difficulty_text} 서술형 문제를 생성해주세요. 각 문제는 "문제:", "모범답안:", "채점기준:", "참고:" 형식으로 작성해주세요.'
+        }
+        
+        prompt = f"""
+교과목: {subject}
+시험명: {exam_name}
+
+다음 문서들을 참고하여 {type_prompts.get(question_type, type_prompts['multiple_choice'])}
+문제는 실제 수업 내용과 관련되어야 하며, 학생들의 이해도를 평가할 수 있어야 합니다.
+"""
+        
+        # RAG를 사용하여 문제 생성
+        result = rag_chain.query(
+            prompt,
+            k=5,
+            groq_api_key=groq_api_key
+        )
+        
+        return {
+            "success": True,
+            "questions_text": result['answer'],
+            "sources": result.get('sources', []),
+            "exam_info": {
+                "exam_name": exam_name,
+                "subject": subject,
+                "exam_date": exam_date,
+                "num_questions": num_questions,
+                "question_type": question_type,
+                "difficulty": difficulty
+            }
+        }
+        
+    except Exception as e:
+        print(f"[ERROR] 문제 생성 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"문제 생성 실패: {str(e)}")
+
+
+@app.post("/api/exam-bank/save")
+async def save_exam(request: Request):
+    """생성된 문제를 데이터베이스에 저장"""
+    try:
+        data = await request.json()
+        exam_name = data.get('exam_name')
+        subject = data.get('subject')
+        exam_date = data.get('exam_date')
+        question_type = data.get('question_type', 'multiple_choice')
+        difficulty = data.get('difficulty', 'medium')
+        instructor_code = data.get('instructor_code', '')
+        description = data.get('description', '')
+        questions = data.get('questions', [])
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 시험 정보 저장
+        cursor.execute("""
+            INSERT INTO exam_bank (exam_name, subject, exam_date, total_questions, 
+                                   question_type, difficulty, instructor_code, description)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (exam_name, subject, exam_date, len(questions), question_type, 
+              difficulty, instructor_code, description))
+        
+        exam_id = cursor.lastrowid
+        
+        # 문제 저장
+        for idx, question in enumerate(questions, 1):
+            # options를 JSON 문자열로 변환
+            import json
+            options_json = json.dumps(question.get('options', []), ensure_ascii=False) if question.get('options') else None
+            
+            cursor.execute("""
+                INSERT INTO exam_questions (exam_id, question_number, question_text, 
+                                           question_type, options, correct_answer, 
+                                           explanation, reference_page, reference_document, 
+                                           difficulty, points)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (exam_id, idx, question.get('question_text', ''),
+                  question_type, options_json, question.get('correct_answer', ''),
+                  question.get('explanation', ''), question.get('reference_page', ''),
+                  question.get('reference_document', ''), difficulty, 
+                  question.get('points', 1)))
+        
+        conn.commit()
+        conn.close()
+        
+        return {
+            "success": True,
+            "exam_id": exam_id,
+            "message": f"시험 '{exam_name}'이(가) 저장되었습니다"
+        }
+        
+    except Exception as e:
+        print(f"[ERROR] 시험 저장 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"시험 저장 실패: {str(e)}")
+
+
+@app.get("/api/exam-bank/list")
+async def get_exam_list():
+    """저장된 시험 목록 조회"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        cursor.execute("""
+            SELECT exam_id, exam_name, subject, exam_date, total_questions, 
+                   question_type, difficulty, instructor_code, description,
+                   created_at, updated_at
+            FROM exam_bank
+            ORDER BY exam_date DESC, created_at DESC
+        """)
+        
+        exams = cursor.fetchall()
+        conn.close()
+        
+        return {
+            "success": True,
+            "exams": exams
+        }
+        
+    except Exception as e:
+        print(f"[ERROR] 시험 목록 조회 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"시험 목록 조회 실패: {str(e)}")
+
+
+@app.get("/api/exam-bank/{exam_id}")
+async def get_exam_detail(exam_id: int):
+    """시험 상세 정보 및 문제 조회"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 시험 정보 조회
+        cursor.execute("""
+            SELECT exam_id, exam_name, subject, exam_date, total_questions, 
+                   question_type, difficulty, instructor_code, description,
+                   created_at, updated_at
+            FROM exam_bank
+            WHERE exam_id = %s
+        """, (exam_id,))
+        
+        exam = cursor.fetchone()
+        
+        if not exam:
+            raise HTTPException(status_code=404, detail="시험을 찾을 수 없습니다")
+        
+        # 문제 조회
+        cursor.execute("""
+            SELECT question_id, question_number, question_text, question_type,
+                   options, correct_answer, explanation, reference_page,
+                   reference_document, difficulty, points
+            FROM exam_questions
+            WHERE exam_id = %s
+            ORDER BY question_number
+        """, (exam_id,))
+        
+        questions = cursor.fetchall()
+        
+        # options JSON 파싱
+        import json
+        for q in questions:
+            if q['options']:
+                try:
+                    q['options'] = json.loads(q['options'])
+                except:
+                    q['options'] = []
+        
+        conn.close()
+        
+        exam['questions'] = questions
+        
+        return {
+            "success": True,
+            "exam": exam
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] 시험 상세 조회 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"시험 상세 조회 실패: {str(e)}")
+
+
+@app.delete("/api/exam-bank/{exam_id}")
+async def delete_exam(exam_id: int):
+    """시험 삭제"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 시험 존재 확인
+        cursor.execute("SELECT exam_name FROM exam_bank WHERE exam_id = %s", (exam_id,))
+        exam = cursor.fetchone()
+        
+        if not exam:
+            raise HTTPException(status_code=404, detail="시험을 찾을 수 없습니다")
+        
+        # 시험 삭제 (CASCADE로 문제도 자동 삭제)
+        cursor.execute("DELETE FROM exam_bank WHERE exam_id = %s", (exam_id,))
+        conn.commit()
+        conn.close()
+        
+        return {
+            "success": True,
+            "message": f"시험 '{exam['exam_name']}'이(가) 삭제되었습니다"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] 시험 삭제 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"시험 삭제 실패: {str(e)}")
+
+
+@app.put("/api/exam-bank/{exam_id}")
+async def update_exam(exam_id: int, request: Request):
+    """시험 정보 수정"""
+    try:
+        data = await request.json()
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 시험 존재 확인
+        cursor.execute("SELECT exam_id FROM exam_bank WHERE exam_id = %s", (exam_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="시험을 찾을 수 없습니다")
+        
+        # 업데이트할 필드 구성
+        update_fields = []
+        params = []
+        
+        if 'exam_name' in data:
+            update_fields.append("exam_name = %s")
+            params.append(data['exam_name'])
+        if 'subject' in data:
+            update_fields.append("subject = %s")
+            params.append(data['subject'])
+        if 'exam_date' in data:
+            update_fields.append("exam_date = %s")
+            params.append(data['exam_date'])
+        if 'difficulty' in data:
+            update_fields.append("difficulty = %s")
+            params.append(data['difficulty'])
+        if 'description' in data:
+            update_fields.append("description = %s")
+            params.append(data['description'])
+        
+        if update_fields:
+            params.append(exam_id)
+            query = f"UPDATE exam_bank SET {', '.join(update_fields)} WHERE exam_id = %s"
+            cursor.execute(query, params)
+            conn.commit()
+        
+        conn.close()
+        
+        return {
+            "success": True,
+            "message": "시험 정보가 수정되었습니다"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] 시험 수정 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"시험 수정 실패: {str(e)}")
+
+
+# ====================문서 관리 API====================
+
+@app.post("/api/documents/upload")
+async def upload_document(
+    file: UploadFile = File(...),
+    category: Optional[str] = Form("general")
+):
+    """
+    문서 업로드 (documents 폴더에 저장)
+    - PDF, DOCX, DOC, TXT, PPTX, XLSX 파일 지원
+    """
+    try:
+        # 파일 확장자 확인
+        file_ext = Path(file.filename).suffix.lower()
+        allowed_extensions = ['.pdf', '.docx', '.doc', '.txt', '.pptx', '.ppt', '.xlsx', '.xls']
+        
+        if file_ext not in allowed_extensions:
+            raise HTTPException(
+                status_code=400,
+                detail="지원하지 않는 파일 형식입니다. PDF, DOCX, DOC, TXT, PPTX, XLSX 파일만 업로드 가능합니다."
+            )
+        
+        # 파일 읽기
+        content = await file.read()
+        file_size = len(content)
+        
+        # 파일 크기 확인 (100MB 제한)
+        if file_size > 100 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="파일 크기는 100MB 이하여야 합니다")
+        
+        # documents 폴더 경로
+        documents_dir = Path("./documents")
+        documents_dir.mkdir(exist_ok=True)
+        
+        # 고유 파일명 생성 (타임스탬프 + 원본 파일명)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_filename = f"{timestamp}_{file.filename}"
+        file_path = documents_dir / safe_filename
+        
+        # 파일 저장
+        with open(file_path, "wb") as f:
+            f.write(content)
+        
+        print(f"[OK] 문서 저장 완료: {file_path}")
+        
+        return {
+            "success": True,
+            "message": "문서가 성공적으로 업로드되었습니다",
+            "filename": safe_filename,
+            "original_filename": file.filename,
+            "file_size": file_size,
+            "file_path": str(file_path),
+            "category": category,
+            "upload_date": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] 문서 업로드 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"문서 업로드 실패: {str(e)}")
+
+
+@app.get("/api/documents/list")
+async def list_documents():
+    """documents 폴더의 파일 목록 조회"""
+    try:
+        documents_dir = Path("./documents")
+        
+        if not documents_dir.exists():
+            return {
+                "success": True,
+                "documents": [],
+                "count": 0
+            }
+        
+        documents = []
+        for file_path in documents_dir.iterdir():
+            if file_path.is_file() and not file_path.name.startswith('.'):
+                stat = file_path.stat()
+                documents.append({
+                    "filename": file_path.name,
+                    "file_size": stat.st_size,
+                    "file_size_mb": round(stat.st_size / (1024 * 1024), 2),
+                    "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    "extension": file_path.suffix.lower()
+                })
+        
+        # 수정일시 기준 내림차순 정렬
+        documents.sort(key=lambda x: x['modified_at'], reverse=True)
+        
+        return {
+            "success": True,
+            "documents": documents,
+            "count": len(documents)
+        }
+        
+    except Exception as e:
+        print(f"[ERROR] 문서 목록 조회 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"문서 목록 조회 실패: {str(e)}")
+
+
+@app.delete("/api/documents/{filename}")
+async def delete_document(filename: str):
+    """문서 삭제"""
+    try:
+        # 파일명 검증 (경로 탐색 공격 방지)
+        if '..' in filename or '/' in filename or '\\' in filename:
+            raise HTTPException(status_code=400, detail="잘못된 파일명입니다")
+        
+        documents_dir = Path("./documents")
+        file_path = documents_dir / filename
+        
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
+        
+        if not file_path.is_file():
+            raise HTTPException(status_code=400, detail="파일이 아닙니다")
+        
+        # 파일 삭제
+        file_path.unlink()
+        
+        print(f"[OK] 문서 삭제 완료: {filename}")
+        
+        return {
+            "success": True,
+            "message": f"문서 '{filename}'이(가) 삭제되었습니다"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] 문서 삭제 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"문서 삭제 실패: {str(e)}")
+
+
+@app.get("/api/documents/download/{filename}")
+async def download_document(filename: str):
+    """문서 다운로드"""
+    try:
+        # 파일명 검증
+        if '..' in filename or '/' in filename or '\\' in filename:
+            raise HTTPException(status_code=400, detail="잘못된 파일명입니다")
+        
+        documents_dir = Path("./documents")
+        file_path = documents_dir / filename
+        
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
+        
+        from fastapi.responses import FileResponse
+        
+        return FileResponse(
+            path=str(file_path),
+            filename=filename,
+            media_type='application/octet-stream'
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] 문서 다운로드 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"문서 다운로드 실패: {str(e)}")

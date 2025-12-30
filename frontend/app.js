@@ -2996,6 +2996,11 @@ window.showTab = function(tab, addToHistory = true) {
             removeDashboardActivityListeners();
             renderRAGDocuments();
             break;
+        case 'exam-bank':
+            stopDashboardAutoRefresh();
+            removeDashboardActivityListeners();
+            showExamBank();
+            break;
         case 'backup-manager':
             stopDashboardAutoRefresh();
             removeDashboardActivityListeners();
@@ -18944,3 +18949,680 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ============================================
 // API 키 데모 모달 함수들
+
+
+// ============================================
+// 문서 관리 (강의 메뉴)
+// ============================================
+
+function renderRAGDocuments() {
+    const app = document.getElementById('app');
+    
+    app.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-file-alt mr-2"></i>문서 관리
+                </h2>
+                <button onclick="loadDocuments()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-sync-alt mr-2"></i>새로고침
+                </button>
+            </div>
+
+            <!-- 파일 업로드 영역 -->
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 mb-6 border-2 border-dashed border-blue-300">
+                <div class="text-center">
+                    <i class="fas fa-cloud-upload-alt text-6xl text-blue-400 mb-4"></i>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">문서 업로드</h3>
+                    <p class="text-gray-500 mb-4">PDF, DOCX, PPTX, XLSX, TXT 파일 지원 (최대 100MB)</p>
+                    <input type="file" id="document-file-input" accept=".pdf,.docx,.doc,.txt,.pptx,.ppt,.xlsx,.xls" class="hidden">
+                    <button onclick="document.getElementById('document-file-input').click()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
+                        <i class="fas fa-folder-open mr-2"></i>파일 선택
+                    </button>
+                </div>
+            </div>
+
+            <!-- 문서 목록 -->
+            <div class="bg-gray-50 rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">
+                    <i class="fas fa-list mr-2"></i>문서 목록 (<span id="document-count">0</span>개)
+                </h3>
+                <div id="documents-list" class="space-y-3">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-spinner fa-spin text-4xl mb-2"></i>
+                        <p>로딩 중...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 파일 선택 이벤트
+    document.getElementById('document-file-input').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            await uploadDocument(file);
+        }
+    });
+
+    // 문서 목록 로드
+    loadDocuments();
+}
+
+async function uploadDocument(file) {
+    try {
+        const maxSize = 100 * 1024 * 1024; // 100MB
+        if (file.size > maxSize) {
+            alert('파일 크기는 100MB 이하여야 합니다');
+            return;
+        }
+
+        window.showLoading('파일 업로드 중...');
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('category', 'general');
+
+        const response = await axios.post(`${API_BASE_URL}/api/documents/upload`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        window.hideLoading();
+
+        if (response.data.success) {
+            alert('문서가 성공적으로 업로드되었습니다');
+            loadDocuments();
+        }
+    } catch (error) {
+        window.hideLoading();
+        console.error('문서 업로드 실패:', error);
+        alert('문서 업로드 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+async function loadDocuments() {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/documents/list`);
+        const documents = response.data.documents || [];
+
+        document.getElementById('document-count').textContent = documents.length;
+
+        const listDiv = document.getElementById('documents-list');
+
+        if (documents.length === 0) {
+            listDiv.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-folder-open text-4xl mb-2"></i>
+                    <p>업로드된 문서가 없습니다</p>
+                </div>
+            `;
+            return;
+        }
+
+        listDiv.innerHTML = documents.map(doc => `
+            <div class="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center flex-1">
+                        <i class="fas fa-file-${getFileIcon(doc.extension)} text-3xl text-blue-500 mr-4"></i>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-800">${doc.filename}</h4>
+                            <p class="text-sm text-gray-500">
+                                ${doc.file_size_mb} MB · ${new Date(doc.modified_at).toLocaleString('ko-KR')}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <a href="${API_BASE_URL}/api/documents/download/${encodeURIComponent(doc.filename)}" 
+                           class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded bg-blue-50 hover:bg-blue-100"
+                           download>
+                            <i class="fas fa-download mr-1"></i>다운로드
+                        </a>
+                        <button onclick="deleteDocument('${doc.filename}')" 
+                                class="text-red-600 hover:text-red-800 px-3 py-1 rounded bg-red-50 hover:bg-red-100">
+                            <i class="fas fa-trash mr-1"></i>삭제
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('문서 목록 로드 실패:', error);
+        document.getElementById('documents-list').innerHTML = `
+            <div class="text-center text-red-500 py-8">
+                <i class="fas fa-exclamation-triangle text-4xl mb-2"></i>
+                <p>문서 목록 로드 실패</p>
+            </div>
+        `;
+    }
+}
+
+function getFileIcon(extension) {
+    const icons = {
+        '.pdf': 'pdf',
+        '.docx': 'word',
+        '.doc': 'word',
+        '.pptx': 'powerpoint',
+        '.ppt': 'powerpoint',
+        '.xlsx': 'excel',
+        '.xls': 'excel',
+        '.txt': 'alt'
+    };
+    return icons[extension] || 'alt';
+}
+
+async function deleteDocument(filename) {
+    if (!confirm(`문서 "${filename}"을(를) 삭제하시겠습니까?`)) {
+        return;
+    }
+
+    try {
+        window.showLoading('문서 삭제 중...');
+        await axios.delete(`${API_BASE_URL}/api/documents/${encodeURIComponent(filename)}`);
+        window.hideLoading();
+        alert('문서가 삭제되었습니다');
+        loadDocuments();
+    } catch (error) {
+        window.hideLoading();
+        console.error('문서 삭제 실패:', error);
+        alert('문서 삭제 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+
+// ============================================
+// 문제은행 (AI 메뉴)
+// ============================================
+
+window.examBankData = {
+    exams: [],
+    currentExam: null
+};
+
+function showExamBank() {
+    const app = document.getElementById('app');
+    
+    app.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-clipboard-question mr-2"></i>문제은행
+                </h2>
+                <div class="space-x-2">
+                    <button onclick="showExamGenerateForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-plus mr-2"></i>문제 생성
+                    </button>
+                    <button onclick="loadExamList()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-sync-alt mr-2"></i>새로고침
+                    </button>
+                </div>
+            </div>
+
+            <!-- 시험 목록 -->
+            <div id="exam-list-container">
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-spinner fa-spin text-4xl mb-2"></i>
+                    <p>로딩 중...</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    loadExamList();
+}
+
+function showExamGenerateForm() {
+    const app = document.getElementById('app');
+    
+    app.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-plus-circle mr-2"></i>RAG 기반 문제 생성
+                </h2>
+                <button onclick="showExamBank()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-arrow-left mr-2"></i>목록으로
+                </button>
+            </div>
+
+            <form id="exam-generate-form" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">시험명칭 *</label>
+                        <input type="text" name="exam_name" required 
+                               class="w-full border rounded px-3 py-2"
+                               placeholder="예: 중간고사, 1차 평가">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">교과목 *</label>
+                        <input type="text" name="subject" required 
+                               class="w-full border rounded px-3 py-2"
+                               placeholder="예: 임상간호, 기본간호학">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">시험일자 *</label>
+                        <input type="date" name="exam_date" required 
+                               class="w-full border rounded px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">문항수 *</label>
+                        <input type="number" name="num_questions" required min="1" max="50" value="10"
+                               class="w-full border rounded px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">문제 유형 *</label>
+                        <select name="question_type" class="w-full border rounded px-3 py-2">
+                            <option value="multiple_choice">객관식</option>
+                            <option value="short_answer">단답형</option>
+                            <option value="essay">서술형</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">난이도 *</label>
+                        <select name="difficulty" class="w-full border rounded px-3 py-2">
+                            <option value="easy">쉬움</option>
+                            <option value="medium" selected>보통</option>
+                            <option value="hard">어려움</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">설명 (선택)</label>
+                    <textarea name="description" rows="3" 
+                              class="w-full border rounded px-3 py-2"
+                              placeholder="시험에 대한 추가 설명을 입력하세요"></textarea>
+                </div>
+
+                <div class="flex gap-3">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold flex-1">
+                        <i class="fas fa-magic mr-2"></i>RAG로 문제 생성
+                    </button>
+                    <button type="button" onclick="showExamBank()" 
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg">
+                        취소
+                    </button>
+                </div>
+            </form>
+
+            <!-- 생성된 문제 미리보기 영역 -->
+            <div id="generated-questions-preview" class="hidden mt-8 p-6 bg-gray-50 rounded-lg">
+                <h3 class="text-xl font-bold mb-4">생성된 문제 미리보기</h3>
+                <div id="questions-content" class="space-y-4"></div>
+                <div class="mt-6 flex gap-3">
+                    <button onclick="saveGeneratedExam()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg flex-1">
+                        <i class="fas fa-save mr-2"></i>문제은행에 저장
+                    </button>
+                    <button onclick="showExamGenerateForm()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg">
+                        다시 생성
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 폼 제출 이벤트
+    document.getElementById('exam-generate-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await generateExamQuestions(e.target);
+    });
+
+    // 오늘 날짜로 기본값 설정
+    document.querySelector('input[name="exam_date"]').valueAsDate = new Date();
+}
+
+async function generateExamQuestions(form) {
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    
+    // 강사 코드 추가
+    const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+    data.instructor_code = instructor.code || '';
+
+    try {
+        window.showLoading('RAG 시스템으로 문제 생성 중...');
+
+        const response = await axios.post(`${API_BASE_URL}/api/exam-bank/generate`, data);
+
+        window.hideLoading();
+
+        if (response.data.success) {
+            // 생성된 문제 저장
+            window.examBankData.currentExam = {
+                ...response.data.exam_info,
+                questions_text: response.data.questions_text,
+                sources: response.data.sources
+            };
+
+            // 미리보기 표시
+            displayGeneratedQuestions(response.data);
+        }
+    } catch (error) {
+        window.hideLoading();
+        console.error('문제 생성 실패:', error);
+        alert('문제 생성 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+function displayGeneratedQuestions(data) {
+    const previewDiv = document.getElementById('generated-questions-preview');
+    const contentDiv = document.getElementById('questions-content');
+
+    // 문제 텍스트를 HTML로 변환
+    let questionsHTML = data.questions_text.replace(/\n/g, '<br>');
+    
+    // 문제 번호 강조
+    questionsHTML = questionsHTML.replace(/문제 (\d+):/g, '<strong style="color: #2563eb; font-size: 1.1em;">문제 $1:</strong>');
+    
+    // 선택지 들여쓰기
+    questionsHTML = questionsHTML.replace(/([A-D])\)/g, '<span style="margin-left: 20px;">$1)</span>');
+    
+    // 정답 강조
+    questionsHTML = questionsHTML.replace(/(정답:.*?)(<br>|$)/g, '<strong style="color: #10b981;">$1</strong>$2');
+    
+    // 해설 강조
+    questionsHTML = questionsHTML.replace(/(해설:.*?)(<br>|$)/g, '<em style="color: #6b7280;">$1</em>$2');
+
+    contentDiv.innerHTML = `
+        <div class="bg-white p-6 rounded border">
+            ${questionsHTML}
+        </div>
+        ${data.sources && data.sources.length > 0 ? `
+            <div class="mt-4">
+                <h4 class="font-semibold mb-2"><i class="fas fa-book mr-2"></i>참고 문서</h4>
+                <div class="space-y-2">
+                    ${data.sources.map((src, idx) => `
+                        <div class="bg-blue-50 p-3 rounded text-sm">
+                            ${idx + 1}. ${src.source} 
+                            <span class="text-blue-600">(유사도: ${(src.similarity * 100).toFixed(1)}%)</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+    `;
+
+    previewDiv.classList.remove('hidden');
+    previewDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function saveGeneratedExam() {
+    if (!window.examBankData.currentExam) {
+        alert('생성된 문제가 없습니다');
+        return;
+    }
+
+    // 문제 텍스트를 파싱하여 구조화된 데이터로 변환
+    const exam = window.examBankData.currentExam;
+    const questionsText = exam.questions_text;
+    
+    // 간단한 파싱 (실제로는 더 정교한 파싱 필요)
+    const questions = parseQuestionsText(questionsText, exam.question_type);
+
+    try {
+        window.showLoading('문제은행에 저장 중...');
+
+        const saveData = {
+            exam_name: exam.exam_name,
+            subject: exam.subject,
+            exam_date: exam.exam_date,
+            question_type: exam.question_type,
+            difficulty: exam.difficulty,
+            instructor_code: exam.instructor_code || '',
+            description: exam.description || '',
+            questions: questions
+        };
+
+        const response = await axios.post(`${API_BASE_URL}/api/exam-bank/save`, saveData);
+
+        window.hideLoading();
+
+        if (response.data.success) {
+            alert('문제가 성공적으로 저장되었습니다');
+            showExamBank();
+        }
+    } catch (error) {
+        window.hideLoading();
+        console.error('문제 저장 실패:', error);
+        alert('문제 저장 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+function parseQuestionsText(text, questionType) {
+    const questions = [];
+    const lines = text.split('\n');
+    let currentQuestion = null;
+    
+    for (const line of lines) {
+        const trimmed = line.trim();
+        
+        if (trimmed.match(/^문제\s*\d+:/)) {
+            if (currentQuestion) {
+                questions.push(currentQuestion);
+            }
+            currentQuestion = {
+                question_text: '',
+                options: [],
+                correct_answer: '',
+                explanation: '',
+                reference_document: '',
+                reference_page: ''
+            };
+        } else if (currentQuestion) {
+            if (trimmed.match(/^[A-D]\)/)) {
+                currentQuestion.options.push(trimmed);
+            } else if (trimmed.startsWith('정답:')) {
+                currentQuestion.correct_answer = trimmed.replace('정답:', '').trim();
+            } else if (trimmed.startsWith('해설:')) {
+                currentQuestion.explanation = trimmed.replace('해설:', '').trim();
+            } else if (trimmed.startsWith('참고:')) {
+                currentQuestion.reference_document = trimmed.replace('참고:', '').trim();
+            } else if (trimmed && !trimmed.startsWith('---')) {
+                currentQuestion.question_text += (currentQuestion.question_text ? ' ' : '') + trimmed;
+            }
+        }
+    }
+    
+    if (currentQuestion) {
+        questions.push(currentQuestion);
+    }
+    
+    return questions;
+}
+
+async function loadExamList() {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/exam-bank/list`);
+        const exams = response.data.exams || [];
+        
+        window.examBankData.exams = exams;
+
+        const container = document.getElementById('exam-list-container');
+
+        if (exams.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-clipboard-question text-4xl mb-2"></i>
+                    <p>생성된 시험이 없습니다</p>
+                    <button onclick="showExamGenerateForm()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+                        <i class="fas fa-plus mr-2"></i>첫 번째 시험 생성하기
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="grid grid-cols-1 gap-4">
+                ${exams.map(exam => `
+                    <div class="bg-white border rounded-lg p-6 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h3 class="text-xl font-bold text-gray-800 mb-2">${exam.exam_name}</h3>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                                    <div>
+                                        <i class="fas fa-book mr-2 text-blue-500"></i>
+                                        <strong>교과목:</strong> ${exam.subject}
+                                    </div>
+                                    <div>
+                                        <i class="fas fa-calendar mr-2 text-green-500"></i>
+                                        <strong>시험일:</strong> ${exam.exam_date}
+                                    </div>
+                                    <div>
+                                        <i class="fas fa-list-ol mr-2 text-purple-500"></i>
+                                        <strong>문항수:</strong> ${exam.total_questions}문제
+                                    </div>
+                                    <div>
+                                        <i class="fas fa-signal mr-2 text-orange-500"></i>
+                                        <strong>난이도:</strong> ${getDifficultyLabel(exam.difficulty)}
+                                    </div>
+                                </div>
+                                ${exam.description ? `<p class="text-gray-600 mt-2">${exam.description}</p>` : ''}
+                            </div>
+                            <div class="flex gap-2 ml-4">
+                                <button onclick="viewExamDetail(${exam.exam_id})" 
+                                        class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded bg-blue-50 hover:bg-blue-100">
+                                    <i class="fas fa-eye mr-1"></i>상세보기
+                                </button>
+                                <button onclick="deleteExam(${exam.exam_id}, '${exam.exam_name}')" 
+                                        class="text-red-600 hover:text-red-800 px-3 py-1 rounded bg-red-50 hover:bg-red-100">
+                                    <i class="fas fa-trash mr-1"></i>삭제
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } catch (error) {
+        console.error('시험 목록 로드 실패:', error);
+        document.getElementById('exam-list-container').innerHTML = `
+            <div class="text-center text-red-500 py-8">
+                <i class="fas fa-exclamation-triangle text-4xl mb-2"></i>
+                <p>시험 목록 로드 실패</p>
+            </div>
+        `;
+    }
+}
+
+function getDifficultyLabel(difficulty) {
+    const labels = {
+        'easy': '쉬움',
+        'medium': '보통',
+        'hard': '어려움'
+    };
+    return labels[difficulty] || difficulty;
+}
+
+async function viewExamDetail(examId) {
+    try {
+        window.showLoading('시험 상세 정보 로딩 중...');
+
+        const response = await axios.get(`${API_BASE_URL}/api/exam-bank/${examId}`);
+        const exam = response.data.exam;
+
+        window.hideLoading();
+
+        const app = document.getElementById('app');
+        app.innerHTML = `
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-clipboard-check mr-2"></i>${exam.exam_name}
+                    </h2>
+                    <button onclick="showExamBank()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-arrow-left mr-2"></i>목록으로
+                    </button>
+                </div>
+
+                <!-- 시험 정보 -->
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 mb-6 border border-blue-200">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <div class="text-sm text-gray-600 mb-1">교과목</div>
+                            <div class="font-semibold">${exam.subject}</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-600 mb-1">시험일자</div>
+                            <div class="font-semibold">${exam.exam_date}</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-600 mb-1">문항수</div>
+                            <div class="font-semibold">${exam.total_questions}문제</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-600 mb-1">난이도</div>
+                            <div class="font-semibold">${getDifficultyLabel(exam.difficulty)}</div>
+                        </div>
+                    </div>
+                    ${exam.description ? `
+                        <div class="mt-4 pt-4 border-t border-blue-200">
+                            <div class="text-sm text-gray-600 mb-1">설명</div>
+                            <div>${exam.description}</div>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- 문제 목록 -->
+                <div class="space-y-6">
+                    ${exam.questions.map((q, idx) => `
+                        <div class="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                            <h3 class="text-lg font-bold text-blue-600 mb-3">문제 ${q.question_number}</h3>
+                            <div class="text-gray-800 mb-4 whitespace-pre-wrap">${q.question_text}</div>
+                            
+                            ${q.options && q.options.length > 0 ? `
+                                <div class="space-y-2 mb-4 ml-4">
+                                    ${q.options.map(opt => `
+                                        <div class="text-gray-700">${opt}</div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                            
+                            <div class="bg-green-50 border border-green-200 rounded p-3 mb-3">
+                                <strong class="text-green-700">정답:</strong> ${q.correct_answer}
+                            </div>
+                            
+                            ${q.explanation ? `
+                                <div class="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
+                                    <strong class="text-blue-700">해설:</strong> ${q.explanation}
+                                </div>
+                            ` : ''}
+                            
+                            ${q.reference_document ? `
+                                <div class="text-sm text-gray-600">
+                                    <i class="fas fa-book mr-1"></i>
+                                    <strong>참고:</strong> ${q.reference_document}
+                                    ${q.reference_page ? ` (${q.reference_page})` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        window.hideLoading();
+        console.error('시험 상세 조회 실패:', error);
+        alert('시험 상세 조회 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+async function deleteExam(examId, examName) {
+    if (!confirm(`시험 "${examName}"을(를) 삭제하시겠습니까?\n삭제된 시험은 복구할 수 없습니다.`)) {
+        return;
+    }
+
+    try {
+        window.showLoading('시험 삭제 중...');
+        await axios.delete(`${API_BASE_URL}/api/exam-bank/${examId}`);
+        window.hideLoading();
+        alert('시험이 삭제되었습니다');
+        loadExamList();
+    } catch (error) {
+        window.hideLoading();
+        console.error('시험 삭제 실패:', error);
+        alert('시험 삭제 실패: ' + (error.response?.data?.detail || error.message));
+    }
+}
+
+console.log('✅ 문서관리 및 문제은행 함수 로드 완료');
+
