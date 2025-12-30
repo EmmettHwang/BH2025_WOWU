@@ -5574,6 +5574,8 @@ async def update_system_settings(
     system_subtitle2: Optional[str] = Form(None),
     logo_url: Optional[str] = Form(None),
     youtube_api_key: Optional[str] = Form(None),
+    groq_api_key: Optional[str] = Form(None),
+    gemini_api_key: Optional[str] = Form(None),
     bgm_genre: Optional[str] = Form(None),
     bgm_volume: Optional[str] = Form(None),
     dashboard_refresh_interval: Optional[str] = Form(None)
@@ -5585,6 +5587,8 @@ async def update_system_settings(
     print(f"  - system_subtitle2: {system_subtitle2}")
     print(f"  - logo_url: {logo_url}")
     print(f"  - youtube_api_key: {youtube_api_key}")
+    print(f"  - groq_api_key: {'설정됨' if groq_api_key else '미설정'}")
+    print(f"  - gemini_api_key: {'설정됨' if gemini_api_key else '미설정'}")
     print(f"  - bgm_genre: {bgm_genre}")
     print(f"  - bgm_volume: {bgm_volume}")
     print(f"  - dashboard_refresh_interval: {dashboard_refresh_interval}")
@@ -5602,6 +5606,8 @@ async def update_system_settings(
             'system_subtitle2': system_subtitle2,
             'logo_url': logo_url,
             'youtube_api_key': youtube_api_key,
+            'groq_api_key': groq_api_key,
+            'gemini_api_key': gemini_api_key,
             'bgm_genre': bgm_genre,
             'bgm_volume': bgm_volume,
             'dashboard_refresh_interval': dashboard_refresh_interval
@@ -6274,14 +6280,31 @@ async def delete_notice(notice_id: int):
 # ==================== 예진이 챗봇 API ====================
 @app.post("/api/aesong-chat")
 async def aesong_chat(data: dict, request: Request):
-    """예진이 AI 챗봇 - GROQ 또는 Gemini API 사용"""
+    """예진이 AI 챗봇 - GROQ, Gemini, 또는 Gemma 모델 사용"""
     message = data.get('message', '')
     character = data.get('character', '예진이')  # 캐릭터 이름 받기
-    model = data.get('model', 'groq')  # 사용할 모델 (groq 또는 gemini)
+    model = data.get('model', 'groq')  # 사용할 모델 (groq, gemini, gemma)
     
     # 헤더에서 API 키 가져오기 (프론트엔드에서 전달)
     groq_api_key_header = request.headers.get('X-GROQ-API-Key', '')
     gemini_api_key_header = request.headers.get('X-Gemini-API-Key', '')
+    
+    # DB에서 API 키 가져오기 (헤더가 없을 경우)
+    conn = get_db_connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+    
+    try:
+        cursor.execute("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('groq_api_key', 'gemini_api_key')")
+        db_settings = {row['setting_key']: row['setting_value'] for row in cursor.fetchall()}
+    except:
+        db_settings = {}
+    finally:
+        cursor.close()
+        conn.close()
+    
+    # API 키 우선순위: 헤더 > DB > 환경변수
+    groq_api_key = groq_api_key_header or db_settings.get('groq_api_key', '') or os.getenv('GROQ_API_KEY', '')
+    gemini_api_key = gemini_api_key_header or db_settings.get('gemini_api_key', '') or os.getenv('GOOGLE_CLOUD_TTS_API_KEY', '')
     
     if not message:
         raise HTTPException(status_code=400, detail="메시지가 필요합니다")
@@ -6346,11 +6369,8 @@ async def aesong_chat(data: dict, request: Request):
 
         # Gemini 모델 사용
         if model == 'gemini':
-            # 헤더 우선, 없으면 환경변수 사용
-            gemini_api_key = gemini_api_key_header or os.getenv('GOOGLE_CLOUD_TTS_API_KEY', '')
-            
             if not gemini_api_key:
-                raise Exception("Gemini API 키가 설정되지 않았습니다")
+                raise Exception("Gemini API 키가 설정되지 않았습니다. 시스템 등록에서 API 키를 입력해주세요.")
             
             # Gemini API 호출
             gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key={gemini_api_key}"
@@ -6381,17 +6401,49 @@ async def aesong_chat(data: dict, request: Request):
                 "model": "gemini-2.0-flash-exp"
             }
         
-        # GROQ 모델 사용 (기본값)
-        else:
-            # 헤더 우선, 없으면 환경변수 사용
-            groq_api_key = groq_api_key_header or os.getenv('GROQ_API_KEY', '')
-            
+        # Gemma-3-4B 모델 사용 (GROQ 무료 모델)
+        elif model == 'gemma':
             if not groq_api_key:
-                # API 키가 없으면 기본 응답
-                return {
-                    "response": f"안녕하세요! 저는 {character}입니다. 무엇을 도와드릴까요?",
-                    "model": "default"
-                }
+                raise Exception("GROQ API 키가 설정되지 않았습니다. 시스템 등록에서 API 키를 입력해주세요.")
+            
+            headers = {
+                "Authorization": f"Bearer {groq_api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": "gemma2-9b-it",  # GROQ의 Gemma 2 9B 모델 (무료)
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": message}
+                ],
+                "temperature": 0.8,
+                "max_tokens": 200,
+                "top_p": 0.9
+            }
+            
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=15
+            )
+            
+            if response.status_code != 200:
+                raise Exception(f"GROQ API 오류: {response.text}")
+            
+            ai_response = response.json()['choices'][0]['message']['content']
+            
+            return {
+                "response": ai_response,
+                "model": "gemma2-9b-it"
+            }
+        
+        # GROQ 모델 사용 (기본값 - Llama 3.3 70B)
+        else:
+            if not groq_api_key:
+                # API 키가 없으면 안내 메시지
+                raise Exception("GROQ API 키가 설정되지 않았습니다. 시스템 등록에서 API 키를 입력해주세요.")
             
             headers = {
                 "Authorization": f"Bearer {groq_api_key}",
@@ -6445,9 +6497,28 @@ async def text_to_speech(data: dict, request: Request):
     if not text:
         raise HTTPException(status_code=400, detail="텍스트가 필요합니다")
     
-    # Google Cloud TTS API 키 확인 (헤더 우선, 환경 변수는 fallback)
+    # Google Cloud TTS API 키 확인
+    # 1. 헤더에서 가져오기
     api_key_header = request.headers.get('X-Gemini-API-Key', '')
-    api_key = api_key_header if api_key_header else os.getenv('GOOGLE_CLOUD_TTS_API_KEY', '')
+    
+    # 2. DB에서 가져오기 (헤더가 없을 경우)
+    api_key_db = ''
+    if not api_key_header:
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        try:
+            cursor.execute("SELECT setting_value FROM system_settings WHERE setting_key = 'gemini_api_key'")
+            result = cursor.fetchone()
+            if result:
+                api_key_db = result['setting_value']
+        except:
+            pass
+        finally:
+            cursor.close()
+            conn.close()
+    
+    # 3. 환경변수에서 가져오기 (최후 수단)
+    api_key = api_key_header or api_key_db or os.getenv('GOOGLE_CLOUD_TTS_API_KEY', '')
     
     if not api_key:
         raise HTTPException(status_code=500, detail="Google Cloud TTS API 키가 설정되지 않았습니다. 시스템 등록에서 Gemini API 키를 입력해주세요.")

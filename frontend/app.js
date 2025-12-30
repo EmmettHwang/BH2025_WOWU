@@ -13422,7 +13422,8 @@ function renderSystemSettings(settings) {
                     </label>
                     <select id="ai-model" 
                             class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="groq">GROQ (llama-3.3-70b-versatile) - 빠른 응답</option>
+                        <option value="groq">GROQ (llama-3.3-70b-versatile) - 빠른 응답, 고품질</option>
+                        <option value="gemma">Gemma 2 9B (GROQ) - 무료, 빠른 응답</option>
                         <option value="gemini">Gemini (gemini-2.0-flash-exp) - 고품질 응답</option>
                     </select>
                     <p class="text-sm text-gray-500 mt-2">
@@ -13430,7 +13431,7 @@ function renderSystemSettings(settings) {
                         예진이 3D 챗봇에서 사용할 AI 모델을 선택합니다
                     </p>
                     <p class="text-sm text-gray-400 mt-1">
-                        💡 GROQ: 빠른 응답 속도 | Gemini: 더 자연스러운 대화
+                        💡 GROQ Llama: 70B 대형 모델 | Gemma 2 9B: 무료 경량 모델 | Gemini: 자연스러운 대화
                     </p>
                 </div>
                 
