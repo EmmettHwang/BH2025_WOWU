@@ -18924,7 +18924,7 @@ document.addEventListener('DOMContentLoaded', function() {
         ragToggle.addEventListener('change', function() {
             const status = this.checked ? 'ON (문서 기반 답변)' : 'OFF (일반 대화)';
             console.log('🔄 RAG 모드 변경:', status);
-            showNotification('RAG 모드: ' + status, 'info');
+            // showNotification('RAG 모드: ' + status, 'info');
         });
     } else {
         console.warn('⚠️ RAG 토글 요소를 찾을 수 없습니다');
