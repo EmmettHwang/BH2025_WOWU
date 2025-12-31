@@ -5954,10 +5954,12 @@ window.showInstructorCodeForm = function(code = null) {
         { id: 'counselings', name: '상담관리', icon: 'fa-comments' },
         { id: 'timetables', name: '시간표', icon: 'fa-clock' },
         { id: 'training-logs', name: '훈련일지 관리', icon: 'fa-clipboard-list' },
+        { id: 'rag-documents', name: '문서 관리 (RAG)', icon: 'fa-file-alt' },
         { id: 'ai-report', name: 'AI 생기부', icon: 'fa-file-alt' },
         { id: 'ai-timetable', name: 'AI 시간표', icon: 'fa-calendar-alt' },
         { id: 'ai-training-log', name: 'AI 훈련일지', icon: 'fa-brain' },
         { id: 'ai-counseling', name: 'AI 상담일지', icon: 'fa-comments' },
+        { id: 'exam-bank', name: '문제은행', icon: 'fa-clipboard-question' },
         { id: 'aesong-3d-chat', name: '🐶 예진이 만나기', icon: 'fa-robot' },
         { id: 'projects', name: '팀 관리', icon: 'fa-users' },
         { id: 'team-activity-logs', name: '팀 활동일지', icon: 'fa-clipboard-list' }
