@@ -5,6 +5,7 @@
 ### 🚀 시작하기
 | 문서명 | 설명 | 난이도 |
 |--------|------|--------|
+| [DEVELOPMENT_ENVIRONMENT.md](DEVELOPMENT_ENVIRONMENT.md) | **개발 환경 종합 가이드** (필독!) | ⭐⭐⭐ 필수 |
 | [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md) | 로컬 개발 환경 설정 가이드 | ⭐ 초급 |
 | [CONDA_SETUP.md](CONDA_SETUP.md) | Conda 환경 설정 가이드 | ⭐ 초급 |
 | [DEPLOY_CAFE24.md](DEPLOY_CAFE24.md) | Cafe24 서버 배포 전체 가이드 | ⭐⭐ 중급 |
@@ -72,10 +73,10 @@
 ## 📋 빠른 찾기
 
 ### 🔥 자주 보는 문서
-1. **배포 문제**: [CAFE24_QUICK_DEPLOY.md](CAFE24_QUICK_DEPLOY.md)
-2. **메뉴 안 보임**: [MENU_PERMISSION_FIX.md](MENU_PERMISSION_FIX.md)
-3. **DB 마이그레이션**: [DB_MIGRATION_COMPLETE.md](DB_MIGRATION_COMPLETE.md)
-4. **로컬 개발**: [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md)
+1. **개발 환경 전체 가이드**: [DEVELOPMENT_ENVIRONMENT.md](DEVELOPMENT_ENVIRONMENT.md) ⭐ 신규 개발자 필독!
+2. **배포 문제**: [CAFE24_QUICK_DEPLOY.md](CAFE24_QUICK_DEPLOY.md)
+3. **메뉴 안 보임**: [MENU_PERMISSION_FIX.md](MENU_PERMISSION_FIX.md)
+4. **DB 마이그레이션**: [DB_MIGRATION_COMPLETE.md](DB_MIGRATION_COMPLETE.md)
 5. **API 목록**: [API_SUMMARY.md](API_SUMMARY.md)
 
 ### 🆘 문제 해결
@@ -85,11 +86,12 @@
 - **로그인 문제**: [LOGIN_FEATURE.md](LOGIN_FEATURE.md)
 
 ### 🎓 학습 순서 (신규 개발자)
-1. [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md) - 로컬 환경 설정
-2. [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) - 전체 구조 파악
-3. [API_SUMMARY.md](API_SUMMARY.md) - API 엔드포인트 이해
-4. [TESTING_GUIDE.md](TESTING_GUIDE.md) - 테스트 방법
-5. [DEPLOY_CAFE24.md](DEPLOY_CAFE24.md) - 배포 방법
+1. [DEVELOPMENT_ENVIRONMENT.md](DEVELOPMENT_ENVIRONMENT.md) - **전체 개발 환경 이해** ⭐ 먼저 읽기!
+2. [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md) - 로컬 환경 설정
+3. [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) - 전체 구조 파악
+4. [API_SUMMARY.md](API_SUMMARY.md) - API 엔드포인트 이해
+5. [TESTING_GUIDE.md](TESTING_GUIDE.md) - 테스트 방법
+6. [DEPLOY_CAFE24.md](DEPLOY_CAFE24.md) - 배포 방법
 
 ---
 
@@ -114,5 +116,5 @@
 ---
 
 **마지막 업데이트**: 2024-12-31  
-**문서 개수**: 30개  
+**문서 개수**: 31개  
 **분류**: 11개 카테고리

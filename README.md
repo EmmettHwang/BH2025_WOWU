@@ -114,6 +114,7 @@ BH2025_WOWU/
 ## 📖 문서 가이드
 
 ### 🚀 시작하기
+- **[개발 환경 종합 가이드](documents/manual/DEVELOPMENT_ENVIRONMENT.md)** ⭐ 신규 개발자 필독!
 - [로컬 개발 환경 설정](documents/manual/LOCAL_DEVELOPMENT.md)
 - [Cafe24 배포 가이드](documents/manual/DEPLOY_CAFE24.md)
 - [긴급 배포 (5분)](documents/manual/CAFE24_QUICK_DEPLOY.md)
