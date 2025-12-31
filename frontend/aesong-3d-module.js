@@ -204,13 +204,21 @@ function initSpeechRecognition() {
             const data = await response.json();
             const aiResponse = data.response;
             
-            console.log(`${currentCharacterName}: ${aiResponse}`);
+            console.log(`✅ ${currentCharacterName} 응답:`, aiResponse);
             
             // AI 응답을 채팅창에 표시
             addChatMessage(currentCharacterName, aiResponse);
             
             // TTS로 음성 출력
-            speakText(aiResponse);
+            console.log('🔊 TTS 음성 출력 시작...');
+            try {
+                await speakText(aiResponse);
+                console.log('✅ TTS 음성 출력 완료');
+            } catch (ttsError) {
+                console.error('❌ TTS 재생 실패:', ttsError);
+                // TTS 실패해도 텍스트는 표시되었으므로 계속 진행
+                updateStatusText('음성 재생 실패, 텍스트로 확인하세요');
+            }
             
         } catch (error) {
             console.error('채팅 오류:', error);
@@ -297,8 +305,10 @@ export function toggleVoiceRecording() {
     }
 }
 
-// TTS 음성 출력 (Google Cloud TTS API 사용)
+// TTS 음성 출력 (Google Cloud TTS API 사용, 실패 시 브라우저 TTS 폴백)
 async function speakText(text) {
+    console.log('🔊 TTS 시작:', { text: text.substring(0, 50) + '...', character: currentCharacterName });
+    
     try {
         // 말하는 중 상태 표시
         const lastChar = currentCharacterName.charAt(currentCharacterName.length - 1);
@@ -308,6 +318,8 @@ async function speakText(text) {
         
         // Google TTS API 호출
         const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000';
+        console.log('📡 Google TTS API 호출 중...');
+        
         const response = await fetch(`${API_BASE_URL}/api/tts`, {
             method: 'POST',
             headers: {
@@ -320,13 +332,17 @@ async function speakText(text) {
         });
         
         if (!response.ok) {
-            throw new Error('TTS API 호출 실패');
+            throw new Error(`TTS API 호출 실패: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
-        const audioContent = data.audioContent;
         
-        console.log(`${currentCharacterName} Google TTS 음성 생성 완료: ${data.voice}`);
+        if (!data.audioContent) {
+            throw new Error('TTS API 응답에 audioContent가 없습니다');
+        }
+        
+        const audioContent = data.audioContent;
+        console.log(`✅ ${currentCharacterName} Google TTS 음성 생성 완료: ${data.voice}`);
         
         // Base64 디코딩 및 오디오 재생
         const audioBlob = base64ToBlob(audioContent, 'audio/mp3');
@@ -337,34 +353,79 @@ async function speakText(text) {
         audio.preload = 'auto';
         
         audio.onplay = function() {
-            console.log(`${currentCharacterName} 음성 재생 시작`);
+            console.log(`🔊 ${currentCharacterName} 음성 재생 시작`);
         };
         
         audio.onended = function() {
-            console.log(`${currentCharacterName} 음성 재생 완료`);
+            console.log(`✅ ${currentCharacterName} 음성 재생 완료`);
             updateStatusText('마이크 버튼을 눌러서 말해보세요');
             URL.revokeObjectURL(audioUrl); // 메모리 해제
         };
         
-        audio.onerror = function() {
-            console.error('오디오 재생 오류');
+        audio.onerror = function(e) {
+            console.error('❌ 오디오 재생 오류:', e);
             updateStatusText('마이크 버튼을 눌러서 말해보세요');
+            // 브라우저 TTS 폴백
+            fallbackToSpeechSynthesis(text);
         };
         
         // 오디오가 충분히 로드된 후 즉시 재생
         audio.oncanplaythrough = async function() {
             try {
                 await audio.play();
+                console.log('▶️ 오디오 재생 시작됨');
             } catch (e) {
-                console.error('재생 실패:', e);
+                console.error('❌ 재생 실패:', e);
+                // 브라우저 TTS 폴백
+                fallbackToSpeechSynthesis(text);
             }
         };
         
         audio.load();
         
     } catch (error) {
-        console.error('TTS 오류:', error);
+        console.error('❌ TTS 오류:', error);
         updateStatusText('마이크 버튼을 눌러서 말해보세요');
+        
+        // 브라우저 TTS 폴백
+        fallbackToSpeechSynthesis(text);
+    }
+}
+
+// 브라우저 내장 TTS 사용 (Google TTS 실패 시 폴백)
+function fallbackToSpeechSynthesis(text) {
+    console.log('🔄 브라우저 TTS 폴백 시작');
+    
+    if (!('speechSynthesis' in window)) {
+        console.error('❌ 브라우저가 음성 합성을 지원하지 않습니다');
+        return;
+    }
+    
+    try {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ko-KR';
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        
+        utterance.onstart = function() {
+            console.log('🔊 브라우저 TTS 재생 시작');
+        };
+        
+        utterance.onend = function() {
+            console.log('✅ 브라우저 TTS 재생 완료');
+            updateStatusText('마이크 버튼을 눌러서 말해보세요');
+        };
+        
+        utterance.onerror = function(e) {
+            console.error('❌ 브라우저 TTS 오류:', e);
+            updateStatusText('마이크 버튼을 눌러서 말해보세요');
+        };
+        
+        window.speechSynthesis.speak(utterance);
+        console.log('✅ 브라우저 TTS 실행됨');
+        
+    } catch (error) {
+        console.error('❌ 브라우저 TTS 실패:', error);
     }
 }
 
