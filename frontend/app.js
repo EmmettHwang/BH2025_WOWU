@@ -19030,8 +19030,11 @@ function renderRAGDocuments() {
     document.getElementById('document-file-input').addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (file) {
-            // RAG 인덱싱 여부 선택
-            const useRAG = confirm('📚 이 문서를 RAG 시스템에 인덱싱하시겠습니까?\n\n✅ 예: 문서 내용을 학습하고 질문에 답변할 수 있습니다\n❌ 아니오: 단순히 파일만 저장합니다');
+            // RAG 인덱싱 여부 선택 (커스텀 모달)
+            const useRAG = await window.showCustomConfirm(
+                '📚 이 문서를 RAG 시스템에 인덱싱하시겠습니까?\n\n✅ 예: 문서 내용을 학습하고 질문에 답변할 수 있습니다\n❌ 아니오: 단순히 파일만 저장합니다',
+                'RAG 인덱싱'
+            );
             
             if (useRAG) {
                 await processRAGDocument(file);
@@ -19051,7 +19054,7 @@ async function uploadDocument(file) {
     try {
         const maxSize = 100 * 1024 * 1024; // 100MB
         if (file.size > maxSize) {
-            alert('파일 크기는 100MB 이하여야 합니다');
+            await window.showCustomAlert('파일 크기는 100MB 이하여야 합니다', 'error');
             return;
         }
 
@@ -19068,13 +19071,13 @@ async function uploadDocument(file) {
         window.hideLoading();
 
         if (response.data.success) {
-            alert('✅ 문서가 성공적으로 업로드되었습니다');
+            await window.showCustomAlert('✅ 문서가 성공적으로 업로드되었습니다', 'success');
             loadDocuments();
         }
     } catch (error) {
         window.hideLoading();
         console.error('문서 업로드 실패:', error);
-        alert('문서 업로드 실패: ' + (error.response?.data?.detail || error.message));
+        await window.showCustomAlert('문서 업로드 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -19156,7 +19159,12 @@ function getFileIcon(extension) {
 }
 
 async function deleteDocument(filename) {
-    if (!confirm(`문서 "${filename}"을(를) 삭제하시겠습니까?`)) {
+    const confirmed = await window.showCustomConfirm(
+        `문서 "${filename}"을(를) 삭제하시겠습니까?`,
+        '문서 삭제'
+    );
+    
+    if (!confirmed) {
         return;
     }
 
@@ -19164,12 +19172,12 @@ async function deleteDocument(filename) {
         window.showLoading('문서 삭제 중...');
         await axios.delete(`${API_BASE_URL}/api/documents/${encodeURIComponent(filename)}`);
         window.hideLoading();
-        alert('문서가 삭제되었습니다');
+        await window.showCustomAlert('문서가 삭제되었습니다', 'success');
         loadDocuments();
     } catch (error) {
         window.hideLoading();
         console.error('문서 삭제 실패:', error);
-        alert('문서 삭제 실패: ' + (error.response?.data?.detail || error.message));
+        await window.showCustomAlert('문서 삭제 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -19519,9 +19527,9 @@ async function processRAGDocument(file) {
         if (progressPercent) progressPercent.textContent = '100%';
         
         // 2초 후 모달 닫기
-        setTimeout(() => {
+        setTimeout(async () => {
             hideRAGProcessingModal();
-            alert('✨ 문서가 성공적으로 업로드되고 RAG 시스템에 인덱싱되었습니다!');
+            await window.showCustomAlert('✨ 문서가 성공적으로 업로드되고 RAG 시스템에 인덱싱되었습니다!', 'success');
             loadDocuments();
         }, 2000);
         
@@ -19534,9 +19542,9 @@ async function processRAGDocument(file) {
             statusText.innerHTML = `<i class="fas fa-times-circle mr-2 text-red-400"></i>처리 실패: ${error.response?.data?.detail || error.message}`;
         }
         
-        setTimeout(() => {
+        setTimeout(async () => {
             hideRAGProcessingModal();
-            alert('문서 처리 실패: ' + (error.response?.data?.detail || error.message));
+            await window.showCustomAlert('문서 처리 실패: ' + (error.response?.data?.detail || error.message), 'error');
         }, 2000);
     }
 }
@@ -19549,7 +19557,12 @@ async function askDocument(filename) {
         
         if (!isIndexed) {
             // 아직 인덱싱 안됨 - 지금 인덱싱할지 물어보기
-            if (confirm('이 문서는 아직 RAG 시스템에 인덱싱되지 않았습니다. 지금 인덱싱하시겠습니까?')) {
+            const shouldIndex = await window.showCustomConfirm(
+                '이 문서는 아직 RAG 시스템에 인덱싱되지 않았습니다. 지금 인덱싱하시겠습니까?',
+                'RAG 인덱싱 필요'
+            );
+            
+            if (shouldIndex) {
                 // 파일 다운로드 후 재업로드
                 const fileBlob = await axios.get(`${API_BASE_URL}/api/documents/download/${encodeURIComponent(filename)}`, {
                     responseType: 'blob'
@@ -19571,7 +19584,7 @@ async function askDocument(filename) {
         
     } catch (error) {
         console.error('문서 상태 확인 실패:', error);
-        alert('문서 상태를 확인할 수 없습니다. 나중에 다시 시도해주세요.');
+        await window.showCustomAlert('문서 상태를 확인할 수 없습니다. 나중에 다시 시도해주세요.', 'error');
     }
 }
 
@@ -19821,7 +19834,7 @@ async function generateExamQuestions(form) {
     } catch (error) {
         window.hideLoading();
         console.error('문제 생성 실패:', error);
-        alert('문제 생성 실패: ' + (error.response?.data?.detail || error.message));
+        await window.showCustomAlert('문제 생성 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -19869,7 +19882,7 @@ function displayGeneratedQuestions(data) {
 
 async function saveGeneratedExam() {
     if (!window.examBankData.currentExam) {
-        alert('생성된 문제가 없습니다');
+        await window.showCustomAlert('생성된 문제가 없습니다', 'warning');
         return;
     }
 
@@ -19899,13 +19912,13 @@ async function saveGeneratedExam() {
         window.hideLoading();
 
         if (response.data.success) {
-            alert('문제가 성공적으로 저장되었습니다');
+            await window.showCustomAlert('문제가 성공적으로 저장되었습니다', 'success');
             showExamBank();
         }
     } catch (error) {
         window.hideLoading();
         console.error('문제 저장 실패:', error);
-        alert('문제 저장 실패: ' + (error.response?.data?.detail || error.message));
+        await window.showCustomAlert('문제 저장 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
