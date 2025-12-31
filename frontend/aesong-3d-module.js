@@ -180,29 +180,59 @@ function initSpeechRecognition() {
             const groqApiKey = localStorage.getItem('groq_api_key') || '';
             const geminiApiKey = localStorage.getItem('gemini_api_key') || '';
             
+            // 문서 컨텍스트 확인
+            const documentContext = sessionStorage.getItem('chatbot-document-context');
+            const isRAGMode = !!documentContext;
+            
             console.log('🤖 AI 챗봇 호출:', {
                 character: currentCharacterName,
                 model: selectedModel,
                 hasGroqKey: groqApiKey ? '설정됨' : '미설정',
-                hasGeminiKey: geminiApiKey ? '설정됨' : '미설정'
+                hasGeminiKey: geminiApiKey ? '설정됨' : '미설정',
+                ragMode: isRAGMode,
+                documentContext: documentContext || '전체 문서'
             });
             
-            const response = await fetch(`${API_BASE_URL}/api/aesong-chat`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-GROQ-API-Key': groqApiKey,
-                    'X-Gemini-API-Key': geminiApiKey
-                },
-                body: JSON.stringify({ 
-                    message: transcript,
-                    character: currentCharacterName, // 캐릭터 이름 전달
-                    model: selectedModel // 선택된 AI 모델 전달
-                })
-            });
+            let response, data, aiResponse;
             
-            const data = await response.json();
-            const aiResponse = data.response;
+            // RAG 모드 (문서 기반 대화) vs 일반 캐릭터 대화
+            if (isRAGMode) {
+                // RAG API 사용
+                const ragK = parseInt(localStorage.getItem('rag_top_k') || '10');
+                response = await fetch(`${API_BASE_URL}/api/rag/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-GROQ-API-Key': groqApiKey
+                    },
+                    body: JSON.stringify({
+                        message: transcript,
+                        k: ragK,
+                        document_context: documentContext
+                    })
+                });
+                
+                data = await response.json();
+                aiResponse = data.answer;
+            } else {
+                // 일반 캐릭터 대화 API 사용
+                response = await fetch(`${API_BASE_URL}/api/aesong-chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-GROQ-API-Key': groqApiKey,
+                        'X-Gemini-API-Key': geminiApiKey
+                    },
+                    body: JSON.stringify({ 
+                        message: transcript,
+                        character: currentCharacterName,
+                        model: selectedModel
+                    })
+                });
+                
+                data = await response.json();
+                aiResponse = data.response;
+            }
             
             console.log(`✅ ${currentCharacterName} 응답:`, aiResponse);
             

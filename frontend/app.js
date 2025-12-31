@@ -17168,6 +17168,23 @@ function renderAesong3DChat() {
             <div id="aesong-3d-container">
                 <canvas id="aesong-canvas"></canvas>
                 
+                <!-- 문서 컨텍스트 칩 (상단 왼쪽) -->
+                <div id="document-context-chip" style="position: absolute; top: 20px; left: 20px; z-index: 11; display: none;">
+                    <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 12px 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); display: flex; align-items: center; gap: 10px; max-width: 300px;">
+                        <i class="fas fa-file-alt" style="font-size: 18px;"></i>
+                        <div style="flex: 1; overflow: hidden;">
+                            <div style="font-size: 11px; opacity: 0.9; margin-bottom: 2px;">📚 대상 문서</div>
+                            <div id="document-context-name" style="font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+                        </div>
+                        <button onclick="window.showDocumentSelector()" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" title="문서 변경">
+                            <i class="fas fa-sync-alt" style="font-size: 12px;"></i>
+                        </button>
+                        <button onclick="window.clearChatbotDocumentContext()" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" title="문서 해제 (전체 문서 모드)">
+                            <i class="fas fa-times" style="font-size: 14px;"></i>
+                        </button>
+                    </div>
+                </div>
+                
                 <!-- 캐릭터 선택 -->
                 <div class="character-selector">
                     <div class="text-sm font-semibold text-gray-700 mb-2">
@@ -17276,17 +17293,171 @@ function renderAesong3DChat() {
         const documentContext = sessionStorage.getItem('chatbot-document-context');
         if (documentContext) {
             setTimeout(() => {
-                updateChatbotDocumentContext(documentContext);
-                // RAG 모드 자동 활성화
-                const ragToggle = document.getElementById('rag-mode-toggle');
-                if (ragToggle && !ragToggle.checked) {
-                    ragToggle.checked = true;
-                    console.log('📚 문서 컨텍스트 감지 - RAG 모드 자동 활성화');
-                }
+                window.updateChatbotDocumentContext(documentContext);
+                console.log('📚 문서 컨텍스트 감지:', documentContext);
             }, 500);
         }
     }, 100);
 }
+
+// 문서 선택 모달 표시
+window.showDocumentSelector = async function() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/documents/list`);
+        const data = await response.json();
+        
+        if (!data.success || !data.documents || data.documents.length === 0) {
+            await window.showCustomAlert('📭 업로드된 문서가 없습니다', 'warning', '문서 없음');
+            return;
+        }
+        
+        // 모달 생성
+        const modalHtml = `
+            <div id="document-selector-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s;">
+                <div style="background: white; border-radius: 20px; padding: 30px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="font-size: 20px; font-weight: 700; color: #1f2937;">
+                            <i class="fas fa-file-alt" style="color: #3b82f6; margin-right: 8px;"></i>
+                            문서 선택
+                        </h3>
+                        <button onclick="window.closeDocumentSelector()" style="background: #f3f4f6; border: none; color: #6b7280; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- 전체 문서 옵션 -->
+                    <div onclick="window.selectDocument(null)" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 16px; border-radius: 12px; margin-bottom: 15px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(16, 185, 129, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(16, 185, 129, 0.3)';">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                                🌐
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">전체 문서 검색</div>
+                                <div style="font-size: 13px; opacity: 0.9;">모든 문서에서 답변을 찾습니다</div>
+                            </div>
+                            <i class="fas fa-chevron-right" style="opacity: 0.7;"></i>
+                        </div>
+                    </div>
+                    
+                    <div style="font-size: 14px; font-weight: 600; color: #6b7280; margin-bottom: 12px; padding-left: 4px;">
+                        📄 특정 문서 선택 (${data.documents.length}개)
+                    </div>
+                    
+                    <!-- 문서 목록 -->
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        ${data.documents.map(doc => {
+                            const iconMap = {
+                                'pdf': '📕',
+                                'doc': '📘',
+                                'docx': '📘',
+                                'txt': '📄',
+                                'ppt': '📙',
+                                'pptx': '📙',
+                                'xls': '📗',
+                                'xlsx': '📗'
+                            };
+                            const icon = iconMap[doc.extension] || '📄';
+                            const sizeStr = doc.file_size_mb < 1 
+                                ? `${Math.round(doc.file_size_mb * 1024)} KB`
+                                : `${doc.file_size_mb.toFixed(1)} MB`;
+                            
+                            return `
+                                <div onclick="window.selectDocument('${doc.filename}')" style="background: #f9fafb; border: 2px solid #e5e7eb; padding: 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#3b82f6';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb';">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div style="font-size: 28px;">${icon}</div>
+                                        <div style="flex: 1; min-width: 0;">
+                                            <div style="font-weight: 600; color: #1f2937; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${doc.filename}</div>
+                                            <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">${sizeStr} • ${new Date(doc.modified_at).toLocaleDateString('ko-KR')}</div>
+                                        </div>
+                                        <i class="fas fa-chevron-right" style="color: #9ca3af;"></i>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+            
+            <style>
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes fadeOut {
+                    from { opacity: 1; }
+                    to { opacity: 0; }
+                }
+                @keyframes slideUp {
+                    from { transform: translateY(20px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+            </style>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+    } catch (error) {
+        console.error('❌ 문서 목록 로드 실패:', error);
+        await window.showCustomAlert('문서 목록을 불러오는데 실패했습니다', 'error', '오류');
+    }
+};
+
+// 문서 선택
+window.selectDocument = function(filename) {
+    if (filename) {
+        // 특정 문서 선택
+        sessionStorage.setItem('chatbot-document-context', filename);
+        window.updateChatbotDocumentContext(filename);
+        console.log('📄 문서 선택됨:', filename);
+    } else {
+        // 전체 문서 모드
+        sessionStorage.removeItem('chatbot-document-context');
+        const chip = document.getElementById('document-context-chip');
+        if (chip) chip.style.display = 'none';
+        console.log('🌐 전체 문서 모드로 전환');
+    }
+    
+    window.closeDocumentSelector();
+    window.showCustomAlert(
+        filename ? `📄 "${filename}" 문서가 선택되었습니다` : '🌐 전체 문서 검색 모드로 전환되었습니다',
+        'success',
+        '문서 설정 완료'
+    );
+};
+
+// 문서 선택 모달 닫기
+window.closeDocumentSelector = function() {
+    const modal = document.getElementById('document-selector-modal');
+    if (modal) {
+        modal.style.animation = 'fadeOut 0.2s';
+        setTimeout(() => modal.remove(), 200);
+    }
+};
+
+// 문서 컨텍스트 업데이트 (칩 표시)
+window.updateChatbotDocumentContext = function(filename) {
+    const chip = document.getElementById('document-context-chip');
+    const nameEl = document.getElementById('document-context-name');
+    
+    if (!chip || !nameEl) return;
+    
+    if (filename) {
+        nameEl.textContent = filename;
+        chip.style.display = 'block';
+    } else {
+        chip.style.display = 'none';
+    }
+};
+
+// 문서 컨텍스트 해제 (전체 문서 모드)
+window.clearChatbotDocumentContext = function() {
+    sessionStorage.removeItem('chatbot-document-context');
+    const chip = document.getElementById('document-context-chip');
+    if (chip) chip.style.display = 'none';
+    
+    console.log('🌐 문서 컨텍스트 해제 - 전체 문서 모드');
+    window.showCustomAlert('🌐 전체 문서 검색 모드로 전환되었습니다', 'success', '모드 변경');
+};
 
 // 캐릭터 전환 함수
 window.switchCharacter = function(characterName) {
@@ -17434,28 +17605,54 @@ window.sendTextMessage = async function() {
         const groqApiKey = localStorage.getItem('groq_api_key') || '';
         const geminiApiKey = localStorage.getItem('gemini_api_key') || '';
         
+        // 문서 컨텍스트 확인
+        const documentContext = sessionStorage.getItem('chatbot-document-context');
+        const isRAGMode = !!documentContext;
+        
         console.log('💬 3D 챗봇 텍스트 전송:', { 
             message, 
             character: currentCharacter, 
             model: selectedModel,
             hasGroqKey: groqApiKey ? '설정됨' : '미설정',
-            hasGeminiKey: geminiApiKey ? '설정됨' : '미설정'
+            hasGeminiKey: geminiApiKey ? '설정됨' : '미설정',
+            ragMode: isRAGMode,
+            documentContext: documentContext || '전체 문서'
         });
         
-        // 백엔드 API 호출
-        const response = await fetch('/api/aesong-chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-GROQ-API-Key': groqApiKey,
-                'X-Gemini-API-Key': geminiApiKey
-            },
-            body: JSON.stringify({
-                message: message,
-                character: currentCharacter,
-                model: selectedModel
-            })
-        });
+        let response;
+        
+        // RAG 모드 (문서 기반 대화) vs 일반 캐릭터 대화
+        if (isRAGMode) {
+            // RAG API 사용
+            const ragK = parseInt(localStorage.getItem('rag_top_k') || '10');
+            response = await fetch(`${API_BASE_URL}/api/rag/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-GROQ-API-Key': groqApiKey
+                },
+                body: JSON.stringify({
+                    message: message,
+                    k: ragK,
+                    document_context: documentContext
+                })
+            });
+        } else {
+            // 일반 캐릭터 대화 API 사용
+            response = await fetch('/api/aesong-chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-GROQ-API-Key': groqApiKey,
+                    'X-Gemini-API-Key': geminiApiKey
+                },
+                body: JSON.stringify({
+                    message: message,
+                    character: currentCharacter,
+                    model: selectedModel
+                })
+            });
+        }
         
         if (!response.ok) {
             throw new Error('AI 응답 실패');
@@ -17463,8 +17660,36 @@ window.sendTextMessage = async function() {
         
         const data = await response.json();
         
-        // 에러 응답 확인
-        if (data.model === 'error') {
+        // RAG 모드 응답 처리
+        if (isRAGMode && data.answer) {
+            // RAG 응답 표시
+            addChatMessage('ai', data.answer);
+            
+            // 참고 문서 표시
+            if (data.sources && data.sources.length > 0) {
+                const sourcesHtml = `
+                    <div style="margin-top: 10px; padding: 10px; background: #f3f4f6; border-radius: 8px; font-size: 12px;">
+                        <div style="font-weight: 600; color: #6b7280; margin-bottom: 6px;">📚 참고 문서 (${data.sources.length}개)</div>
+                        ${data.sources.map(source => `
+                            <div style="padding: 4px 0; color: #4b5563;">
+                                • ${source.metadata?.filename || '문서'} (유사도: ${(source.similarity * 100).toFixed(1)}%)
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                messageList.insertAdjacentHTML('beforeend', sourcesHtml);
+            }
+            
+            // TTS로 음성 출력
+            try {
+                const characterName = window.currentCharacterName || '예진이';
+                await playTTS(data.answer, characterName);
+            } catch (ttsError) {
+                console.warn('TTS 재생 실패:', ttsError);
+            }
+        }
+        // 일반 캐릭터 대화 응답 처리
+        else if (data.model === 'error') {
             console.error('❌ AI 오류:', data.error);
             
             // 에러 메시지 한글 번역
