@@ -2663,6 +2663,9 @@ window.sendChatMessage = async function() {
     
     if (!message) return;
     
+    // 문서 컨텍스트 가져오기
+    const documentContext = sessionStorage.getItem('chatbot-document-context');
+    
     // 사용자 메시지 추가
     appendChatMessage(message, 'user', useRAG);
     input.value = '';
@@ -2674,14 +2677,24 @@ window.sendChatMessage = async function() {
         if (useRAG) {
             // RAG 모드: 문서 기반 답변
             console.log('RAG 모드로 질문:', message);
+            if (documentContext) {
+                console.log('📄 문서 컨텍스트:', documentContext);
+            }
             
             const groqApiKey = localStorage.getItem('groq_api_key') || '';
             const ragTopK = parseInt(localStorage.getItem('rag_top_k') || '10');  // 기본값 3→10
             
-            const response = await axios.post(`${API_BASE_URL}/api/rag/chat`, {
+            const requestBody = {
                 message: message,
                 k: ragTopK
-            }, {
+            };
+            
+            // 문서 컨텍스트가 있으면 추가
+            if (documentContext) {
+                requestBody.document_context = documentContext;
+            }
+            
+            const response = await axios.post(`${API_BASE_URL}/api/rag/chat`, requestBody, {
                 headers: {
                     'X-GROQ-API-Key': groqApiKey
                 }
@@ -17241,6 +17254,20 @@ function renderAesong3DChat() {
         } else {
             console.error('❌ initAesong3DScene 함수가 없습니다. aesong-3d-module.js가 로드되었는지 확인하세요.');
         }
+        
+        // 문서 컨텍스트 체크 및 칩 표시
+        const documentContext = sessionStorage.getItem('chatbot-document-context');
+        if (documentContext) {
+            setTimeout(() => {
+                updateChatbotDocumentContext(documentContext);
+                // RAG 모드 자동 활성화
+                const ragToggle = document.getElementById('rag-mode-toggle');
+                if (ragToggle && !ragToggle.checked) {
+                    ragToggle.checked = true;
+                    console.log('📚 문서 컨텍스트 감지 - RAG 모드 자동 활성화');
+                }
+            }, 500);
+        }
     }, 100);
 }
 
@@ -19003,8 +19030,17 @@ function renderRAGDocuments() {
     document.getElementById('document-file-input').addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (file) {
-            await uploadDocument(file);
+            // RAG 인덱싱 여부 선택
+            const useRAG = confirm('📚 이 문서를 RAG 시스템에 인덱싱하시겠습니까?\n\n✅ 예: 문서 내용을 학습하고 질문에 답변할 수 있습니다\n❌ 아니오: 단순히 파일만 저장합니다');
+            
+            if (useRAG) {
+                await processRAGDocument(file);
+            } else {
+                await uploadDocument(file);
+            }
         }
+        // 파일 input 초기화
+        e.target.value = '';
     });
 
     // 문서 목록 로드
@@ -19032,7 +19068,7 @@ async function uploadDocument(file) {
         window.hideLoading();
 
         if (response.data.success) {
-            alert('문서가 성공적으로 업로드되었습니다');
+            alert('✅ 문서가 성공적으로 업로드되었습니다');
             loadDocuments();
         }
     } catch (error) {
@@ -19074,13 +19110,20 @@ async function loadDocuments() {
                         </div>
                     </div>
                     <div class="flex gap-2">
+                        <button onclick="askDocument('${doc.filename}')" 
+                                class="text-purple-600 hover:text-purple-800 px-3 py-1 rounded bg-purple-50 hover:bg-purple-100 transition-colors"
+                                title="이 문서에 질문하기">
+                            <i class="fas fa-comments mr-1"></i>질문하기
+                        </button>
                         <a href="${API_BASE_URL}/api/documents/download/${encodeURIComponent(doc.filename)}" 
-                           class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded bg-blue-50 hover:bg-blue-100"
-                           download>
+                           class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded bg-blue-50 hover:bg-blue-100 transition-colors"
+                           download
+                           title="다운로드">
                             <i class="fas fa-download mr-1"></i>다운로드
                         </a>
                         <button onclick="deleteDocument('${doc.filename}')" 
-                                class="text-red-600 hover:text-red-800 px-3 py-1 rounded bg-red-50 hover:bg-red-100">
+                                class="text-red-600 hover:text-red-800 px-3 py-1 rounded bg-red-50 hover:bg-red-100 transition-colors"
+                                title="삭제">
                             <i class="fas fa-trash mr-1"></i>삭제
                         </button>
                     </div>
@@ -19128,6 +19171,483 @@ async function deleteDocument(filename) {
         console.error('문서 삭제 실패:', error);
         alert('문서 삭제 실패: ' + (error.response?.data?.detail || error.message));
     }
+}
+
+// ============================================
+// RAG 문서 처리 모달 with 애니메이션
+// ============================================
+
+function showRAGProcessingModal() {
+    const modalHtml = `
+        <div id="rag-processing-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" style="backdrop-filter: blur(8px);">
+            <div class="bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 rounded-3xl shadow-2xl p-8 max-w-4xl w-full mx-4 relative overflow-hidden">
+                <!-- 배경 그리드 효과 -->
+                <div class="absolute inset-0 opacity-10">
+                    <div class="absolute inset-0" style="background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px); background-size: 50px 50px;"></div>
+                </div>
+                
+                <!-- 상단 타이틀 (맥동 애니메이션) -->
+                <div class="text-center mb-8 relative z-10">
+                    <h2 class="text-3xl font-bold text-white mb-2" style="animation: pulse 2s ease-in-out infinite;">
+                        <i class="fas fa-brain mr-3"></i>지식 베이스 최적화 중...
+                    </h2>
+                    <p class="text-blue-200 text-sm">RAG 시스템이 문서를 학습하고 있습니다</p>
+                </div>
+                
+                <!-- 중앙 그래픽 영역 -->
+                <div class="bg-black bg-opacity-30 rounded-2xl p-8 mb-6 relative" style="min-height: 400px;">
+                    <!-- Parsing Stage -->
+                    <div id="stage-parsing" class="stage-container hidden">
+                        <div class="flex items-center justify-center space-x-8 h-full">
+                            <div class="document-icon" style="animation: float 3s ease-in-out infinite;">
+                                <i class="fas fa-file-pdf text-8xl text-red-400"></i>
+                            </div>
+                            <div class="light-beam-container">
+                                <div class="light-beam"></div>
+                                <div class="light-beam" style="animation-delay: 0.3s;"></div>
+                                <div class="light-beam" style="animation-delay: 0.6s;"></div>
+                            </div>
+                            <div class="text-layers">
+                                <div class="text-layer" style="animation-delay: 0s;">
+                                    <i class="fas fa-align-left text-4xl text-blue-300"></i>
+                                </div>
+                                <div class="text-layer" style="animation-delay: 0.2s;">
+                                    <i class="fas fa-align-center text-4xl text-blue-400"></i>
+                                </div>
+                                <div class="text-layer" style="animation-delay: 0.4s;">
+                                    <i class="fas fa-align-right text-4xl text-blue-500"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center mt-6">
+                            <p class="text-xl text-blue-300 font-semibold">📄 Parsing: 문서 구조 분석</p>
+                            <p class="text-sm text-gray-400 mt-2">텍스트를 레이어별로 분리하고 있습니다...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Chunking Stage -->
+                    <div id="stage-chunking" class="stage-container hidden">
+                        <div class="flex items-center justify-center h-full">
+                            <div class="chunks-container">
+                                <div class="chunk-block" style="animation-delay: 0s;"><i class="fas fa-cube text-3xl text-purple-400"></i></div>
+                                <div class="chunk-block" style="animation-delay: 0.2s;"><i class="fas fa-cube text-3xl text-purple-500"></i></div>
+                                <div class="chunk-block" style="animation-delay: 0.4s;"><i class="fas fa-cube text-3xl text-purple-600"></i></div>
+                                <div class="chunk-block" style="animation-delay: 0.6s;"><i class="fas fa-cube text-3xl text-indigo-400"></i></div>
+                                <div class="chunk-block" style="animation-delay: 0.8s;"><i class="fas fa-cube text-3xl text-indigo-500"></i></div>
+                                <div class="chunk-block" style="animation-delay: 1.0s;"><i class="fas fa-cube text-3xl text-indigo-600"></i></div>
+                            </div>
+                        </div>
+                        <div class="text-center mt-6">
+                            <p class="text-xl text-purple-300 font-semibold">🧩 Chunking: 의미 단위 분할</p>
+                            <p class="text-sm text-gray-400 mt-2">텍스트를 최적 크기로 나누고 있습니다...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Embedding Stage -->
+                    <div id="stage-embedding" class="stage-container hidden">
+                        <div class="flex items-center justify-center h-full">
+                            <div class="code-stream-container">
+                                <div class="code-stream">
+                                    <span class="binary-code">01001000</span>
+                                    <span class="binary-code">01100101</span>
+                                    <span class="binary-code">01101100</span>
+                                    <span class="binary-code">01101100</span>
+                                    <span class="binary-code">01101111</span>
+                                </div>
+                                <div class="code-stream" style="animation-delay: 0.3s;">
+                                    <span class="binary-code">01010111</span>
+                                    <span class="binary-code">01101111</span>
+                                    <span class="binary-code">01110010</span>
+                                    <span class="binary-code">01101100</span>
+                                    <span class="binary-code">01100100</span>
+                                </div>
+                                <div class="code-stream" style="animation-delay: 0.6s;">
+                                    <span class="binary-code">01000001</span>
+                                    <span class="binary-code">01001001</span>
+                                    <span class="binary-code">00100000</span>
+                                    <span class="binary-code">01010010</span>
+                                    <span class="binary-code">01000001</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center mt-6">
+                            <p class="text-xl text-cyan-300 font-semibold">🔢 Embedding: 벡터 변환</p>
+                            <p class="text-sm text-gray-400 mt-2">의미를 수치 벡터로 인코딩하고 있습니다...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Indexing Stage -->
+                    <div id="stage-indexing" class="stage-container hidden">
+                        <div class="flex items-center justify-center h-full">
+                            <div class="vector-space">
+                                <div class="grid-line horizontal" style="animation-delay: 0s;"></div>
+                                <div class="grid-line horizontal" style="animation-delay: 0.1s;"></div>
+                                <div class="grid-line horizontal" style="animation-delay: 0.2s;"></div>
+                                <div class="grid-line vertical" style="animation-delay: 0.3s;"></div>
+                                <div class="grid-line vertical" style="animation-delay: 0.4s;"></div>
+                                <div class="grid-line vertical" style="animation-delay: 0.5s;"></div>
+                                <div class="vector-point" style="top: 30%; left: 40%; animation-delay: 0.6s;"></div>
+                                <div class="vector-point" style="top: 50%; left: 60%; animation-delay: 0.8s;"></div>
+                                <div class="vector-point" style="top: 70%; left: 30%; animation-delay: 1.0s;"></div>
+                                <div class="vector-point" style="top: 40%; left: 70%; animation-delay: 1.2s;"></div>
+                            </div>
+                        </div>
+                        <div class="text-center mt-6">
+                            <p class="text-xl text-green-300 font-semibold">🗂️ Indexing: 벡터 공간에 저장</p>
+                            <p class="text-sm text-gray-400 mt-2">다차원 인덱스에 정착시키고 있습니다...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 하단 상태 표시 -->
+                <div class="bg-black bg-opacity-50 rounded-xl p-4 relative z-10">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm text-gray-300">진행 상태:</span>
+                        <span id="rag-progress-percentage" class="text-sm font-bold text-green-400">0%</span>
+                    </div>
+                    <div class="bg-gray-700 rounded-full h-3 mb-3 overflow-hidden">
+                        <div id="rag-progress-bar" class="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-full transition-all duration-500" style="width: 0%; animation: shimmer 2s infinite;"></div>
+                    </div>
+                    <p id="rag-status-text" class="text-center text-sm text-blue-200">
+                        <i class="fas fa-circle-notch fa-spin mr-2"></i>문서 업로드 준비 중...
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <style>
+            @keyframes pulse {
+                0%, 100% { opacity: 1; transform: scale(1); }
+                50% { opacity: 0.8; transform: scale(1.05); }
+            }
+            
+            @keyframes float {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-20px); }
+            }
+            
+            @keyframes lightBeam {
+                0% { opacity: 0; transform: scaleX(0); }
+                50% { opacity: 1; transform: scaleX(1); }
+                100% { opacity: 0; transform: scaleX(1.2); }
+            }
+            
+            @keyframes layerSeparate {
+                0% { transform: translateX(0); opacity: 0; }
+                50% { opacity: 1; }
+                100% { transform: translateX(50px); opacity: 1; }
+            }
+            
+            @keyframes chunkFloat {
+                0%, 100% { transform: translateY(0) rotate(0deg); }
+                25% { transform: translateY(-30px) rotate(90deg); }
+                50% { transform: translateY(-20px) rotate(180deg); }
+                75% { transform: translateY(-40px) rotate(270deg); }
+            }
+            
+            @keyframes codeFlow {
+                0% { transform: translateX(-100%) translateY(0); opacity: 0; }
+                50% { opacity: 1; }
+                100% { transform: translateX(200%) translateY(-100px); opacity: 0; }
+            }
+            
+            @keyframes gridAppear {
+                0% { opacity: 0; transform: scaleX(0); }
+                100% { opacity: 1; transform: scaleX(1); }
+            }
+            
+            @keyframes pointSettle {
+                0% { opacity: 0; transform: scale(0) rotate(0deg); }
+                50% { opacity: 1; transform: scale(1.5) rotate(180deg); }
+                100% { opacity: 1; transform: scale(1) rotate(360deg); }
+            }
+            
+            @keyframes shimmer {
+                0% { background-position: -1000px 0; }
+                100% { background-position: 1000px 0; }
+            }
+            
+            .stage-container { position: absolute; inset: 0; }
+            
+            .light-beam-container { display: flex; flex-direction: column; gap: 10px; }
+            .light-beam {
+                width: 100px; height: 4px;
+                background: linear-gradient(90deg, transparent, #60a5fa, transparent);
+                animation: lightBeam 1.5s ease-in-out infinite;
+            }
+            
+            .text-layers { display: flex; flex-direction: column; gap: 15px; }
+            .text-layer { animation: layerSeparate 2s ease-out forwards; }
+            
+            .chunks-container {
+                display: grid; grid-template-columns: repeat(3, 1fr);
+                gap: 30px; max-width: 400px;
+            }
+            .chunk-block { animation: chunkFloat 4s ease-in-out infinite; }
+            
+            .code-stream-container { display: flex; flex-direction: column; gap: 20px; width: 100%; }
+            .code-stream {
+                display: flex; gap: 10px;
+                animation: codeFlow 3s linear infinite;
+            }
+            .binary-code {
+                font-family: 'Courier New', monospace;
+                font-size: 20px; color: #22d3ee;
+                text-shadow: 0 0 10px #22d3ee;
+            }
+            
+            .vector-space {
+                position: relative; width: 400px; height: 300px;
+                border: 2px solid rgba(52, 211, 153, 0.3);
+                border-radius: 10px;
+            }
+            .grid-line {
+                position: absolute;
+                background: rgba(52, 211, 153, 0.5);
+            }
+            .grid-line.horizontal {
+                width: 100%; height: 2px;
+                animation: gridAppear 1s ease-out forwards;
+            }
+            .grid-line.vertical {
+                width: 2px; height: 100%;
+                animation: gridAppear 1s ease-out forwards;
+            }
+            .vector-point {
+                position: absolute; width: 15px; height: 15px;
+                background: radial-gradient(circle, #34d399, #10b981);
+                border-radius: 50%;
+                box-shadow: 0 0 20px #34d399;
+                animation: pointSettle 2s ease-out forwards;
+            }
+        </style>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function hideRAGProcessingModal() {
+    const modal = document.getElementById('rag-processing-modal');
+    if (modal) {
+        modal.style.opacity = '0';
+        modal.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => modal.remove(), 500);
+    }
+}
+
+async function processRAGDocument(file) {
+    // 모달 표시
+    showRAGProcessingModal();
+    
+    const stages = ['parsing', 'chunking', 'embedding', 'indexing'];
+    const stageMessages = {
+        parsing: '📄 문서 구조를 분석하고 텍스트를 추출하고 있습니다...',
+        chunking: '🧩 텍스트를 의미 있는 단위로 분할하고 있습니다...',
+        embedding: '🔢 각 조각을 벡터로 변환하고 있습니다...',
+        indexing: '🗂️ 벡터 데이터베이스에 저장하고 있습니다...'
+    };
+    
+    let currentStage = 0;
+    
+    // 스테이지 애니메이션 시뮬레이션
+    const stageInterval = setInterval(() => {
+        // 이전 스테이지 숨기기
+        stages.forEach(s => {
+            const el = document.getElementById(`stage-${s}`);
+            if (el) el.classList.add('hidden');
+        });
+        
+        // 현재 스테이지 표시
+        if (currentStage < stages.length) {
+            const stageName = stages[currentStage];
+            const el = document.getElementById(`stage-${stageName}`);
+            if (el) el.classList.remove('hidden');
+            
+            const statusText = document.getElementById('rag-status-text');
+            if (statusText) {
+                statusText.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i>${stageMessages[stageName]}`;
+            }
+            
+            const progressBar = document.getElementById('rag-progress-bar');
+            const progressPercent = document.getElementById('rag-progress-percentage');
+            const progress = ((currentStage + 1) / stages.length) * 100;
+            if (progressBar) progressBar.style.width = `${progress}%`;
+            if (progressPercent) progressPercent.textContent = `${Math.round(progress)}%`;
+            
+            currentStage++;
+        }
+    }, 3000); // 각 스테이지 3초
+    
+    try {
+        // 실제 RAG 업로드
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('category', 'rag-indexed');
+        
+        const response = await axios.post(`${API_BASE_URL}/api/documents/upload`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        
+        // RAG 인덱싱 트리거 (백엔드에 별도 엔드포인트 필요)
+        if (response.data.success) {
+            const filename = response.data.filename;
+            
+            // RAG 인덱싱 요청
+            try {
+                await axios.post(`${API_BASE_URL}/api/rag/index-document`, {
+                    filename: filename,
+                    original_filename: response.data.original_filename
+                });
+            } catch (ragError) {
+                console.error('RAG 인덱싱 실패:', ragError);
+                // RAG 실패해도 문서는 저장됨
+            }
+        }
+        
+        // 모든 스테이지 완료 대기
+        await new Promise(resolve => setTimeout(resolve, 12000)); // 4 stages * 3 seconds
+        clearInterval(stageInterval);
+        
+        // 완료 상태로 업데이트
+        const statusText = document.getElementById('rag-status-text');
+        if (statusText) {
+            statusText.innerHTML = '<i class="fas fa-check-circle mr-2 text-green-400"></i>✨ 문서 처리 완료! 이제 이 문서로 질문할 수 있습니다.';
+        }
+        const progressBar = document.getElementById('rag-progress-bar');
+        const progressPercent = document.getElementById('rag-progress-percentage');
+        if (progressBar) progressBar.style.width = '100%';
+        if (progressPercent) progressPercent.textContent = '100%';
+        
+        // 2초 후 모달 닫기
+        setTimeout(() => {
+            hideRAGProcessingModal();
+            alert('✨ 문서가 성공적으로 업로드되고 RAG 시스템에 인덱싱되었습니다!');
+            loadDocuments();
+        }, 2000);
+        
+    } catch (error) {
+        clearInterval(stageInterval);
+        console.error('RAG 문서 처리 실패:', error);
+        
+        const statusText = document.getElementById('rag-status-text');
+        if (statusText) {
+            statusText.innerHTML = `<i class="fas fa-times-circle mr-2 text-red-400"></i>처리 실패: ${error.response?.data?.detail || error.message}`;
+        }
+        
+        setTimeout(() => {
+            hideRAGProcessingModal();
+            alert('문서 처리 실패: ' + (error.response?.data?.detail || error.message));
+        }, 2000);
+    }
+}
+
+async function askDocument(filename) {
+    // 문서가 RAG에 인덱싱되어 있는지 확인
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/rag/document-status/${encodeURIComponent(filename)}`);
+        const isIndexed = response.data.indexed;
+        
+        if (!isIndexed) {
+            // 아직 인덱싱 안됨 - 지금 인덱싱할지 물어보기
+            if (confirm('이 문서는 아직 RAG 시스템에 인덱싱되지 않았습니다. 지금 인덱싱하시겠습니까?')) {
+                // 파일 다운로드 후 재업로드
+                const fileBlob = await axios.get(`${API_BASE_URL}/api/documents/download/${encodeURIComponent(filename)}`, {
+                    responseType: 'blob'
+                });
+                const file = new File([fileBlob.data], filename);
+                await processRAGDocument(file);
+            }
+            return;
+        }
+        
+        // 인덱싱 완료 - 3D 챗봇으로 이동하며 문서 컨텍스트 설정
+        sessionStorage.setItem('chatbot-document-context', filename);
+        showTab('aesong-3d-chat');
+        
+        // 챗봇 UI 업데이트 (문서 칩 표시)
+        setTimeout(() => {
+            updateChatbotDocumentContext(filename);
+        }, 500);
+        
+    } catch (error) {
+        console.error('문서 상태 확인 실패:', error);
+        alert('문서 상태를 확인할 수 없습니다. 나중에 다시 시도해주세요.');
+    }
+}
+
+function updateChatbotDocumentContext(filename) {
+    // 3D 챗봇 UI 또는 플로팅 챗봇에 문서 칩 표시
+    const chatContainer = document.getElementById('aesong-chat-messages') || 
+                         document.getElementById('chat-messages-container') ||
+                         document.getElementById('chatbot-messages') ||
+                         document.querySelector('.chat-container');
+    
+    if (!chatContainer) {
+        console.warn('⚠️ 채팅 컨테이너를 찾을 수 없습니다');
+        return;
+    }
+    
+    // 기존 문서 칩 제거
+    const existingChip = document.getElementById('document-context-chip');
+    if (existingChip) existingChip.remove();
+    
+    // 새 문서 칩 추가
+    const chip = document.createElement('div');
+    chip.id = 'document-context-chip';
+    chip.className = 'document-chip';
+    chip.style.cssText = `
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        animation: slideInDown 0.5s ease;
+    `;
+    chip.innerHTML = `
+        <span style="flex: 1;">
+            <i class="fas fa-file-alt mr-2"></i>대상 문서: ${filename.length > 30 ? filename.substring(0, 30) + '...' : filename}
+        </span>
+        <button onclick="clearDocumentContext()" 
+                style="background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-left: 8px; transition: all 0.3s ease;"
+                onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+                onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    // 컨테이너 위치에 따라 삽입 위치 결정
+    if (chatContainer.id === 'aesong-chat-messages') {
+        // 3D 채팅 메시지 영역
+        const messageList = document.getElementById('chat-message-list');
+        if (messageList) {
+            messageList.insertBefore(chip, messageList.firstChild);
+        } else {
+            chatContainer.insertBefore(chip, chatContainer.firstChild);
+        }
+        // 메시지 영역 표시
+        chatContainer.style.display = 'block';
+    } else {
+        // 플로팅 챗봇
+        chatContainer.insertBefore(chip, chatContainer.firstChild);
+    }
+    
+    console.log('📄 문서 컨텍스트 칩 표시:', filename);
+}
+
+function clearDocumentContext() {
+    sessionStorage.removeItem('chatbot-document-context');
+    const chip = document.getElementById('document-context-chip');
+    if (chip) {
+        chip.style.animation = 'slideOutUp 0.5s ease';
+        setTimeout(() => chip.remove(), 500);
+    }
+    console.log('🗑️ 문서 컨텍스트 제거됨');
 }
 
 

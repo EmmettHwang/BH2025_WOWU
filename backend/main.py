@@ -7519,10 +7519,12 @@ async def rag_chat(request: Request):
         - message: 사용자 질문
         - k: 검색할 문서 수 (기본 5)
         - model: AI 모델 (groq, gemini, gemma)
+        - document_context: 특정 문서로 제한 (선택, 파일명)
     
     특수 기능:
         - 통계/숫자 질문 감지 시 DB 직접 조회
         - 유사도 임계값 체크
+        - 문서 특정 컨텍스트 지원
     """
     if not vector_store_manager:
         raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
@@ -7532,9 +7534,17 @@ async def rag_chat(request: Request):
         message = data.get('message', '').strip()
         k = data.get('k', 5)  # 기본값 3에서 5로 증가
         model = data.get('model', 'groq').lower()
+        document_context = data.get('document_context', None)  # 특정 문서로 제한
         
         if not message:
             raise HTTPException(status_code=400, detail="메시지를 입력해주세요")
+        
+        # 문서 컨텍스트가 지정된 경우 메시지에 추가
+        if document_context:
+            print(f"📄 문서 컨텍스트: {document_context}")
+            message_with_context = f"[문서: {document_context}에 대한 질문] {message}"
+        else:
+            message_with_context = message
         
         # ==================== 통계/숫자 질문 감지 ====================
         message_lower = message.lower()
@@ -7675,8 +7685,26 @@ async def rag_chat(request: Request):
         rag_chain = RAGChain(vector_store_manager, api_key, api_type)
         
         # RAG 질문 처리 (유사도 임계값 0.008 = 0.8%)
-        print(f"💬 RAG 질문: {message}")
-        result = await rag_chain.query(message, k=k, min_similarity=0.008)
+        print(f"💬 RAG 질문: {message_with_context if document_context else message}")
+        result = await rag_chain.query(message_with_context if document_context else message, k=k, min_similarity=0.008)
+        
+        # 문서 컨텍스트가 지정된 경우 결과 필터링
+        if document_context:
+            filtered_sources = []
+            for source in result.get('sources', []):
+                metadata = source.get('metadata', {})
+                source_filename = metadata.get('filename', '') or metadata.get('original_filename', '')
+                
+                # 파일명이 일치하거나 포함되는 경우만 포함
+                if document_context in source_filename or source_filename in document_context:
+                    filtered_sources.append(source)
+            
+            # 필터링된 소스가 있으면 사용, 없으면 모든 소스 사용
+            if filtered_sources:
+                result['sources'] = filtered_sources
+                print(f"📄 문서 필터링: {len(filtered_sources)}/{len(result.get('sources', []))} 소스 사용")
+            else:
+                print(f"⚠️ 문서 '{document_context}'에서 관련 내용을 찾을 수 없어 전체 검색 결과를 사용합니다")
         
         return {
             "success": True,
@@ -7684,6 +7712,7 @@ async def rag_chat(request: Request):
             "answer": result['answer'],
             "sources": result['sources'],
             "message": message,
+            "document_context": document_context,
             "query_type": "rag"
         }
         
@@ -8274,3 +8303,117 @@ async def download_document(filename: str):
     except Exception as e:
         print(f"[ERROR] 문서 다운로드 실패: {str(e)}")
         raise HTTPException(status_code=500, detail=f"문서 다운로드 실패: {str(e)}")
+
+
+@app.post("/api/rag/index-document")
+async def index_document_to_rag(request: Request):
+    """
+    문서를 RAG 시스템에 인덱싱
+    - filename: documents 폴더에 있는 파일명
+    - original_filename: 원본 파일명 (선택)
+    """
+    if not vector_store_manager or not document_loader:
+        raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
+    
+    try:
+        body = await request.json()
+        filename = body.get('filename')
+        original_filename = body.get('original_filename', filename)
+        
+        if not filename:
+            raise HTTPException(status_code=400, detail="filename이 필요합니다")
+        
+        # 파일 경로 확인
+        documents_dir = Path("./documents")
+        file_path = documents_dir / filename
+        
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail=f"파일을 찾을 수 없습니다: {filename}")
+        
+        # 파일 확장자 확인
+        file_ext = file_path.suffix.lower()
+        if file_ext not in ['.pdf', '.docx', '.doc', '.txt']:
+            raise HTTPException(
+                status_code=400, 
+                detail="RAG 인덱싱은 PDF, DOCX, TXT 파일만 지원합니다"
+            )
+        
+        print(f"📚 RAG 인덱싱 시작: {filename}")
+        
+        # 메타데이터 구성
+        metadata = {
+            "filename": filename,
+            "original_filename": original_filename,
+            "indexed_at": datetime.now().isoformat(),
+            "file_size": file_path.stat().st_size,
+            "source": "documents_folder"
+        }
+        
+        # 문서 로드 및 청킹
+        print(f"📝 문서 파싱 중...")
+        documents = document_loader.load_document(str(file_path), metadata)
+        
+        if not documents:
+            raise HTTPException(status_code=400, detail="문서에서 텍스트를 추출할 수 없습니다")
+        
+        print(f"🧩 청킹 완료: {len(documents)}개 조각")
+        
+        # 벡터 DB에 저장
+        print(f"🔢 임베딩 및 인덱싱 중...")
+        texts = [doc.page_content for doc in documents]
+        metadatas = [doc.metadata for doc in documents]
+        
+        doc_ids = vector_store_manager.add_documents(texts, metadatas)
+        
+        print(f"✅ RAG 인덱싱 완료: {len(doc_ids)}개 벡터 저장됨")
+        
+        return {
+            "success": True,
+            "message": "문서가 RAG 시스템에 성공적으로 인덱싱되었습니다",
+            "filename": filename,
+            "chunks_count": len(documents),
+            "vector_count": len(doc_ids),
+            "metadata": metadata
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] RAG 인덱싱 실패: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"RAG 인덱싱 실패: {str(e)}")
+
+
+@app.get("/api/rag/document-status/{filename}")
+async def get_document_rag_status(filename: str):
+    """
+    문서의 RAG 인덱싱 상태 확인
+    """
+    if not vector_store_manager:
+        raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
+    
+    try:
+        # 파일명으로 벡터 DB 검색
+        documents = vector_store_manager.get_all_documents()
+        
+        # 해당 파일명을 가진 문서가 있는지 확인
+        indexed_docs = [
+            doc for doc in documents 
+            if doc.get('metadata', {}).get('filename') == filename or
+               doc.get('metadata', {}).get('original_filename') == filename
+        ]
+        
+        is_indexed = len(indexed_docs) > 0
+        
+        return {
+            "success": True,
+            "filename": filename,
+            "indexed": is_indexed,
+            "chunk_count": len(indexed_docs),
+            "total_docs_in_rag": len(documents)
+        }
+        
+    except Exception as e:
+        print(f"[ERROR] RAG 상태 조회 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"RAG 상태 조회 실패: {str(e)}")
