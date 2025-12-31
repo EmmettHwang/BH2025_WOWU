@@ -180,9 +180,17 @@ function initSpeechRecognition() {
             const groqApiKey = localStorage.getItem('groq_api_key') || '';
             const geminiApiKey = localStorage.getItem('gemini_api_key') || '';
             
-            // 문서 컨텍스트 확인
-            const documentContext = sessionStorage.getItem('chatbot-document-context');
-            const isRAGMode = !!documentContext;
+            // 문서 컨텍스트 확인 (복수 문서 지원)
+            const documentContextRaw = sessionStorage.getItem('chatbot-document-context');
+            let documentContext = null;
+            if (documentContextRaw) {
+                try {
+                    documentContext = JSON.parse(documentContextRaw);
+                } catch {
+                    documentContext = [documentContextRaw];
+                }
+            }
+            const isRAGMode = !!documentContext && (Array.isArray(documentContext) ? documentContext.length > 0 : true);
             
             console.log('🤖 AI 챗봇 호출:', {
                 character: currentCharacterName,
@@ -197,7 +205,7 @@ function initSpeechRecognition() {
             
             // RAG 모드 (문서 기반 대화) vs 일반 캐릭터 대화
             if (isRAGMode) {
-                // RAG API 사용
+                // RAG API 사용 (복수 문서 배열 전달)
                 const ragK = parseInt(localStorage.getItem('rag_top_k') || '10');
                 response = await fetch(`${API_BASE_URL}/api/rag/chat`, {
                     method: 'POST',
@@ -208,7 +216,7 @@ function initSpeechRecognition() {
                     body: JSON.stringify({
                         message: transcript,
                         k: ragK,
-                        document_context: documentContext
+                        document_context: Array.isArray(documentContext) ? documentContext : [documentContext]
                     })
                 });
                 

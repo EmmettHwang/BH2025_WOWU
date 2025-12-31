@@ -7534,17 +7534,26 @@ async def rag_chat(request: Request):
         message = data.get('message', '').strip()
         k = data.get('k', 5)  # 기본값 3에서 5로 증가
         model = data.get('model', 'groq').lower()
-        document_context = data.get('document_context', None)  # 특정 문서로 제한
+        document_context = data.get('document_context', None)  # 특정 문서로 제한 (문자열 또는 배열)
         
         if not message:
             raise HTTPException(status_code=400, detail="메시지를 입력해주세요")
         
-        # 문서 컨텍스트가 지정된 경우 메시지에 추가
+        # 문서 컨텍스트 정규화 (문자열 -> 배열)
         if document_context:
-            print(f"📄 문서 컨텍스트: {document_context}")
-            message_with_context = f"[문서: {document_context}에 대한 질문] {message}"
+            if isinstance(document_context, str):
+                document_context = [document_context]
+            elif not isinstance(document_context, list):
+                document_context = None
+        
+        # 문서 컨텍스트가 지정된 경우 메시지에 추가
+        if document_context and len(document_context) > 0:
+            doc_names = ', '.join(document_context)
+            print(f"📄 문서 컨텍스트 ({len(document_context)}개): {doc_names}")
+            message_with_context = f"[문서: {doc_names}에 대한 질문] {message}"
         else:
             message_with_context = message
+            document_context = None
         
         # ==================== 통계/숫자 질문 감지 ====================
         message_lower = message.lower()
@@ -7688,23 +7697,27 @@ async def rag_chat(request: Request):
         print(f"💬 RAG 질문: {message_with_context if document_context else message}")
         result = await rag_chain.query(message_with_context if document_context else message, k=k, min_similarity=0.008)
         
-        # 문서 컨텍스트가 지정된 경우 결과 필터링
-        if document_context:
+        # 문서 컨텍스트가 지정된 경우 결과 필터링 (복수 문서 지원)
+        if document_context and len(document_context) > 0:
             filtered_sources = []
             for source in result.get('sources', []):
                 metadata = source.get('metadata', {})
                 source_filename = metadata.get('filename', '') or metadata.get('original_filename', '')
                 
-                # 파일명이 일치하거나 포함되는 경우만 포함
-                if document_context in source_filename or source_filename in document_context:
-                    filtered_sources.append(source)
+                # 지정된 문서 목록에 포함되는 경우만 포함
+                for doc_name in document_context:
+                    if doc_name in source_filename or source_filename in doc_name:
+                        filtered_sources.append(source)
+                        break
             
             # 필터링된 소스가 있으면 사용, 없으면 모든 소스 사용
             if filtered_sources:
                 result['sources'] = filtered_sources
-                print(f"📄 문서 필터링: {len(filtered_sources)}/{len(result.get('sources', []))} 소스 사용")
+                doc_names = ', '.join(document_context)
+                print(f"📄 문서 필터링 ({len(document_context)}개): {len(filtered_sources)}/{len(result.get('sources', []))} 소스 사용")
             else:
-                print(f"⚠️ 문서 '{document_context}'에서 관련 내용을 찾을 수 없어 전체 검색 결과를 사용합니다")
+                doc_names = ', '.join(document_context)
+                print(f"⚠️ 문서 '{doc_names}'에서 관련 내용을 찾을 수 없어 전체 검색 결과를 사용합니다")
         
         return {
             "success": True,

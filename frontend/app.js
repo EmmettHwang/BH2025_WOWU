@@ -17168,21 +17168,9 @@ function renderAesong3DChat() {
             <div id="aesong-3d-container">
                 <canvas id="aesong-canvas"></canvas>
                 
-                <!-- 문서 컨텍스트 칩 (상단 왼쪽) -->
-                <div id="document-context-chip" style="position: absolute; top: 20px; left: 20px; z-index: 11; display: none;">
-                    <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 12px 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); display: flex; align-items: center; gap: 10px; max-width: 300px;">
-                        <i class="fas fa-file-alt" style="font-size: 18px;"></i>
-                        <div style="flex: 1; overflow: hidden;">
-                            <div style="font-size: 11px; opacity: 0.9; margin-bottom: 2px;">📚 대상 문서</div>
-                            <div id="document-context-name" style="font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
-                        </div>
-                        <button onclick="window.showDocumentSelector()" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" title="문서 변경">
-                            <i class="fas fa-sync-alt" style="font-size: 12px;"></i>
-                        </button>
-                        <button onclick="window.clearChatbotDocumentContext()" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" title="문서 해제 (전체 문서 모드)">
-                            <i class="fas fa-times" style="font-size: 14px;"></i>
-                        </button>
-                    </div>
+                <!-- 문서 컨텍스트 칩 (상단 왼쪽, 복수 지원) -->
+                <div id="document-context-chip" style="position: absolute; top: 20px; left: 20px; z-index: 11; display: none; max-width: 90%; overflow-x: auto; overflow-y: hidden; white-space: nowrap; padding-bottom: 5px;">
+                    <div id="document-chips-container" style="display: flex; gap: 8px; align-items: center;"></div>
                 </div>
                 
                 <!-- 캐릭터 선택 -->
@@ -17290,9 +17278,15 @@ function renderAesong3DChat() {
         }
         
         // 문서 컨텍스트 체크 및 칩 표시
-        const documentContext = sessionStorage.getItem('chatbot-document-context');
-        if (documentContext) {
+        const documentContextRaw = sessionStorage.getItem('chatbot-document-context');
+        if (documentContextRaw) {
             setTimeout(() => {
+                let documentContext;
+                try {
+                    documentContext = JSON.parse(documentContextRaw);
+                } catch {
+                    documentContext = [documentContextRaw];
+                }
                 window.updateChatbotDocumentContext(documentContext);
                 console.log('📚 문서 컨텍스트 감지:', documentContext);
             }, 500);
@@ -17300,7 +17294,7 @@ function renderAesong3DChat() {
     }, 100);
 }
 
-// 문서 선택 모달 표시
+// 문서 선택 모달 표시 (복수 선택 지원)
 window.showDocumentSelector = async function() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/documents/list`);
@@ -17311,14 +17305,18 @@ window.showDocumentSelector = async function() {
             return;
         }
         
+        // 현재 선택된 문서들 가져오기
+        const currentDocs = JSON.parse(sessionStorage.getItem('chatbot-document-context') || '[]');
+        const selectedSet = new Set(Array.isArray(currentDocs) ? currentDocs : [currentDocs].filter(Boolean));
+        
         // 모달 생성
         const modalHtml = `
             <div id="document-selector-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s;">
-                <div style="background: white; border-radius: 20px; padding: 30px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s;">
+                <div style="background: white; border-radius: 20px; padding: 30px; max-width: 650px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <h3 style="font-size: 20px; font-weight: 700; color: #1f2937;">
                             <i class="fas fa-file-alt" style="color: #3b82f6; margin-right: 8px;"></i>
-                            문서 선택
+                            문서 선택 (복수 선택 가능)
                         </h3>
                         <button onclick="window.closeDocumentSelector()" style="background: #f3f4f6; border: none; color: #6b7280; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
                             <i class="fas fa-times"></i>
@@ -17326,7 +17324,7 @@ window.showDocumentSelector = async function() {
                     </div>
                     
                     <!-- 전체 문서 옵션 -->
-                    <div onclick="window.selectDocument(null)" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 16px; border-radius: 12px; margin-bottom: 15px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(16, 185, 129, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(16, 185, 129, 0.3)';">
+                    <div onclick="window.selectAllDocuments()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 16px; border-radius: 12px; margin-bottom: 15px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(16, 185, 129, 0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(16, 185, 129, 0.3)';">
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
                                 🌐
@@ -17335,16 +17333,26 @@ window.showDocumentSelector = async function() {
                                 <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">전체 문서 검색</div>
                                 <div style="font-size: 13px; opacity: 0.9;">모든 문서에서 답변을 찾습니다</div>
                             </div>
-                            <i class="fas fa-chevron-right" style="opacity: 0.7;"></i>
+                            <i class="fas fa-check-circle" style="opacity: 0.7; font-size: 20px;"></i>
                         </div>
                     </div>
                     
-                    <div style="font-size: 14px; font-weight: 600; color: #6b7280; margin-bottom: 12px; padding-left: 4px;">
-                        📄 특정 문서 선택 (${data.documents.length}개)
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div style="font-size: 14px; font-weight: 600; color: #6b7280;">
+                            📄 특정 문서 선택 (${data.documents.length}개)
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="window.clearDocumentSelection()" style="background: #f3f4f6; border: none; color: #6b7280; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f3f4f6'">
+                                <i class="fas fa-eraser mr-1"></i>전체 해제
+                            </button>
+                            <button onclick="window.applyDocumentSelection()" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none; color: white; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(59, 130, 246, 0.3)'">
+                                <i class="fas fa-check mr-1"></i>적용하기
+                            </button>
+                        </div>
                     </div>
                     
-                    <!-- 문서 목록 -->
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- 문서 목록 (체크박스) -->
+                    <div id="document-list-container" style="display: flex; flex-direction: column; gap: 8px;">
                         ${data.documents.map(doc => {
                             const iconMap = {
                                 'pdf': '📕',
@@ -17360,18 +17368,17 @@ window.showDocumentSelector = async function() {
                             const sizeStr = doc.file_size_mb < 1 
                                 ? `${Math.round(doc.file_size_mb * 1024)} KB`
                                 : `${doc.file_size_mb.toFixed(1)} MB`;
+                            const isChecked = selectedSet.has(doc.filename);
                             
                             return `
-                                <div onclick="window.selectDocument('${doc.filename}')" style="background: #f9fafb; border: 2px solid #e5e7eb; padding: 14px; border-radius: 10px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#3b82f6';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb';">
-                                    <div style="display: flex; align-items: center; gap: 12px;">
-                                        <div style="font-size: 28px;">${icon}</div>
-                                        <div style="flex: 1; min-width: 0;">
-                                            <div style="font-weight: 600; color: #1f2937; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${doc.filename}</div>
-                                            <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">${sizeStr} • ${new Date(doc.modified_at).toLocaleDateString('ko-KR')}</div>
-                                        </div>
-                                        <i class="fas fa-chevron-right" style="color: #9ca3af;"></i>
+                                <label style="background: ${isChecked ? '#eff6ff' : '#f9fafb'}; border: 2px solid ${isChecked ? '#3b82f6' : '#e5e7eb'}; padding: 12px; border-radius: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;" onmouseover="if(!this.querySelector('input').checked) { this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; }" onmouseout="if(!this.querySelector('input').checked) { this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; }">
+                                    <input type="checkbox" value="${doc.filename}" ${isChecked ? 'checked' : ''} onchange="window.toggleDocumentCheckbox(this)" style="width: 20px; height: 20px; cursor: pointer; accent-color: #3b82f6;">
+                                    <div style="font-size: 24px;">${icon}</div>
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-weight: 600; color: #1f2937; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${doc.filename}</div>
+                                        <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${sizeStr} • ${new Date(doc.modified_at).toLocaleDateString('ko-KR')}</div>
                                     </div>
-                                </div>
+                                </label>
                             `;
                         }).join('')}
                     </div>
@@ -17402,27 +17409,63 @@ window.showDocumentSelector = async function() {
     }
 };
 
-// 문서 선택
-window.selectDocument = function(filename) {
-    if (filename) {
-        // 특정 문서 선택
-        sessionStorage.setItem('chatbot-document-context', filename);
-        window.updateChatbotDocumentContext(filename);
-        console.log('📄 문서 선택됨:', filename);
+// 체크박스 토글
+window.toggleDocumentCheckbox = function(checkbox) {
+    const label = checkbox.closest('label');
+    if (checkbox.checked) {
+        label.style.background = '#eff6ff';
+        label.style.borderColor = '#3b82f6';
     } else {
-        // 전체 문서 모드
-        sessionStorage.removeItem('chatbot-document-context');
-        const chip = document.getElementById('document-context-chip');
-        if (chip) chip.style.display = 'none';
-        console.log('🌐 전체 문서 모드로 전환');
+        label.style.background = '#f9fafb';
+        label.style.borderColor = '#e5e7eb';
     }
-    
+};
+
+// 전체 문서 선택 (전체 검색 모드)
+window.selectAllDocuments = function() {
+    sessionStorage.removeItem('chatbot-document-context');
+    window.updateChatbotDocumentContext([]);
     window.closeDocumentSelector();
-    window.showCustomAlert(
-        filename ? `📄 "${filename}" 문서가 선택되었습니다` : '🌐 전체 문서 검색 모드로 전환되었습니다',
-        'success',
-        '문서 설정 완료'
-    );
+    window.showCustomAlert('🌐 전체 문서 검색 모드로 전환되었습니다', 'success', '문서 설정 완료');
+    console.log('🌐 전체 문서 모드로 전환');
+};
+
+// 전체 해제
+window.clearDocumentSelection = function() {
+    const checkboxes = document.querySelectorAll('#document-list-container input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+        cb.checked = false;
+        const label = cb.closest('label');
+        label.style.background = '#f9fafb';
+        label.style.borderColor = '#e5e7eb';
+    });
+};
+
+// 선택 적용
+window.applyDocumentSelection = function() {
+    const checkboxes = document.querySelectorAll('#document-list-container input[type="checkbox"]:checked');
+    const selectedDocs = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (selectedDocs.length === 0) {
+        // 아무것도 선택 안 함 = 전체 문서 모드
+        sessionStorage.removeItem('chatbot-document-context');
+        window.updateChatbotDocumentContext([]);
+        window.closeDocumentSelector();
+        window.showCustomAlert('🌐 전체 문서 검색 모드로 전환되었습니다', 'success', '문서 설정 완료');
+        console.log('🌐 전체 문서 모드로 전환');
+    } else {
+        // 선택된 문서들 저장
+        sessionStorage.setItem('chatbot-document-context', JSON.stringify(selectedDocs));
+        window.updateChatbotDocumentContext(selectedDocs);
+        window.closeDocumentSelector();
+        
+        const message = selectedDocs.length === 1
+            ? `📄 "${selectedDocs[0]}" 문서가 선택되었습니다`
+            : `📄 ${selectedDocs.length}개 문서가 선택되었습니다`;
+        
+        window.showCustomAlert(message, 'success', '문서 설정 완료');
+        console.log('📄 문서 선택됨:', selectedDocs);
+    }
 };
 
 // 문서 선택 모달 닫기
@@ -17434,26 +17477,90 @@ window.closeDocumentSelector = function() {
     }
 };
 
-// 문서 컨텍스트 업데이트 (칩 표시)
-window.updateChatbotDocumentContext = function(filename) {
+// 문서 컨텍스트 업데이트 (칩 표시, 복수 지원)
+window.updateChatbotDocumentContext = function(documents) {
     const chip = document.getElementById('document-context-chip');
-    const nameEl = document.getElementById('document-context-name');
+    const container = document.getElementById('document-chips-container');
     
-    if (!chip || !nameEl) return;
+    if (!chip || !container) return;
     
-    if (filename) {
-        nameEl.textContent = filename;
-        chip.style.display = 'block';
-    } else {
+    // documents가 문자열이면 배열로 변환 (하위 호환성)
+    let docArray = [];
+    if (typeof documents === 'string') {
+        docArray = [documents];
+    } else if (Array.isArray(documents)) {
+        docArray = documents;
+    }
+    
+    if (docArray.length === 0) {
         chip.style.display = 'none';
+        container.innerHTML = '';
+        return;
+    }
+    
+    // 칩 HTML 생성
+    const chipsHtml = docArray.map(doc => {
+        const shortName = doc.length > 20 ? doc.substring(0, 17) + '...' : doc;
+        return `
+            <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 8px 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; white-space: nowrap;">
+                📄 ${shortName}
+                <button onclick="window.removeDocumentFromContext('${doc}')" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 20px; height: 20px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; padding: 0;" title="이 문서 제거" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                    <i class="fas fa-times" style="font-size: 10px;"></i>
+                </button>
+            </div>
+        `;
+    }).join('');
+    
+    // 컨트롤 버튼 추가
+    const controlsHtml = `
+        <button onclick="window.showDocumentSelector()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);" title="문서 변경" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+            <i class="fas fa-sync-alt" style="font-size: 14px;"></i>
+        </button>
+        <button onclick="window.clearChatbotDocumentContext()" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);" title="전체 해제" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+            <i class="fas fa-times" style="font-size: 16px;"></i>
+        </button>
+    `;
+    
+    container.innerHTML = chipsHtml + controlsHtml;
+    chip.style.display = 'block';
+};
+
+// 특정 문서 제거
+window.removeDocumentFromContext = function(filename) {
+    const currentContext = sessionStorage.getItem('chatbot-document-context');
+    if (!currentContext) return;
+    
+    let docArray = [];
+    try {
+        docArray = JSON.parse(currentContext);
+    } catch {
+        docArray = [currentContext];
+    }
+    
+    if (!Array.isArray(docArray)) {
+        docArray = [docArray];
+    }
+    
+    // 해당 문서 제거
+    docArray = docArray.filter(doc => doc !== filename);
+    
+    if (docArray.length === 0) {
+        // 모두 제거되면 전체 문서 모드
+        sessionStorage.removeItem('chatbot-document-context');
+        window.updateChatbotDocumentContext([]);
+        window.showCustomAlert('🌐 전체 문서 검색 모드로 전환되었습니다', 'success', '문서 제거');
+    } else {
+        // 나머지 문서들 저장
+        sessionStorage.setItem('chatbot-document-context', JSON.stringify(docArray));
+        window.updateChatbotDocumentContext(docArray);
+        window.showCustomAlert(`📄 "${filename}" 문서가 제거되었습니다`, 'success', '문서 제거');
     }
 };
 
 // 문서 컨텍스트 해제 (전체 문서 모드)
 window.clearChatbotDocumentContext = function() {
     sessionStorage.removeItem('chatbot-document-context');
-    const chip = document.getElementById('document-context-chip');
-    if (chip) chip.style.display = 'none';
+    window.updateChatbotDocumentContext([]);
     
     console.log('🌐 문서 컨텍스트 해제 - 전체 문서 모드');
     window.showCustomAlert('🌐 전체 문서 검색 모드로 전환되었습니다', 'success', '모드 변경');
@@ -17605,9 +17712,17 @@ window.sendTextMessage = async function() {
         const groqApiKey = localStorage.getItem('groq_api_key') || '';
         const geminiApiKey = localStorage.getItem('gemini_api_key') || '';
         
-        // 문서 컨텍스트 확인
-        const documentContext = sessionStorage.getItem('chatbot-document-context');
-        const isRAGMode = !!documentContext;
+        // 문서 컨텍스트 확인 (복수 문서 지원)
+        const documentContextRaw = sessionStorage.getItem('chatbot-document-context');
+        let documentContext = null;
+        if (documentContextRaw) {
+            try {
+                documentContext = JSON.parse(documentContextRaw);
+            } catch {
+                documentContext = [documentContextRaw];
+            }
+        }
+        const isRAGMode = !!documentContext && (Array.isArray(documentContext) ? documentContext.length > 0 : true);
         
         console.log('💬 3D 챗봇 텍스트 전송:', { 
             message, 
@@ -17623,7 +17738,7 @@ window.sendTextMessage = async function() {
         
         // RAG 모드 (문서 기반 대화) vs 일반 캐릭터 대화
         if (isRAGMode) {
-            // RAG API 사용
+            // RAG API 사용 (복수 문서 배열 전달)
             const ragK = parseInt(localStorage.getItem('rag_top_k') || '10');
             response = await fetch(`${API_BASE_URL}/api/rag/chat`, {
                 method: 'POST',
@@ -17634,7 +17749,7 @@ window.sendTextMessage = async function() {
                 body: JSON.stringify({
                     message: message,
                     k: ragK,
-                    document_context: documentContext
+                    document_context: Array.isArray(documentContext) ? documentContext : [documentContext]
                 })
             });
         } else {
