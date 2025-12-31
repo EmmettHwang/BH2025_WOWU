@@ -1063,6 +1063,23 @@ window.handleConfirm = function(result) {
     }
 };
 
+// ==================== 커스텀 모달 Promise 래퍼 ====================
+// showCustomConfirm: Promise 기반 확인 모달 (showConfirm의 alias)
+window.showCustomConfirm = function(message, title = '확인') {
+    return window.showConfirm(message, title);
+};
+
+// showCustomAlert: Promise 기반 알림 모달 (자동으로 닫히는 showAlert를 Promise로 래핑)
+window.showCustomAlert = function(message, type = 'success', title = null) {
+    return new Promise((resolve) => {
+        window.showAlert(message, type, title);
+        // 3초 후 자동으로 resolve
+        setTimeout(() => {
+            resolve();
+        }, 3000);
+    });
+};
+
 // ==================== 페이지네이션 헬퍼 ====================
 function createPaginationHTML(page, itemsPerPage, totalItems, onPageChange, onItemsPerPageChange) {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
