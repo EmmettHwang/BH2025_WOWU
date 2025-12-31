@@ -23,6 +23,7 @@
 | 문서명 | 설명 | 카테고리 |
 |--------|------|----------|
 | [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) | 전체 구현 요약 | 📊 개요 |
+| [RAG_DOCUMENT_SYSTEM.md](RAG_DOCUMENT_SYSTEM.md) | **RAG 문서 관리 시스템 가이드** (신규!) | 🤖 AI/RAG |
 | [LOGIN_FEATURE.md](LOGIN_FEATURE.md) | 로그인 시스템 구현 | 🔐 인증 |
 | [COURSE_MANAGEMENT_UPDATE.md](COURSE_MANAGEMENT_UPDATE.md) | 과정 관리 업데이트 | 📚 교육 |
 | [파일업로드_가이드.md](파일업로드_가이드.md) | 파일 업로드 상세 가이드 | 📁 파일 |
@@ -74,10 +75,11 @@
 
 ### 🔥 자주 보는 문서
 1. **개발 환경 전체 가이드**: [DEVELOPMENT_ENVIRONMENT.md](DEVELOPMENT_ENVIRONMENT.md) ⭐ 신규 개발자 필독!
-2. **배포 문제**: [CAFE24_QUICK_DEPLOY.md](CAFE24_QUICK_DEPLOY.md)
-3. **메뉴 안 보임**: [MENU_PERMISSION_FIX.md](MENU_PERMISSION_FIX.md)
-4. **DB 마이그레이션**: [DB_MIGRATION_COMPLETE.md](DB_MIGRATION_COMPLETE.md)
-5. **API 목록**: [API_SUMMARY.md](API_SUMMARY.md)
+2. **RAG 문서 관리**: [RAG_DOCUMENT_SYSTEM.md](RAG_DOCUMENT_SYSTEM.md) 🆕 신규!
+3. **배포 문제**: [CAFE24_QUICK_DEPLOY.md](CAFE24_QUICK_DEPLOY.md)
+4. **메뉴 안 보임**: [MENU_PERMISSION_FIX.md](MENU_PERMISSION_FIX.md)
+5. **DB 마이그레이션**: [DB_MIGRATION_COMPLETE.md](DB_MIGRATION_COMPLETE.md)
+6. **API 목록**: [API_SUMMARY.md](API_SUMMARY.md)
 
 ### 🆘 문제 해결
 - **캐시 문제**: [CACHE_FIX_GUIDE.md](CACHE_FIX_GUIDE.md)
