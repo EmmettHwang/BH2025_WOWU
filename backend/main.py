@@ -7281,8 +7281,8 @@ def init_rag():
         print("[OK] RAG 시스템 초기화 완료")
         print(f"[DOC] 저장된 문서 수: {vector_store_manager.count_documents()}")
         
-        # 기본 문서 자동 로드
-        load_default_documents()
+        # 기본 문서 자동 로드 (비활성화 - 수동 업로드 사용)
+        # load_default_documents()
         
     except Exception as e:
         print(f"[ERROR] RAG 시스템 초기화 실패: {e}")
