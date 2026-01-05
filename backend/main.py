@@ -7384,6 +7384,45 @@ except:
     print("[WARN] RAG 초기화 실패 - RAG 기능 비활성화됨")
 
 
+# ==================== Startup 이벤트 ====================
+@app.on_event("startup")
+async def startup_event():
+    """서버 시작 시 실행"""
+    print("\n" + "="*60)
+    print("🚀 BH2025 WOWU 백엔드 서버 시작")
+    print("="*60)
+    
+    # 등록된 라우트 확인
+    print("\n📋 등록된 API 엔드포인트:")
+    doc_routes = []
+    rag_routes = []
+    for route in app.routes:
+        if hasattr(route, 'path') and hasattr(route, 'methods'):
+            if '/api/documents' in route.path:
+                doc_routes.append(f"  {', '.join(route.methods)} {route.path}")
+            elif '/api/rag' in route.path:
+                rag_routes.append(f"  {', '.join(route.methods)} {route.path}")
+    
+    if doc_routes:
+        print("\n📁 Documents API:")
+        for r in sorted(doc_routes):
+            print(r)
+    else:
+        print("\n⚠️  Documents API: 등록된 엔드포인트 없음!")
+    
+    if rag_routes:
+        print("\n🤖 RAG API:")
+        for r in sorted(rag_routes):
+            print(r)
+    else:
+        print("\n⚠️  RAG API: 등록된 엔드포인트 없음!")
+    
+    print("\n" + "="*60)
+    print("✅ 서버 URL: http://localhost:8000")
+    print("📚 API 문서: http://localhost:8000/docs")
+    print("="*60 + "\n")
+
+
 @app.post("/api/rag/upload")
 async def upload_rag_document(
     file: UploadFile = File(...),
