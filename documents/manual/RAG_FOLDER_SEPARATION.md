@@ -7,11 +7,13 @@
 - **불편함**: RAG 인덱싱된 문서와 일반 문서를 구분하기 어려움
 
 ### 해결 방법
-- **현재**: RAG 인덱싱 문서는 `rag/` 폴더에, 일반 문서는 `documents/` 폴더에 분리 저장
+- **현재**: RAG 인덱싱 문서는 `rag_documents/` 폴더에, 일반 문서는 `documents/` 폴더에 분리 저장
 - **장점**: 
   - 파일 관리가 명확해짐
   - RAG 문서와 일반 문서를 쉽게 구분 가능
   - UI에서 폴더별 뱃지 표시
+
+> ⚠️ **중요**: `backend/rag_documents/` 폴더는 RAG 시스템의 Python 모듈이 있는 폴더이므로, RAG 문서는 `backend/rag_documents/` 폴더에 저장됩니다.
 
 ---
 
@@ -23,9 +25,14 @@ backend/
 ├── documents/          # 일반 문서 저장
 │   ├── README.md
 │   └── *.pdf, *.docx, *.txt, ...
-├── rag/               # RAG 인덱싱된 문서 저장 (신규)
+├── rag_documents/     # RAG 인덱싱된 문서 저장 (신규) ✨
 │   ├── README.md
 │   └── *.pdf, *.docx, *.txt, ...
+├── rag_documents/               # RAG 시스템 모듈 (Python 코드) ⚠️
+│   ├── __init__.py
+│   ├── document_loader.py
+│   ├── vector_store.py
+│   └── ...
 ├── uploads/           # 임시 업로드 파일
 └── vector_db/         # 벡터 데이터베이스
 ```
@@ -33,7 +40,7 @@ backend/
 ### 파일 저장 규칙
 | 업로드 타입 | 카테고리 | 저장 폴더 | 설명 |
 |------------|---------|----------|------|
-| RAG 인덱싱 선택 | `rag-indexed` 또는 `rag` | `./rag/` | RAG 시스템에서 학습할 문서 |
+| RAG 인덱싱 선택 | `rag-indexed` 또는 `rag` | `./rag_documents/` | RAG 시스템에서 학습할 문서 |
 | 일반 업로드 | `general` 또는 기타 | `./documents/` | 참고 자료용 일반 문서 |
 
 ---
@@ -45,7 +52,7 @@ backend/
 
 ```python
 # 카테고리에 따라 저장 폴더 결정
-if category == "rag-indexed" or category == "rag":
+if category == "rag-indexed" or category == "rag_documents":
     # RAG 문서는 rag 폴더에 저장
     documents_dir = Path("./rag")
 else:
@@ -77,7 +84,7 @@ async def list_documents():
     documents = []
     
     # documents 폴더와 rag 폴더 모두에서 파일 조회
-    for folder_name in ["documents", "rag"]:
+    for folder_name in ["documents", "rag_documents"]:
         folder_path = Path(f"./{folder_name}")
         
         if folder_path.exists():
@@ -102,7 +109,7 @@ async def list_documents():
       "file_size_mb": 2.45,
       "modified_at": "2025-01-05T14:05:30",
       "extension": ".pdf",
-      "folder": "rag"  // ✅ RAG 폴더
+      "folder": "rag_documents"  // ✅ RAG 폴더
     },
     {
       "filename": "20250105_141020_report.docx",
@@ -126,7 +133,7 @@ async def list_documents():
 async def delete_document(filename: str):
     # documents와 rag 폴더 모두에서 파일 찾기
     file_path = None
-    for folder in ["documents", "rag"]:
+    for folder in ["documents", "rag_documents"]:
         test_path = Path(f"./{folder}") / filename
         if test_path.exists():
             file_path = test_path
@@ -148,7 +155,7 @@ async def delete_document(filename: str):
 async def download_document(filename: str):
     # documents와 rag 폴더 모두에서 파일 찾기
     file_path = None
-    for folder in ["documents", "rag"]:
+    for folder in ["documents", "rag_documents"]:
         test_path = Path(f"./{folder}") / filename
         if test_path.exists():
             file_path = test_path
@@ -162,15 +169,15 @@ async def download_document(filename: str):
 
 ---
 
-### 5. POST /api/rag/index-document
+### 5. POST /api/rag_documents/index-document
 **변경**: rag 폴더 우선 검색
 
 ```python
-@app.post("/api/rag/index-document")
+@app.post("/api/rag_documents/index-document")
 async def index_document_to_rag(request: Request):
     # rag 폴더와 documents 폴더에서 파일 찾기 (rag 우선)
     file_path = None
-    for folder in ["rag", "documents"]:
+    for folder in ["rag_documents", "documents"]:
         test_path = Path(f"./{folder}") / filename
         if test_path.exists():
             file_path = test_path
@@ -213,7 +220,7 @@ listDiv.innerHTML = documents.map(doc => {
         : '';
     
     // ✅ RAG 폴더 문서는 아이콘 색상도 보라색으로
-    const iconColor = doc.folder === 'rag' ? 'text-purple-500' : 'text-blue-500';
+    const iconColor = doc.folder === 'rag_documents' ? 'text-purple-500' : 'text-blue-500';
     
     return `
         <div class="bg-white rounded-lg p-4 border">
@@ -252,7 +259,7 @@ listDiv.innerHTML = documents.map(doc => {
 2. "RAG 시스템에 인덱싱하시겠습니까?" 모달 표시
 3. "예" 클릭
    → category: 'rag-indexed'로 업로드
-   → backend/rag/ 폴더에 저장
+   → backend/rag_documents/ 폴더에 저장
 4. 4단계 RAG 애니메이션 표시
 5. 문서 목록에 [RAG] 뱃지와 함께 표시
 ```
@@ -271,7 +278,7 @@ listDiv.innerHTML = documents.map(doc => {
 ### 3. 문서 조회 및 관리
 ```
 - GET /api/documents/list
-  → documents/ 와 rag/ 폴더 모두에서 조회
+  → documents/ 와 rag_documents/ 폴더 모두에서 조회
   → folder 필드로 구분
 
 - DELETE /api/documents/{filename}
@@ -291,9 +298,9 @@ listDiv.innerHTML = documents.map(doc => {
    - GET /api/documents/list: 두 폴더 모두 조회
    - DELETE /api/documents/{filename}: 두 폴더에서 검색
    - GET /api/documents/download/{filename}: 두 폴더에서 검색
-   - POST /api/rag/index-document: rag 폴더 우선 검색
+   - POST /api/rag_documents/index-document: rag 폴더 우선 검색
 
-2. ✅ `backend/rag/README.md` - 신규 폴더 설명
+2. ✅ `backend/rag_documents/README.md` - 신규 폴더 설명
 
 ### Frontend
 1. ✅ `frontend/app.js` - UI 표시 로직 수정
@@ -302,7 +309,7 @@ listDiv.innerHTML = documents.map(doc => {
    - RAG 문서 아이콘 색상 보라색 변경
 
 2. ✅ `frontend/index.html` - 캐시 버전 업데이트
-   - v=2.0.250 → v=2.0.260
+   - v=2.0.250 → v=2.0.270
 
 ---
 
@@ -368,7 +375,7 @@ pm2 logs bh2025-backend --lines 50
    ✅ [RAG] 뱃지가 보임
    ✅ 아이콘이 보라색
    ✅ [인덱싱됨] 상태
-5. 서버 파일 확인: backend/rag/20250105_xxxxxx_guide.pdf
+5. 서버 파일 확인: backend/rag_documents/20250105_xxxxxx_guide.pdf
 ```
 
 ### 시나리오 2: 일반 문서 업로드
@@ -385,13 +392,13 @@ pm2 logs bh2025-backend --lines 50
 
 ### 시나리오 3: 문서 삭제
 ```
-1. RAG 문서 삭제 → backend/rag/ 에서 삭제 확인
+1. RAG 문서 삭제 → backend/rag_documents/ 에서 삭제 확인
 2. 일반 문서 삭제 → backend/documents/ 에서 삭제 확인
 ```
 
 ### 시나리오 4: 문서 다운로드
 ```
-1. RAG 문서 다운로드 → backend/rag/ 에서 다운로드
+1. RAG 문서 다운로드 → backend/rag_documents/ 에서 다운로드
 2. 일반 문서 다운로드 → backend/documents/ 에서 다운로드
 ```
 
@@ -402,7 +409,7 @@ pm2 logs bh2025-backend --lines 50
 ### 파일 관리 개선
 | 항목 | 수정 전 | 수정 후 | 개선 |
 |------|---------|---------|------|
-| **폴더 구분** | ❌ 모두 documents/ | ✅ documents/, rag/ 분리 | 🎯 명확함 |
+| **폴더 구분** | ❌ 모두 documents/ | ✅ documents/, rag_documents/ 분리 | 🎯 명확함 |
 | **RAG 문서 식별** | ⚠️ 인덱싱 상태만 표시 | ✅ [RAG] 뱃지 + 보라색 | 🎯 직관적 |
 | **파일 찾기** | ⚠️ 모든 파일 혼재 | ✅ 폴더별 분리 | 🎯 편리함 |
 | **백업/관리** | ⚠️ 구분 어려움 | ✅ 폴더별 백업 가능 | 🎯 효율적 |
@@ -419,7 +426,7 @@ pm2 logs bh2025-backend --lines 50
 ### 커밋 정보
 - **커밋 해시**: ff9c10c
 - **브랜치**: hun
-- **커밋 메시지**: "feat: RAG 문서를 별도 폴더(rag/)에 저장 및 UI 표시 개선"
+- **커밋 메시지**: "feat: RAG 문서를 별도 폴더(rag_documents/)에 저장 및 UI 표시 개선"
 - **변경 통계**: 4 files changed, 60 insertions(+), 37 deletions(-)
 
 ### GitHub
@@ -436,7 +443,7 @@ pm2 logs bh2025-backend --lines 50
 ## 🎯 주요 변경 요약
 
 ### Backend
-1. ✅ RAG 문서는 `backend/rag/` 폴더에 저장
+1. ✅ RAG 문서는 `backend/rag_documents/` 폴더에 저장
 2. ✅ 일반 문서는 `backend/documents/` 폴더에 저장
 3. ✅ API가 두 폴더 모두 지원 (조회/삭제/다운로드)
 4. ✅ 업로드 시 category 파라미터로 자동 폴더 결정
@@ -445,11 +452,15 @@ pm2 logs bh2025-backend --lines 50
 1. ✅ RAG 문서에 보라색 [RAG] 뱃지 표시
 2. ✅ RAG 문서 아이콘 색상 보라색으로 변경
 3. ✅ 문서 목록에서 폴더 정보 시각적 표시
-4. ✅ 캐시 버전 업데이트 (v=2.0.260)
+4. ✅ 캐시 버전 업데이트 (v=2.0.270)
 
 ---
 
 **작성일**: 2026-01-05  
 **작성자**: Claude (Genspark AI Developer)  
+**버전**: 1.0  
+**상태**: ✅ 완료 및 배포 준비
+ ✅ 완료 및 배포 준비
+*: Claude (Genspark AI Developer)  
 **버전**: 1.0  
 **상태**: ✅ 완료 및 배포 준비
