@@ -20020,16 +20020,13 @@ async function processRAGDocument(file) {
         if (response.data.success) {
             const filename = response.data.filename;
             
-            // RAG 인덱싱 요청
-            try {
-                await axios.post(`${API_BASE_URL}/api/rag/index-document`, {
-                    filename: filename,
-                    original_filename: response.data.original_filename
-                });
-            } catch (ragError) {
-                console.error('RAG 인덱싱 실패:', ragError);
-                // RAG 실패해도 문서는 저장됨
-            }
+            // RAG 인덱싱 요청 (타임아웃 5분)
+            await axios.post(`${API_BASE_URL}/api/rag/index-document`, {
+                filename: filename,
+                original_filename: response.data.original_filename
+            }, {
+                timeout: 300000 // 5분 (300초)
+            });
         }
         
         // 백엔드 처리 완료 - 애니메이션 중지
