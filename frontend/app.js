@@ -19603,14 +19603,18 @@ async function loadDocuments() {
 
         listDiv.innerHTML = documents.map(doc => {
             const isIndexed = ragDocNames.includes(doc.filename);
+            const folderBadge = doc.folder === 'rag' 
+                ? '<span class="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full font-semibold ml-2"><i class="fas fa-brain mr-1"></i>RAG</span>' 
+                : '';
             return `
             <div class="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center flex-1">
-                        <i class="fas fa-file-${getFileIcon(doc.extension)} text-3xl text-blue-500 mr-4"></i>
+                        <i class="fas fa-file-${getFileIcon(doc.extension)} text-3xl ${doc.folder === 'rag' ? 'text-purple-500' : 'text-blue-500'} mr-4"></i>
                         <div class="flex-1">
                             <div class="flex items-center gap-2">
                                 <h4 class="font-semibold text-gray-800">${doc.filename}</h4>
+                                ${folderBadge}
                                 ${isIndexed ? '<span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-semibold"><i class="fas fa-check-circle mr-1"></i>인덱싱됨</span>' : '<span class="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full"><i class="fas fa-circle mr-1"></i>미인덱싱</span>'}
                             </div>
                             <p class="text-sm text-gray-500">

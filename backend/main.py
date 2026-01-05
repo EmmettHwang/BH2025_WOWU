@@ -8222,8 +8222,14 @@ async def upload_document(
         if file_size > 100 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="파일 크기는 100MB 이하여야 합니다")
         
-        # documents 폴더 경로
-        documents_dir = Path("./documents")
+        # 카테고리에 따라 저장 폴더 결정
+        if category == "rag-indexed" or category == "rag":
+            # RAG 문서는 rag 폴더에 저장
+            documents_dir = Path("./rag")
+        else:
+            # 일반 문서는 documents 폴더에 저장
+            documents_dir = Path("./documents")
+        
         documents_dir.mkdir(exist_ok=True)
         
         # 고유 파일명 생성 (타임스탬프 + 원본 파일명)
@@ -8257,28 +8263,26 @@ async def upload_document(
 
 @app.get("/api/documents/list")
 async def list_documents():
-    """documents 폴더의 파일 목록 조회"""
+    """documents 및 rag 폴더의 파일 목록 조회"""
     try:
-        documents_dir = Path("./documents")
-        
-        if not documents_dir.exists():
-            return {
-                "success": True,
-                "documents": [],
-                "count": 0
-            }
-        
         documents = []
-        for file_path in documents_dir.iterdir():
-            if file_path.is_file() and not file_path.name.startswith('.'):
-                stat = file_path.stat()
-                documents.append({
-                    "filename": file_path.name,
-                    "file_size": stat.st_size,
-                    "file_size_mb": round(stat.st_size / (1024 * 1024), 2),
-                    "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                    "extension": file_path.suffix.lower()
-                })
+        
+        # documents 폴더와 rag 폴더 모두에서 파일 조회
+        for folder_name in ["documents", "rag"]:
+            folder_path = Path(f"./{folder_name}")
+            
+            if folder_path.exists():
+                for file_path in folder_path.iterdir():
+                    if file_path.is_file() and not file_path.name.startswith('.'):
+                        stat = file_path.stat()
+                        documents.append({
+                            "filename": file_path.name,
+                            "file_size": stat.st_size,
+                            "file_size_mb": round(stat.st_size / (1024 * 1024), 2),
+                            "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                            "extension": file_path.suffix.lower(),
+                            "folder": folder_name  # 어느 폴더에서 온 파일인지 표시
+                        })
         
         # 수정일시 기준 내림차순 정렬
         documents.sort(key=lambda x: x['modified_at'], reverse=True)
@@ -8296,16 +8300,21 @@ async def list_documents():
 
 @app.delete("/api/documents/{filename}")
 async def delete_document(filename: str):
-    """문서 삭제"""
+    """문서 삭제 (documents 및 rag 폴더에서 검색)"""
     try:
         # 파일명 검증 (경로 탐색 공격 방지)
         if '..' in filename or '/' in filename or '\\' in filename:
             raise HTTPException(status_code=400, detail="잘못된 파일명입니다")
         
-        documents_dir = Path("./documents")
-        file_path = documents_dir / filename
+        # documents와 rag 폴더 모두에서 파일 찾기
+        file_path = None
+        for folder in ["documents", "rag"]:
+            test_path = Path(f"./{folder}") / filename
+            if test_path.exists():
+                file_path = test_path
+                break
         
-        if not file_path.exists():
+        if not file_path:
             raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
         
         if not file_path.is_file():
@@ -8330,16 +8339,21 @@ async def delete_document(filename: str):
 
 @app.get("/api/documents/download/{filename}")
 async def download_document(filename: str):
-    """문서 다운로드"""
+    """문서 다운로드 (documents 및 rag 폴더에서 검색)"""
     try:
         # 파일명 검증
         if '..' in filename or '/' in filename or '\\' in filename:
             raise HTTPException(status_code=400, detail="잘못된 파일명입니다")
         
-        documents_dir = Path("./documents")
-        file_path = documents_dir / filename
+        # documents와 rag 폴더 모두에서 파일 찾기
+        file_path = None
+        for folder in ["documents", "rag"]:
+            test_path = Path(f"./{folder}") / filename
+            if test_path.exists():
+                file_path = test_path
+                break
         
-        if not file_path.exists():
+        if not file_path:
             raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
         
         from fastapi.responses import FileResponse
@@ -8361,7 +8375,7 @@ async def download_document(filename: str):
 async def index_document_to_rag(request: Request):
     """
     문서를 RAG 시스템에 인덱싱
-    - filename: documents 폴더에 있는 파일명
+    - filename: rag 또는 documents 폴더에 있는 파일명
     - original_filename: 원본 파일명 (선택)
     """
     if not vector_store_manager or not document_loader:
@@ -8375,11 +8389,15 @@ async def index_document_to_rag(request: Request):
         if not filename:
             raise HTTPException(status_code=400, detail="filename이 필요합니다")
         
-        # 파일 경로 확인
-        documents_dir = Path("./documents")
-        file_path = documents_dir / filename
+        # rag 폴더와 documents 폴더에서 파일 찾기
+        file_path = None
+        for folder in ["rag", "documents"]:
+            test_path = Path(f"./{folder}") / filename
+            if test_path.exists():
+                file_path = test_path
+                break
         
-        if not file_path.exists():
+        if not file_path:
             raise HTTPException(status_code=404, detail=f"파일을 찾을 수 없습니다: {filename}")
         
         # 파일 확장자 확인
