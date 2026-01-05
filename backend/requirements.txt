@@ -1,3 +1,9 @@
+# ==================== Python Version ====================
+# Python 3.9+
+# Tested on: Python 3.9.25
+# Minimum: Python 3.9.0
+# Maximum: Python 3.11.x (Python 3.12+ 미지원 패키지 있음)
+
 # ==================== FastAPI & Web Framework ====================
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
