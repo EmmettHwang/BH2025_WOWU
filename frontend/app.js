@@ -1032,11 +1032,13 @@ window.hideAlert = function() {
 // 확인 모달용 콜백 저장
 let confirmCallback = null;
 
-window.showConfirm = function(message, title = '삭제 확인') {
+window.showConfirm = function(message, title = '삭제 확인', yesText = '예', noText = '아니오') {
     return new Promise((resolve) => {
         const confirmModal = document.getElementById('custom-confirm');
         const confirmMessage = document.getElementById('confirm-message');
         const confirmTitle = document.getElementById('confirm-title');
+        const yesButton = confirmModal?.querySelector('[onclick*="handleConfirm(true)"]');
+        const noButton = confirmModal?.querySelector('[onclick*="handleConfirm(false)"]');
         
         if (!confirmModal || !confirmMessage) {
             // Fallback to native confirm if modal not found
@@ -1049,6 +1051,15 @@ window.showConfirm = function(message, title = '삭제 확인') {
             confirmTitle.textContent = title;
         }
         confirmMessage.textContent = message;
+        
+        // 버튼 텍스트 변경
+        if (yesButton) {
+            yesButton.innerHTML = `<i class="fas fa-check mr-2"></i>${yesText}`;
+        }
+        if (noButton) {
+            noButton.innerHTML = `<i class="fas fa-times mr-2"></i>${noText}`;
+        }
+        
         confirmModal.classList.remove('hidden');
         confirmCallback = resolve;
     });
@@ -1065,8 +1076,8 @@ window.handleConfirm = function(result) {
 
 // ==================== 커스텀 모달 Promise 래퍼 ====================
 // showCustomConfirm: Promise 기반 확인 모달 (showConfirm의 alias)
-window.showCustomConfirm = function(message, title = '확인') {
-    return window.showConfirm(message, title);
+window.showCustomConfirm = function(message, title = '확인', yesText = '예', noText = '아니오') {
+    return window.showConfirm(message, title, yesText, noText);
 };
 
 // showCustomAlert: Promise 기반 알림 모달 (자동으로 닫히는 showAlert를 Promise로 래핑)
@@ -19348,21 +19359,29 @@ function renderRAGDocuments() {
         <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">
-                    <i class="fas fa-file-alt mr-2"></i>문서 관리
+                    <i class="fas fa-file-alt mr-2"></i>문서 관리 (RAG)
                 </h2>
-                <button onclick="loadDocuments()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-                    <i class="fas fa-sync-alt mr-2"></i>새로고침
+                <div class="flex gap-2">
+                    <button onclick="window.showRAGStatus()" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-info-circle mr-2"></i>RAG 상태
+                    </button>
+                    <button onclick="loadDocuments()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-sync-alt mr-2"></i>새로고침
+                    </button>
+                </div>
+            </div>
                 </button>
             </div>
 
-            <!-- 파일 업로드 영역 -->
-            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 mb-6 border-2 border-dashed border-blue-300">
+            <!-- 파일 업로드 영역 (드래그 앤 드롭 지원) -->
+            <div id="drop-zone" class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-8 mb-6 border-2 border-dashed border-blue-300 transition-all hover:border-blue-500 hover:bg-blue-100">
                 <div class="text-center">
                     <i class="fas fa-cloud-upload-alt text-6xl text-blue-400 mb-4"></i>
                     <h3 class="text-xl font-semibold text-gray-700 mb-2">문서 업로드</h3>
-                    <p class="text-gray-500 mb-4">PDF, DOCX, PPTX, XLSX, TXT 파일 지원 (최대 100MB)</p>
-                    <input type="file" id="document-file-input" accept=".pdf,.docx,.doc,.txt,.pptx,.ppt,.xlsx,.xls" class="hidden">
-                    <button onclick="document.getElementById('document-file-input').click()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
+                    <p class="text-gray-500 mb-2">파일을 드래그 앤 드롭하거나 클릭하여 선택하세요</p>
+                    <p class="text-sm text-gray-400 mb-4">PDF, DOCX, PPTX, XLSX, TXT 지원 | 복수 파일 가능 | 최대 100MB/파일</p>
+                    <input type="file" id="document-file-input" accept=".pdf,.docx,.doc,.txt,.pptx,.ppt,.xlsx,.xls" class="hidden" multiple>
+                    <button onclick="document.getElementById('document-file-input').click()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors shadow-md hover:shadow-lg">
                         <i class="fas fa-folder-open mr-2"></i>파일 선택
                     </button>
                 </div>
@@ -19370,9 +19389,15 @@ function renderRAGDocuments() {
 
             <!-- 문서 목록 -->
             <div class="bg-gray-50 rounded-lg p-6">
-                <h3 class="text-lg font-semibold text-gray-700 mb-4">
-                    <i class="fas fa-list mr-2"></i>문서 목록 (<span id="document-count">0</span>개)
-                </h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700">
+                        <i class="fas fa-list mr-2"></i>문서 목록 (<span id="document-count">0</span>개)
+                    </h3>
+                    <div class="text-sm text-gray-500">
+                        <i class="fas fa-database mr-1"></i>
+                        RAG 인덱싱: <span id="rag-indexed-count" class="font-semibold text-blue-600">-</span>개
+                    </div>
+                </div>
                 <div id="documents-list" class="space-y-3">
                     <div class="text-center text-gray-500 py-8">
                         <i class="fas fa-spinner fa-spin text-4xl mb-2"></i>
@@ -19383,21 +19408,34 @@ function renderRAGDocuments() {
         </div>
     `;
 
-    // 파일 선택 이벤트
+    // 드래그 앤 드롭 이벤트
+    const dropZone = document.getElementById('drop-zone');
+    
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-blue-500', 'bg-blue-100');
+    });
+    
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-500', 'bg-blue-100');
+    });
+    
+    dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-500', 'bg-blue-100');
+        
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length > 0) {
+            await handleMultipleFiles(files);
+        }
+    });
+
+    // 파일 선택 이벤트 (복수 파일 지원)
     document.getElementById('document-file-input').addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            // RAG 인덱싱 여부 선택 (커스텀 모달)
-            const useRAG = await window.showCustomConfirm(
-                '📚 이 문서를 RAG 시스템에 인덱싱하시겠습니까?\n\n✅ 예: 문서 내용을 학습하고 질문에 답변할 수 있습니다\n❌ 아니오: 단순히 파일만 저장합니다',
-                'RAG 인덱싱'
-            );
-            
-            if (useRAG) {
-                await processRAGDocument(file);
-            } else {
-                await uploadDocument(file);
-            }
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            await handleMultipleFiles(files);
         }
         // 파일 input 초기화
         e.target.value = '';
@@ -19407,15 +19445,170 @@ function renderRAGDocuments() {
     loadDocuments();
 }
 
-async function uploadDocument(file) {
+// 복수 파일 처리
+async function handleMultipleFiles(files) {
+    if (files.length === 0) return;
+    
+    // RAG 인덱싱 여부 확인
+    const useRAG = await window.showCustomConfirm(
+        `📚 ${files.length}개 파일을 RAG 시스템에 인덱싱하시겠습니까?\n\n✅ 예: 문서 내용을 학습하고 질문에 답변할 수 있습니다\n❌ 아니오: 단순히 파일만 저장합니다`,
+        'RAG 인덱싱',
+        '예',
+        '아니오'
+    );
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    window.showLoading(`파일 업로드 중... (0/${files.length})`);
+    
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        try {
+            window.showLoading(`파일 업로드 중... (${i + 1}/${files.length})\n${file.name}`);
+            
+            if (useRAG) {
+                await processRAGDocument(file, false); // 개별 알림 비활성화
+            } else {
+                await uploadDocument(file, false); // 개별 알림 비활성화
+            }
+            
+            successCount++;
+        } catch (error) {
+            console.error(`파일 업로드 실패: ${file.name}`, error);
+            failCount++;
+        }
+    }
+    
+    window.hideLoading();
+    
+    // 최종 결과 표시
+    const message = `✅ 업로드 완료: ${successCount}개\n${failCount > 0 ? `❌ 실패: ${failCount}개` : ''}`;
+    await window.showCustomAlert(message, successCount > 0 ? 'success' : 'error', '업로드 결과');
+    
+    // 문서 목록 새로고침
+    loadDocuments();
+}
+
+// RAG 상태 모달 표시
+window.showRAGStatus = async function() {
+    try {
+        window.showLoading('RAG 상태 조회 중...');
+        
+        // RAG 상태 API 호출
+        const statusResponse = await axios.get(`${API_BASE_URL}/api/rag/status`);
+        const ragStatus = statusResponse.data;
+        
+        // 문서 목록 API 호출
+        const docsResponse = await axios.get(`${API_BASE_URL}/api/rag/documents`);
+        const ragDocs = docsResponse.data.documents || [];
+        
+        window.hideLoading();
+        
+        // 모달 HTML 생성
+        const modalHtml = `
+            <div id="rag-status-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s;">
+                <div style="background: white; border-radius: 20px; padding: 30px; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="font-size: 20px; font-weight: 700; color: #1f2937;">
+                            <i class="fas fa-database" style="color: #8b5cf6; margin-right: 8px;"></i>
+                            RAG 시스템 상태
+                        </h3>
+                        <button onclick="document.getElementById('rag-status-modal').remove()" style="background: #f3f4f6; border: none; color: #6b7280; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- 시스템 상태 -->
+                    <div style="background: ${ragStatus.initialized ? '#f0fdf4' : '#fef2f2'}; border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 2px solid ${ragStatus.initialized ? '#86efac' : '#fca5a5'};">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 48px; height: 48px; background: ${ragStatus.initialized ? '#22c55e' : '#ef4444'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+                                <i class="fas fa-${ragStatus.initialized ? 'check-circle' : 'times-circle'}"></i>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; font-size: 16px; color: #1f2937; margin-bottom: 4px;">
+                                    ${ragStatus.initialized ? '✅ 시스템 정상' : '❌ 시스템 미초기화'}
+                                </div>
+                                <div style="font-size: 13px; color: #6b7280;">
+                                    ${ragStatus.initialized ? 'RAG 시스템이 정상적으로 작동 중입니다' : 'RAG 시스템 초기화가 필요합니다'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 통계 정보 -->
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;">
+                        <div style="background: #f9fafb; border-radius: 10px; padding: 16px; border: 1px solid #e5e7eb;">
+                            <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">📄 총 문서 수</div>
+                            <div style="font-size: 24px; font-weight: 700; color: #3b82f6;">${ragStatus.document_count || 0}</div>
+                        </div>
+                        <div style="background: #f9fafb; border-radius: 10px; padding: 16px; border: 1px solid #e5e7eb;">
+                            <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">🔢 총 청크 수</div>
+                            <div style="font-size: 24px; font-weight: 700; color: #8b5cf6;">${ragStatus.total_chunks || 0}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 인덱싱된 문서 목록 -->
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-weight: 600; color: #1f2937; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-list-check" style="color: #8b5cf6;"></i>
+                            인덱싱된 문서 (${ragDocs.length}개)
+                        </div>
+                        <div style="max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px;">
+                            ${ragDocs.length > 0 ? ragDocs.map(doc => `
+                                <div style="padding: 12px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; gap: 12px; transition: background 0.2s;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
+                                    <div style="font-size: 24px;">📄</div>
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-weight: 600; color: #1f2937; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${doc.filename}</div>
+                                        <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">
+                                            청크: ${doc.chunk_count || 0}개 • ${new Date(doc.upload_date).toLocaleDateString('ko-KR')}
+                                        </div>
+                                    </div>
+                                    <div style="background: #eff6ff; color: #3b82f6; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">
+                                        인덱싱됨
+                                    </div>
+                                </div>
+                            `).join('') : `
+                                <div style="padding: 40px; text-align: center; color: #9ca3af;">
+                                    <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;"></i>
+                                    <div>인덱싱된 문서가 없습니다</div>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                    
+                    <!-- 안내 메시지 -->
+                    <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #1e40af;">
+                        <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
+                        문서를 업로드할 때 "예"를 선택하면 RAG 시스템에 자동 인덱싱됩니다.
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+    } catch (error) {
+        window.hideLoading();
+        console.error('❌ RAG 상태 조회 실패:', error);
+        await window.showCustomAlert('RAG 상태 조회 실패: ' + (error.response?.data?.detail || error.message), 'error', 'RAG 상태');
+    }
+};
+
+async function uploadDocument(file, showAlert = true) {
     try {
         const maxSize = 100 * 1024 * 1024; // 100MB
         if (file.size > maxSize) {
-            await window.showCustomAlert('파일 크기는 100MB 이하여야 합니다', 'error');
-            return;
+            if (showAlert) {
+                await window.showCustomAlert('파일 크기는 100MB 이하여야 합니다', 'error');
+            }
+            throw new Error('파일 크기 초과');
         }
 
-        window.showLoading('파일 업로드 중...');
+        if (showAlert) {
+            window.showLoading('파일 업로드 중...');
+        }
 
         const formData = new FormData();
         formData.append('file', file);
@@ -19425,16 +19618,26 @@ async function uploadDocument(file) {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
 
-        window.hideLoading();
+        if (showAlert) {
+            window.hideLoading();
+        }
 
         if (response.data.success) {
-            await window.showCustomAlert('✅ 문서가 성공적으로 업로드되었습니다', 'success');
-            loadDocuments();
+            if (showAlert) {
+                await window.showCustomAlert('✅ 문서가 성공적으로 업로드되었습니다', 'success');
+                loadDocuments();
+            }
+            return response.data;
         }
     } catch (error) {
-        window.hideLoading();
+        if (showAlert) {
+            window.hideLoading();
+        }
         console.error('문서 업로드 실패:', error);
-        await window.showCustomAlert('문서 업로드 실패: ' + (error.response?.data?.detail || error.message), 'error');
+        if (showAlert) {
+            await window.showCustomAlert('문서 업로드 실패: ' + (error.response?.data?.detail || error.message), 'error');
+        }
+        throw error;
     }
 }
 
@@ -19444,6 +19647,18 @@ async function loadDocuments() {
         const documents = response.data.documents || [];
 
         document.getElementById('document-count').textContent = documents.length;
+        
+        // RAG 인덱싱된 문서 수 가져오기
+        try {
+            const ragResponse = await axios.get(`${API_BASE_URL}/api/rag/documents`);
+            const ragDocs = ragResponse.data.documents || [];
+            const ragIndexedCount = document.getElementById('rag-indexed-count');
+            if (ragIndexedCount) {
+                ragIndexedCount.textContent = ragDocs.length;
+            }
+        } catch (ragError) {
+            console.warn('RAG 문서 수 조회 실패:', ragError);
+        }
 
         const listDiv = document.getElementById('documents-list');
 
@@ -19457,13 +19672,27 @@ async function loadDocuments() {
             return;
         }
 
-        listDiv.innerHTML = documents.map(doc => `
+        // RAG 인덱싱 상태 확인을 위한 문서 목록
+        let ragDocNames = [];
+        try {
+            const ragResponse = await axios.get(`${API_BASE_URL}/api/rag/documents`);
+            ragDocNames = (ragResponse.data.documents || []).map(d => d.filename);
+        } catch (ragError) {
+            console.warn('RAG 문서 목록 조회 실패:', ragError);
+        }
+
+        listDiv.innerHTML = documents.map(doc => {
+            const isIndexed = ragDocNames.includes(doc.filename);
+            return `
             <div class="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center flex-1">
                         <i class="fas fa-file-${getFileIcon(doc.extension)} text-3xl text-blue-500 mr-4"></i>
                         <div class="flex-1">
-                            <h4 class="font-semibold text-gray-800">${doc.filename}</h4>
+                            <div class="flex items-center gap-2">
+                                <h4 class="font-semibold text-gray-800">${doc.filename}</h4>
+                                ${isIndexed ? '<span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-semibold"><i class="fas fa-check-circle mr-1"></i>인덱싱됨</span>' : '<span class="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full"><i class="fas fa-circle mr-1"></i>미인덱싱</span>'}
+                            </div>
                             <p class="text-sm text-gray-500">
                                 ${doc.file_size_mb} MB · ${new Date(doc.modified_at).toLocaleString('ko-KR')}
                             </p>
@@ -19480,6 +19709,17 @@ async function loadDocuments() {
                            download
                            title="다운로드">
                             <i class="fas fa-download mr-1"></i>다운로드
+                        </a>
+                        <button onclick="deleteDocument('${doc.filename}')" 
+                                class="text-red-600 hover:text-red-800 px-3 py-1 rounded bg-red-50 hover:bg-red-100 transition-colors"
+                                title="삭제">
+                            <i class="fas fa-trash mr-1"></i>삭제
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        }).join('');
                         </a>
                         <button onclick="deleteDocument('${doc.filename}')" 
                                 class="text-red-600 hover:text-red-800 px-3 py-1 rounded bg-red-50 hover:bg-red-100 transition-colors"
