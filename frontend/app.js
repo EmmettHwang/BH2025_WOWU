@@ -19941,7 +19941,13 @@ function hideRAGProcessingModal() {
 }
 
 async function processRAGDocument(file) {
-    // 모달 표시
+    // 데이터 로딩 모달 숨기기 (있다면)
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.classList.add('hidden');
+    }
+    
+    // RAG 처리 모달 표시
     showRAGProcessingModal();
     
     const stages = ['parsing', 'chunking', 'embedding', 'indexing'];
