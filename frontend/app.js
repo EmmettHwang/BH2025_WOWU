@@ -19959,53 +19959,52 @@ async function processRAGDocument(file) {
     };
     
     let currentStage = 0;
+    let stageInterval = null;
+    let isProcessing = true;
     
-    // 첫 번째 스테이지를 즉시 표시 (모달이 표시되자마자 애니메이션 시작)
-    setTimeout(() => {
-        const firstStage = document.getElementById('stage-parsing');
-        if (firstStage) firstStage.classList.remove('hidden');
-        
-        const statusText = document.getElementById('rag-status-text');
-        if (statusText) {
-            statusText.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i>${stageMessages.parsing}`;
-        }
-        
-        const progressBar = document.getElementById('rag-progress-bar');
-        const progressPercent = document.getElementById('rag-progress-percentage');
-        if (progressBar) progressBar.style.width = '25%';
-        if (progressPercent) progressPercent.textContent = '25%';
-        
-        currentStage = 1; // 다음 스테이지부터 시작
-    }, 100); // 모달 렌더링 직후 실행
+    // 프로그레스바 초기화 (0%부터 시작)
+    const progressBar = document.getElementById('rag-progress-bar');
+    const progressPercent = document.getElementById('rag-progress-percentage');
+    if (progressBar) progressBar.style.width = '0%';
+    if (progressPercent) progressPercent.textContent = '0%';
     
-    // 스테이지 애니메이션 시뮬레이션 (첫 번째 스테이지는 이미 표시됨)
-    const stageInterval = setInterval(() => {
-        // 이전 스테이지 숨기기
+    // 스테이지 업데이트 함수
+    const updateStage = () => {
+        // 모든 스테이지 숨기기
         stages.forEach(s => {
             const el = document.getElementById(`stage-${s}`);
             if (el) el.classList.add('hidden');
         });
         
         // 현재 스테이지 표시
-        if (currentStage < stages.length) {
-            const stageName = stages[currentStage];
-            const el = document.getElementById(`stage-${stageName}`);
-            if (el) el.classList.remove('hidden');
-            
-            const statusText = document.getElementById('rag-status-text');
-            if (statusText) {
-                statusText.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i>${stageMessages[stageName]}`;
-            }
-            
-            const progressBar = document.getElementById('rag-progress-bar');
-            const progressPercent = document.getElementById('rag-progress-percentage');
-            const progress = ((currentStage + 1) / stages.length) * 100;
-            if (progressBar) progressBar.style.width = `${progress}%`;
-            if (progressPercent) progressPercent.textContent = `${Math.round(progress)}%`;
-            
-            currentStage++;
+        const stageName = stages[currentStage];
+        const el = document.getElementById(`stage-${stageName}`);
+        if (el) el.classList.remove('hidden');
+        
+        const statusText = document.getElementById('rag-status-text');
+        if (statusText) {
+            statusText.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i>${stageMessages[stageName]}`;
         }
-    }, 3000); // 각 스테이지 3초
+        
+        // 프로그레스바 업데이트 (실제 진행 상황을 반영하되, 90%까지만)
+        const progress = Math.min(((currentStage + 1) / stages.length) * 90, 90);
+        if (progressBar) progressBar.style.width = `${progress}%`;
+        if (progressPercent) progressPercent.textContent = `${Math.round(progress)}%`;
+        
+        // 다음 스테이지로 (반복)
+        currentStage = (currentStage + 1) % stages.length;
+    };
+    
+    // 첫 번째 스테이지를 즉시 표시
+    setTimeout(() => {
+        updateStage();
+        // 3초마다 스테이지 변경 (백엔드 처리가 끝날 때까지 반복)
+        stageInterval = setInterval(() => {
+            if (isProcessing) {
+                updateStage();
+            }
+        }, 3000);
+    }, 100);
     
     try {
         // 실제 RAG 업로드
@@ -20033,9 +20032,11 @@ async function processRAGDocument(file) {
             }
         }
         
-        // 모든 스테이지 완료 대기
-        await new Promise(resolve => setTimeout(resolve, 12000)); // 4 stages * 3 seconds
-        clearInterval(stageInterval);
+        // 백엔드 처리 완료 - 애니메이션 중지
+        isProcessing = false;
+        if (stageInterval) {
+            clearInterval(stageInterval);
+        }
         
         // 완료 상태로 업데이트
         const statusText = document.getElementById('rag-status-text');
@@ -20055,7 +20056,10 @@ async function processRAGDocument(file) {
         }, 2000);
         
     } catch (error) {
-        clearInterval(stageInterval);
+        isProcessing = false;
+        if (stageInterval) {
+            clearInterval(stageInterval);
+        }
         console.error('RAG 문서 처리 실패:', error);
         
         const statusText = document.getElementById('rag-status-text');
