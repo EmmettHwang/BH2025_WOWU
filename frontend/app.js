@@ -1050,7 +1050,7 @@ window.showConfirm = function(message, title = '삭제 확인', yesText = '예',
         if (confirmTitle) {
             confirmTitle.textContent = title;
         }
-        confirmMessage.textContent = message;
+        confirmMessage.innerHTML = message; // HTML 렌더링을 위해 innerHTML 사용
         
         // 버튼 텍스트 변경
         if (yesButton) {
