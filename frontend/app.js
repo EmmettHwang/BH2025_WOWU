@@ -19692,11 +19692,11 @@ function showRAGProcessingModal() {
                 </div>
                 
                 <!-- 상단 타이틀 (맥동 애니메이션) -->
-                <div class="text-center mb-8 relative z-10">
+                <div id="rag-modal-title" class="text-center mb-8 relative z-10">
                     <h2 class="text-3xl font-bold text-white mb-2" style="animation: pulse 2s ease-in-out infinite;">
-                        <i class="fas fa-brain mr-3"></i>지식 베이스 최적화 중...
+                        <i class="fas fa-brain mr-3"></i>문서 처리 중...
                     </h2>
-                    <p class="text-blue-200 text-sm">RAG 시스템이 문서를 학습하고 있습니다</p>
+                    <p class="text-blue-200 text-sm">RAG 시스템이 문서를 분석하고 있습니다</p>
                 </div>
                 
                 <!-- 중앙 그래픽 영역 -->
