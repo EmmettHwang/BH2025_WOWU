@@ -1,93 +1,16 @@
 # Cafe24 배포 가이드
 
 ## 📋 목차
-1. [Nginx 설정 간소화 (1회만 실행)](#nginx-설정-간소화)
-2. [일반 배포 명령어](#일반-배포-명령어)
-3. [트러블슈팅](#트러블슈팅)
+1. [간단한 배포 (방법 2 - 현재 사용 중)](#간단한-배포-방법-2)
+2. [트러블슈팅](#트러블슈팅)
 
 ---
 
-## 🚀 Nginx 설정 간소화 (1회만 실행)
+## 🚀 간단한 배포 (방법 2 - 현재 사용 중)
 
-> **목적**: `sudo cp` 명령 없이 `git pull` + `pm2 restart`만으로 배포하기
+> **확정 방식**: Nginx가 Git 폴더를 직접 서빙
 
-### 📋 Cafe24 서버에서 실행할 명령어
-
-```bash
-# 1. Nginx 설정 백업
-sudo cp /etc/nginx/sites-enabled/kdt2025 /etc/nginx/sites-enabled/kdt2025.backup.simplify
-
-# 2. Nginx 설정 편집
-sudo nano /etc/nginx/sites-enabled/kdt2025
-```
-
----
-
-### 📝 수정할 부분
-
-`location /` 블록을 찾아서 **root 경로만 변경**:
-
-#### ❌ 기존 (변경 전)
-```nginx
-location / {
-    root /var/www/html/bh2025;
-    try_files $uri $uri/ /index.html;
-    index index.html;
-}
-```
-
-#### ✅ 변경 후
-```nginx
-location / {
-    root /root/BH2025_WOWU/frontend;  # 이 줄만 변경!
-    try_files $uri $uri/ /index.html;
-    index index.html;
-}
-```
-
----
-
-### 💾 저장 및 종료
-
-1. `Ctrl + O` → Enter (저장)
-2. `Ctrl + X` (종료)
-
----
-
-### ✅ 설정 적용
-
-```bash
-# 3. 설정 테스트
-sudo nginx -t
-
-# 4. Nginx 재시작
-sudo systemctl reload nginx
-
-# 5. (선택) 기존 복사본 폴더 제거
-sudo rm -rf /var/www/html/bh2025
-```
-
-**예상 출력:**
-```
-nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
-nginx: configuration file /etc/nginx/nginx.conf test is successful
-```
-
----
-
-### 🧪 테스트
-
-설정 변경 후 브라우저에서:
-
-1. **https://www.kdt2025.com** 접속
-2. **Ctrl + Shift + R** (강제 새로고침)
-3. 정상 작동 확인
-
----
-
-## 🎉 일반 배포 명령어
-
-### ⭐ 간단한 배포 명령어 (예전처럼!)
+### 📋 배포 명령어
 
 ```bash
 cd ~/BH2025_WOWU
@@ -95,54 +18,43 @@ git pull origin hun
 pm2 restart all
 ```
 
-**끝!** 🚀
+**끝!** 🚀 (sudo 없음!)
 
 ---
 
-### 📊 변경 전후 비교
+### 📊 Nginx 설정
 
-| 항목 | 변경 전 | 변경 후 |
-|------|---------|---------|
-| **배포 명령어** | 5줄 | 3줄 |
-| **sudo 필요** | ✅ 예 | ❌ 아니오 |
-| **권한 관리** | 필요 | 불필요 |
-| **파일 복사** | 필요 | 불필요 |
-| **간편성** | ⭐⭐ | ⭐⭐⭐⭐⭐ |
+```nginx
+location / {
+    root /root/BH2025_WOWU/frontend;
+    try_files $uri $uri/ /index.html;
+    index index.html;
+}
+```
 
 ---
 
-### ❌ 더 이상 필요 없는 명령어
+### 💡 빠른 배포 스크립트
+
+`~/deploy.sh` 파일 생성:
 
 ```bash
-# 이제 필요 없습니다!
-# sudo cp -r ~/BH2025_WOWU/frontend/* /var/www/html/bh2025/
-# sudo chown -R www-data:www-data /var/www/html/bh2025
+cat > ~/deploy.sh << 'EOF'
+#!/bin/bash
+cd ~/BH2025_WOWU
+echo "📥 최신 코드 가져오는 중..."
+git pull origin hun
+echo "🔄 백엔드 재시작 중..."
+pm2 restart all
+echo "✅ 배포 완료!"
+pm2 status
+EOF
+chmod +x ~/deploy.sh
 ```
 
----
-
-## 🔍 배포 플로우
-
-### 변경 전 (복잡)
-```
-Git 저장소 (~/BH2025_WOWU/)
-    ↓ git pull
-업데이트됨
-    ↓ sudo cp -r
-Nginx 폴더 (/var/www/html/bh2025/)
-    ↓ sudo chown
-권한 수정
-    ↓ pm2 restart
-백엔드 재시작
-```
-
-### 변경 후 (간단!)
-```
-Git 저장소 (~/BH2025_WOWU/)
-    ↓ git pull
-업데이트됨 (Nginx가 직접 서빙)
-    ↓ pm2 restart
-백엔드 재시작
+**이후 배포는:**
+```bash
+~/deploy.sh
 ```
 
 ---
@@ -157,10 +69,11 @@ Git 저장소 (~/BH2025_WOWU/)
 ```bash
 # /root 폴더 권한 확인
 ls -ld /root
-# 출력: drwx------ (root만 접근 가능)
+# 출력: drwx------ (root만 접근 가능) → 문제!
 
 # Nginx가 읽을 수 있도록 권한 추가
 sudo chmod 755 /root
+sudo chmod 755 /root/BH2025_WOWU
 sudo chmod -R 755 /root/BH2025_WOWU/frontend
 
 # Nginx 재시작
