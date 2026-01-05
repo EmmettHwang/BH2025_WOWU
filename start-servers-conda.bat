@@ -23,7 +23,7 @@ echo    OK - Conda environment activated
 echo.
 
 echo [2/3] Starting PM2 servers...
-call pm2 start ecosystem.config.cjs
+call pm2 start ecosystem.config.windows.js
 if %errorlevel% neq 0 (
     echo Error: Failed to start PM2 servers
     echo Please ensure PM2 is installed: npm install -g pm2
