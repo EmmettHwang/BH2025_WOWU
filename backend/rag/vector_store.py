@@ -5,14 +5,14 @@ FAISS를 사용하여 문서 임베딩 저장 및 검색 (Python 3.14 호환)
 
 import os
 from typing import List, Dict, Optional
-from backend.rag.simple_vector_store import SimpleVectorStore
+from .simple_vector_store import SimpleVectorStore
 
 
 class VectorStoreManager:
     """벡터 스토어 관리 클래스 (간소화 버전)"""
     
     def __init__(self, 
-                 persist_directory: str = "./backend/simple_vector_db",
+                 persist_directory: str = "./simple_vector_db",
                  collection_name: str = "biohealth_docs",
                  embedding_model: str = "jhgan/ko-sroberta-multitask"):
         """
