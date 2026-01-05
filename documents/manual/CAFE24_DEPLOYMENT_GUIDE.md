@@ -1,539 +1,490 @@
-# Cafe24 서버호스팅 배포 가이드
+# Cafe24 리눅스 서버 배포 가이드
 
-## 📋 개요
-Cafe24 서버호스팅(VPS)를 이용한 교육관리시스템 배포 가이드입니다.
+## 📋 목차
 
-## 🎯 Cafe24 호스팅 옵션
-
-### ⚠️ 중요: 호스팅 종류 확인
-
-1. **일반 웹호스팅** ❌
-   - PHP/MySQL 전용
-   - Python/FastAPI 실행 불가
-   - **본 프로젝트에 사용 불가능**
-
-2. **서버호스팅 (VPS)** ✅ **권장**
-   - Linux 서버 전체 제어
-   - Python, Node.js 등 자유롭게 설치
-   - Root 권한 제공
-   - **본 프로젝트 배포 가능**
-
-3. **클라우드 서버** ✅
-   - VPS와 동일하나 더 유연한 스케일링
-   - **본 프로젝트 배포 가능**
-
-### 💰 가격 (2024년 기준)
-- **서버호스팅 Basic**: 월 33,000원~
-- **클라우드 서버**: 월 11,000원~ (시간당 과금 가능)
+1. [사전 준비](#사전-준비)
+2. [서버 접속](#서버-접속)
+3. [프로젝트 배포](#프로젝트-배포)
+4. [환경 설정](#환경-설정)
+5. [서버 시작](#서버-시작)
+6. [문제 해결](#문제-해결)
+7. [유지보수](#유지보수)
 
 ---
 
-## 🚀 배포 방법
+## 사전 준비
 
-### 방법 1: 수동 배포 (FTP + SSH) - 가장 간단
+### 1. Cafe24 호스팅 요구사항
 
-#### 사전 준비
-1. **Cafe24 서버호스팅 또는 클라우드 서버 신청**
-   - https://www.cafe24.com/?controller=hosting_linux
-   - CentOS 또는 Ubuntu 선택 권장
+- **상품**: 리눅스 웹호스팅 (Python 지원)
+- **Python 버전**: 3.9 이상
+- **디스크 용량**: 최소 5GB 이상 권장
+- **메모리**: 최소 2GB 이상 권장
 
-2. **서버 정보 확인**
-   - SSH 접속 정보 (IP, 포트, 계정, 비밀번호)
-   - FTP 접속 정보
-   - 할당된 도메인 또는 IP
+### 2. 필요한 정보 준비
 
-#### 단계 1: SSH 접속
+- [ ] Cafe24 SSH 접속 정보 (호스트, 포트, 사용자명, 비밀번호)
+- [ ] MySQL 데이터베이스 정보 (호스트, 포트, DB명, 사용자명, 비밀번호)
+- [ ] FTP 정보 (호스트, 포트, 사용자명, 비밀번호)
+- [ ] GROQ API 키 (필수 - RAG 시스템용)
+- [ ] 기타 AI API 키 (선택 - OpenAI, Gemini, Anthropic)
+
+---
+
+## 서버 접속
+
+### SSH 접속
 
 ```bash
-# Windows: PuTTY 또는 PowerShell 사용
-# macOS/Linux: 터미널 사용
-
-ssh username@your-server-ip
-# 또는 포트가 다른 경우
-ssh -p 2222 username@your-server-ip
-
-# 비밀번호 입력
+ssh -p [포트번호] [사용자명]@[호스트]
 ```
 
-#### 단계 2: 서버 환경 구성
-
+**예시**:
 ```bash
-# 시스템 업데이트
-sudo yum update -y  # CentOS
-# 또는
-sudo apt update && sudo apt upgrade -y  # Ubuntu
-
-# Python 3.11 설치
-sudo yum install python3.11 python3.11-pip -y  # CentOS
-# 또는
-sudo apt install python3.11 python3.11-pip -y  # Ubuntu
-
-# Git 설치
-sudo yum install git -y  # CentOS
-# 또는
-sudo apt install git -y  # Ubuntu
-
-# 가상환경 도구 설치
-pip3.11 install virtualenv
+ssh -p 22022 cafe24user@yourserver.cafe24.com
 ```
 
-#### 단계 3: 프로젝트 배포
+---
+
+## 프로젝트 배포
+
+### 방법 1: Git Clone (권장)
 
 ```bash
-# 홈 디렉토리로 이동
+# 1. 홈 디렉토리로 이동
 cd ~
 
-# GitHub에서 프로젝트 클론
-git clone https://github.com/Emmett6401/BH2025_WOWU.git
+# 2. Git 저장소 클론
+git clone https://github.com/EmmettHwang/BH2025_WOWU.git
+
+# 3. 프로젝트 디렉토리로 이동
 cd BH2025_WOWU
 
-# 가상환경 생성 및 활성화
-python3.11 -m venv venv
-source venv/bin/activate
+# 4. hun 브랜치로 전환
+git checkout hun
+```
 
-# 의존성 설치
-pip install -r backend/requirements.txt
+### 방법 2: FTP 업로드
 
+1. FileZilla 등 FTP 클라이언트 사용
+2. 전체 프로젝트 폴더를 서버에 업로드
+3. SSH로 접속하여 압축 해제 (필요 시)
+
+---
+
+## 환경 설정
+
+### 1. 셋업 스크립트 실행
+
+```bash
+cd ~/BH2025_WOWU
+bash setup.sh
+```
+
+이 스크립트는 자동으로:
+- Python 가상환경 생성
+- 필수 패키지 설치
+- 필요한 디렉토리 생성
+
+### 2. 환경 변수 설정
+
+```bash
 # .env 파일 생성
-cat > .env << 'EOF'
-OPENAI_API_KEY=your-openai-key-here
-EOF
+cp backend/.env.example backend/.env
 
-# 권한 설정
-chmod 755 -R .
+# 편집기로 열기
+nano backend/.env
 ```
 
-#### 단계 4: 방화벽 및 포트 설정
+**반드시 설정해야 할 항목**:
 
 ```bash
-# 방화벽에서 포트 8000 열기 (CentOS)
-sudo firewall-cmd --permanent --add-port=8000/tcp
-sudo firewall-cmd --reload
+# 데이터베이스
+DB_HOST=your_mysql_host
+DB_PORT=3306
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_NAME=BH2025
 
-# 또는 Ubuntu
-sudo ufw allow 8000/tcp
-sudo ufw reload
-
-# Cafe24 관리 콘솔에서도 포트 8000 개방 필요!
+# API 키 (RAG 시스템 필수)
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
-#### 단계 5: 서비스 실행 (PM2 사용)
+**저장 및 종료**:
+- `Ctrl + O` (저장)
+- `Enter`
+- `Ctrl + X` (종료)
+
+---
+
+## 서버 시작
+
+### 기본 시작
 
 ```bash
-# Node.js 및 PM2 설치
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-source ~/.bashrc
-nvm install 18
-npm install -g pm2
+bash start.sh
+```
 
-# PM2로 백엔드 실행
+### 커스텀 설정으로 시작
+
+```bash
+# 포트 변경
+bash start.sh --port 8080
+
+# 워커 수 변경
+bash start.sh --workers 2
+
+# 개발 모드 (코드 변경 시 자동 재시작)
+bash start.sh --reload
+```
+
+### 백그라운드 실행
+
+```bash
+nohup bash start.sh > server.log 2>&1 &
+```
+
+**로그 확인**:
+```bash
+tail -f server.log
+```
+
+---
+
+## 문제 해결
+
+### 1. Python 버전 문제
+
+**증상**: `Python 3.9 이상 필요`
+
+**해결**:
+```bash
+# Python 버전 확인
+python3 --version
+
+# Cafe24에서 Python 버전 변경 (호스팅 관리자에 문의)
+```
+
+### 2. 패키지 설치 오류
+
+**증상**: `ModuleNotFoundError`, `ImportError`
+
+**해결**:
+```bash
+cd ~/BH2025_WOWU
+source venv/bin/activate
+cd backend
+pip install -r requirements.txt --upgrade
+```
+
+### 3. 포트 충돌
+
+**증상**: `Address already in use`
+
+**해결**:
+```bash
+# 실행 중인 프로세스 확인
+ps aux | grep uvicorn
+
+# 프로세스 종료
+bash stop.sh
+
+# 또는 다른 포트 사용
+bash start.sh --port 8001
+```
+
+### 4. 메모리 부족
+
+**증상**: 서버가 자주 멈추거나 느림
+
+**해결**:
+```bash
+# 워커 수 줄이기
+bash start.sh --workers 2
+
+# 또는
+bash start.sh --workers 1
+```
+
+### 5. 데이터베이스 연결 오류
+
+**증상**: `Can't connect to MySQL server`
+
+**해결**:
+1. `.env` 파일의 DB 정보 확인
+2. MySQL 서버 실행 상태 확인
+3. 방화벽 설정 확인
+4. Cafe24 관리자 페이지에서 DB 접근 권한 확인
+
+### 6. RAG 시스템 초기화 실패
+
+**증상**: `RAG 시스템 초기화 실패`
+
+**해결**:
+```bash
+# 필수 패키지 재설치
+source venv/bin/activate
+pip install sentence-transformers==2.3.1 huggingface-hub==0.20.3 faiss-cpu==1.7.4
+
+# 디렉토리 권한 확인
+chmod 755 backend/vector_db
+```
+
+---
+
+## 유지보수
+
+### 서버 상태 확인
+
+```bash
+# 프로세스 확인
+ps aux | grep uvicorn
+
+# 리소스 사용량 확인
+top
+
+# 디스크 사용량 확인
+df -h
+
+# 로그 확인
+tail -f backend/logs/server.log
+```
+
+### 서버 재시작
+
+```bash
+bash stop.sh
+bash start.sh
+```
+
+### 코드 업데이트
+
+```bash
+cd ~/BH2025_WOWU
+git pull origin hun
+bash stop.sh
+source venv/bin/activate
+cd backend
+pip install -r requirements.txt --upgrade
+cd ..
+bash start.sh
+```
+
+### 백업
+
+#### 데이터베이스 백업
+
+```bash
+mysqldump -h DB_HOST -u DB_USER -p DB_NAME > backup_$(date +%Y%m%d).sql
+```
+
+#### 문서/파일 백업
+
+```bash
 cd ~/BH2025_WOWU/backend
-pm2 start "uvicorn main:app --host 0.0.0.0 --port 8000" --name bhhs-backend
+tar -czf documents_backup_$(date +%Y%m%d).tar.gz documents/
+tar -czf vector_db_backup_$(date +%Y%m%d).tar.gz vector_db/
+```
 
-# PM2 자동 시작 설정
-pm2 startup
-pm2 save
+### 로그 관리
+
+```bash
+# 로그 파일 크기 확인
+du -sh backend/logs/*
+
+# 오래된 로그 삭제 (30일 이상)
+find backend/logs/ -name "*.log" -mtime +30 -delete
+```
+
+---
+
+## 자동 시작 설정 (systemd)
+
+### 1. 서비스 파일 생성
+
+```bash
+sudo nano /etc/systemd/system/bh2025.service
+```
+
+**내용**:
+```ini
+[Unit]
+Description=BH2025 WOWU Backend Server
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=your_username
+WorkingDirectory=/home/your_username/BH2025_WOWU
+ExecStart=/home/your_username/BH2025_WOWU/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 2. 서비스 활성화
+
+```bash
+# 서비스 리로드
+sudo systemctl daemon-reload
+
+# 서비스 시작
+sudo systemctl start bh2025
+
+# 자동 시작 활성화
+sudo systemctl enable bh2025
 
 # 상태 확인
-pm2 list
-pm2 logs bhhs-backend
+sudo systemctl status bh2025
 ```
 
-#### 단계 6: Nginx 리버스 프록시 설정 (선택사항)
+---
+
+## Nginx 리버스 프록시 설정 (선택)
+
+### 1. Nginx 설치
 
 ```bash
-# Nginx 설치
-sudo yum install nginx -y  # CentOS
-# 또는
-sudo apt install nginx -y  # Ubuntu
-
-# Nginx 설정 파일 생성
-sudo nano /etc/nginx/conf.d/bhhs.conf
+sudo apt update
+sudo apt install nginx
 ```
 
-**Nginx 설정 내용:**
+### 2. 설정 파일 생성
+
+```bash
+sudo nano /etc/nginx/sites-available/bh2025
+```
+
+**내용**:
 ```nginx
 server {
     listen 80;
-    server_name your-domain.com;  # 또는 서버 IP
-
-    # 클라이언트 최대 업로드 크기 (사진 업로드용)
-    client_max_body_size 20M;
+    server_name yourdomain.com;
 
     location / {
         proxy_pass http://127.0.0.1:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # 타임아웃 설정 (AI 생성 등 긴 요청 대응)
-        proxy_connect_timeout 300;
-        proxy_send_timeout 300;
-        proxy_read_timeout 300;
+    }
+
+    location /static {
+        alias /home/your_username/BH2025_WOWU/frontend;
     }
 }
 ```
 
+### 3. 활성화
+
 ```bash
-# Nginx 설정 테스트
+sudo ln -s /etc/nginx/sites-available/bh2025 /etc/nginx/sites-enabled/
 sudo nginx -t
-
-# Nginx 시작 및 자동 시작 설정
-sudo systemctl start nginx
-sudo systemctl enable nginx
-
-# 방화벽에서 HTTP(80) 포트 열기
-sudo firewall-cmd --permanent --add-service=http
-sudo firewall-cmd --reload
+sudo systemctl restart nginx
 ```
-
-#### 단계 7: 도메인 연결 (선택사항)
-
-1. **Cafe24 관리 콘솔**에서 도메인 설정
-2. **DNS A 레코드** 추가:
-   - 호스트: @ (또는 www)
-   - 값: 서버 IP 주소
-   - TTL: 3600
-
-3. 전파 대기 (1~24시간)
 
 ---
 
-### 방법 2: Docker 배포 (고급)
+## 보안 권장사항
 
-#### 단계 1: Docker 설치
+### 1. 방화벽 설정
 
 ```bash
-# Docker 설치 스크립트 실행
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
+# UFW 활성화
+sudo ufw enable
 
-# Docker Compose 설치
-sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
+# SSH 포트 허용
+sudo ufw allow 22/tcp
 
-# Docker 서비스 시작
-sudo systemctl start docker
-sudo systemctl enable docker
+# HTTP/HTTPS 허용
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
 
-# 현재 사용자를 docker 그룹에 추가
-sudo usermod -aG docker $USER
-# 재로그인 필요
+# 애플리케이션 포트 (필요 시)
+sudo ufw allow 8000/tcp
 ```
 
-#### 단계 2: Docker로 배포
+### 2. 파일 권한 설정
 
 ```bash
 cd ~/BH2025_WOWU
 
-# Docker 이미지 빌드
-docker build -t bhhs-edu-system .
+# 스크립트 실행 권한
+chmod +x setup.sh start.sh stop.sh
 
-# 컨테이너 실행
-docker run -d \
-  --name bhhs-backend \
-  --restart always \
-  -p 8000:8080 \
-  --env-file .env \
-  bhhs-edu-system
+# .env 파일 보호
+chmod 600 backend/.env
 
-# 상태 확인
-docker ps
-docker logs bhhs-backend
+# 디렉토리 권한
+chmod 755 backend/documents backend/uploads backend/vector_db
+```
+
+### 3. 정기 업데이트
+
+```bash
+# 매주 월요일 새벽 3시에 업데이트 (crontab)
+0 3 * * 1 cd ~/BH2025_WOWU && git pull && bash stop.sh && bash start.sh
 ```
 
 ---
 
-## 🔧 Cafe24 관리 콘솔 설정
+## 성능 최적화
 
-### 1. 방화벽 규칙 추가
-```
-Cafe24 관리 콘솔 로그인
-→ 서버 관리
-→ 방화벽 설정
-→ 포트 8000 (또는 80) 인바운드 허용
-```
+### 1. 워커 수 설정
 
-### 2. SSL 인증서 설정 (HTTPS)
-```
-Cafe24 관리 콘솔
-→ SSL 인증서 관리
-→ Let's Encrypt 무료 인증서 신청
-→ 도메인 선택 및 자동 갱신 설정
+CPU 코어 수의 2배 + 1 권장:
+```bash
+# CPU 코어 수 확인
+nproc
+
+# 4코어면 워커 9개 권장
+bash start.sh --workers 9
 ```
 
-### 3. 백업 설정
-```
-Cafe24 관리 콘솔
-→ 백업 관리
-→ 자동 백업 활성화 (일일 권장)
+### 2. 메모리 최적화
+
+```bash
+# 메모리 사용량 모니터링
+watch -n 5 free -m
+
+# 필요 시 swap 증설 (Cafe24 관리자 문의)
 ```
 
 ---
 
-## 📊 모니터링 및 관리
+## 체크리스트
 
-### PM2 명령어
+### 배포 전
 
-```bash
-# 서비스 상태 확인
-pm2 list
+- [ ] SSH 접속 정보 확인
+- [ ] 데이터베이스 준비
+- [ ] API 키 준비
+- [ ] 도메인/서버 확인
 
-# 로그 확인 (실시간)
-pm2 logs bhhs-backend
+### 배포 중
 
-# 로그 확인 (최근 100줄)
-pm2 logs bhhs-backend --lines 100
+- [ ] 프로젝트 업로드/클론
+- [ ] setup.sh 실행
+- [ ] .env 파일 설정
+- [ ] 서버 시작 테스트
 
-# 서비스 재시작
-pm2 restart bhhs-backend
+### 배포 후
 
-# 서비스 중지
-pm2 stop bhhs-backend
-
-# 서비스 삭제
-pm2 delete bhhs-backend
-
-# 모든 서비스 재시작
-pm2 restart all
-```
-
-### 시스템 리소스 모니터링
-
-```bash
-# CPU/메모리 사용률
-top
-# 또는
-htop  # 설치 필요: sudo yum install htop
-
-# 디스크 사용량
-df -h
-
-# 메모리 사용량
-free -h
-
-# 네트워크 연결 확인
-netstat -tulpn | grep :8000
-```
+- [ ] 브라우저에서 접속 테스트
+- [ ] API 문서 확인 (/docs)
+- [ ] 로그인 테스트
+- [ ] RAG 시스템 테스트
+- [ ] 백업 설정
 
 ---
 
-## 🔄 업데이트 배포
+## 지원 및 문의
 
-### 코드 업데이트 시
-
-```bash
-# SSH 접속
-ssh username@your-server-ip
-
-# 프로젝트 디렉토리로 이동
-cd ~/BH2025_WOWU
-
-# 최신 코드 가져오기
-git pull origin main
-
-# 가상환경 활성화
-source venv/bin/activate
-
-# 의존성 업데이트 (필요시)
-pip install -r backend/requirements.txt
-
-# PM2로 재시작
-pm2 restart bhhs-backend
-
-# 로그 확인
-pm2 logs bhhs-backend --lines 50
-```
+- **GitHub**: https://github.com/EmmettHwang/BH2025_WOWU
+- **이슈 트래커**: https://github.com/EmmettHwang/BH2025_WOWU/issues
 
 ---
 
-## 🚨 트러블슈팅
-
-### 1. 포트가 이미 사용 중
-```bash
-# 포트 8000을 사용하는 프로세스 찾기
-sudo lsof -i :8000
-
-# 프로세스 종료
-sudo kill -9 PID번호
-```
-
-### 2. Python 버전 문제
-```bash
-# Python 버전 확인
-python3.11 --version
-
-# 가상환경에서 Python 버전 확인
-source venv/bin/activate
-python --version
-```
-
-### 3. 메모리 부족
-```bash
-# 스왑 메모리 추가
-sudo fallocate -l 2G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-
-# 영구 설정
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-```
-
-### 4. 데이터베이스 연결 실패
-```bash
-# MySQL 서버 접근 테스트
-telnet bitnmeta2.synology.me 3307
-
-# Python에서 연결 테스트
-python3.11 << 'EOF'
-import pymysql
-try:
-    conn = pymysql.connect(
-        host='bitnmeta2.synology.me',
-        user='iyrc',
-        passwd='Dodan1004!',
-        db='bh2025',
-        port=3307
-    )
-    print("✅ 데이터베이스 연결 성공!")
-    conn.close()
-except Exception as e:
-    print(f"❌ 연결 실패: {e}")
-EOF
-```
-
-### 5. Nginx 502 Bad Gateway
-```bash
-# FastAPI 서비스 상태 확인
-pm2 list
-pm2 logs bhhs-backend
-
-# 로컬에서 API 테스트
-curl http://localhost:8000/health
-
-# Nginx 로그 확인
-sudo tail -f /var/log/nginx/error.log
-```
-
----
-
-## 🔐 보안 설정
-
-### 1. SSH 보안 강화
-```bash
-# SSH 포트 변경 (기본 22 → 다른 포트)
-sudo nano /etc/ssh/sshd_config
-# Port 22 → Port 2222 로 변경
-
-# 루트 로그인 비활성화
-# PermitRootLogin yes → PermitRootLogin no
-
-# SSH 재시작
-sudo systemctl restart sshd
-```
-
-### 2. 방화벽 설정
-```bash
-# 필요한 포트만 열기
-sudo firewall-cmd --permanent --remove-service=ssh  # 기본 22 제거
-sudo firewall-cmd --permanent --add-port=2222/tcp  # 새 SSH 포트
-sudo firewall-cmd --permanent --add-port=80/tcp    # HTTP
-sudo firewall-cmd --permanent --add-port=443/tcp   # HTTPS
-sudo firewall-cmd --reload
-```
-
-### 3. 자동 업데이트 설정
-```bash
-# CentOS
-sudo yum install yum-cron -y
-sudo systemctl start yum-cron
-sudo systemctl enable yum-cron
-
-# Ubuntu
-sudo apt install unattended-upgrades -y
-sudo dpkg-reconfigure -plow unattended-upgrades
-```
-
----
-
-## 📱 FTP를 통한 파일 업로드 (초보자용)
-
-Cafe24 FTP를 사용하여 코드를 업로드하는 방법:
-
-### 1. FileZilla 사용
-
-1. **FileZilla 다운로드**: https://filezilla-project.org/
-2. **접속 정보 입력**:
-   - 호스트: Cafe24에서 제공한 FTP 주소
-   - 사용자명: FTP 계정
-   - 비밀번호: FTP 비밀번호
-   - 포트: 21
-3. **프로젝트 파일 업로드**:
-   - 로컬: `BH2025_WOWU` 폴더
-   - 서버: `/home/사용자명/BH2025_WOWU`
-4. **SSH로 접속하여 서비스 시작**
-
----
-
-## 💰 비용 비교
-
-| 항목 | Cafe24 서버호스팅 | Google Cloud Run |
-|------|------------------|------------------|
-| 월 기본료 | 33,000원~ | 무료 (일정량까지) |
-| 트래픽 | 제한 있음 | 1GB 무료 |
-| 자동 스케일링 | 불가 | 가능 |
-| 서버 관리 | 직접 관리 필요 | 완전 자동 |
-| 도메인 | Cafe24 도메인 사용 가능 | 별도 구매 필요 |
-| 설정 난이도 | 중간 | 쉬움 |
-
----
-
-## 🎯 추천 구성
-
-### 소규모 운영 (학생 100명 이하)
-- **Cafe24 서버호스팅 Basic** (월 33,000원)
-- CPU: 2 Core
-- RAM: 4GB
-- 디스크: 50GB SSD
-
-### 중규모 운영 (학생 300명 이하)
-- **Cafe24 클라우드 서버** (월 55,000원)
-- CPU: 4 Core
-- RAM: 8GB
-- 디스크: 100GB SSD
-
----
-
-## 📚 참고 자료
-
-- [Cafe24 호스팅 가이드](https://www.cafe24.com/)
-- [FastAPI 배포 문서](https://fastapi.tiangolo.com/deployment/)
-- [PM2 공식 문서](https://pm2.keymetrics.io/)
-- [Nginx 설정 가이드](https://nginx.org/en/docs/)
-
----
-
-## 🆘 지원
-
-### Cafe24 고객센터
-- 전화: 1544-6704
-- 이메일: help@cafe24.com
-- 평일 09:00 ~ 18:00
-
-### 기술 지원이 필요한 경우
-1. **서버 초기 설정**: Cafe24 관리자 도움 요청
-2. **배포 관련**: 본 가이드의 명령어 순서대로 진행
-3. **에러 발생 시**: 로그 파일 (`pm2 logs`) 확인 후 문의
-
----
-
-**작성일**: 2025-11-14  
-**버전**: 1.0  
-**프로젝트**: 교육관리시스템 v3.3  
-**대상**: Cafe24 서버호스팅/클라우드 서버
+*최종 수정: 2026-01-05*
