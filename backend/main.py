@@ -8224,8 +8224,8 @@ async def upload_document(
         
         # 카테고리에 따라 저장 폴더 결정
         if category == "rag-indexed" or category == "rag":
-            # RAG 문서는 rag 폴더에 저장
-            documents_dir = Path("./rag")
+            # RAG 문서는 rag_documents 폴더에 저장
+            documents_dir = Path("./rag_documents")
         else:
             # 일반 문서는 documents 폴더에 저장
             documents_dir = Path("./documents")
@@ -8263,12 +8263,12 @@ async def upload_document(
 
 @app.get("/api/documents/list")
 async def list_documents():
-    """documents 및 rag 폴더의 파일 목록 조회"""
+    """documents 및 rag_documents 폴더의 파일 목록 조회"""
     try:
         documents = []
         
-        # documents 폴더와 rag 폴더 모두에서 파일 조회
-        for folder_name in ["documents", "rag"]:
+        # documents 폴더와 rag_documents 폴더 모두에서 파일 조회
+        for folder_name in ["documents", "rag_documents"]:
             folder_path = Path(f"./{folder_name}")
             
             if folder_path.exists():
@@ -8300,15 +8300,15 @@ async def list_documents():
 
 @app.delete("/api/documents/{filename}")
 async def delete_document(filename: str):
-    """문서 삭제 (documents 및 rag 폴더에서 검색)"""
+    """문서 삭제 (documents 및 rag_documents 폴더에서 검색)"""
     try:
         # 파일명 검증 (경로 탐색 공격 방지)
         if '..' in filename or '/' in filename or '\\' in filename:
             raise HTTPException(status_code=400, detail="잘못된 파일명입니다")
         
-        # documents와 rag 폴더 모두에서 파일 찾기
+        # documents와 rag_documents 폴더 모두에서 파일 찾기
         file_path = None
-        for folder in ["documents", "rag"]:
+        for folder in ["documents", "rag_documents"]:
             test_path = Path(f"./{folder}") / filename
             if test_path.exists():
                 file_path = test_path
@@ -8339,15 +8339,15 @@ async def delete_document(filename: str):
 
 @app.get("/api/documents/download/{filename}")
 async def download_document(filename: str):
-    """문서 다운로드 (documents 및 rag 폴더에서 검색)"""
+    """문서 다운로드 (documents 및 rag_documents 폴더에서 검색)"""
     try:
         # 파일명 검증
         if '..' in filename or '/' in filename or '\\' in filename:
             raise HTTPException(status_code=400, detail="잘못된 파일명입니다")
         
-        # documents와 rag 폴더 모두에서 파일 찾기
+        # documents와 rag_documents 폴더 모두에서 파일 찾기
         file_path = None
-        for folder in ["documents", "rag"]:
+        for folder in ["documents", "rag_documents"]:
             test_path = Path(f"./{folder}") / filename
             if test_path.exists():
                 file_path = test_path
@@ -8375,7 +8375,7 @@ async def download_document(filename: str):
 async def index_document_to_rag(request: Request):
     """
     문서를 RAG 시스템에 인덱싱
-    - filename: rag 또는 documents 폴더에 있는 파일명
+    - filename: rag_documents 또는 documents 폴더에 있는 파일명
     - original_filename: 원본 파일명 (선택)
     """
     if not vector_store_manager or not document_loader:
@@ -8389,9 +8389,9 @@ async def index_document_to_rag(request: Request):
         if not filename:
             raise HTTPException(status_code=400, detail="filename이 필요합니다")
         
-        # rag 폴더와 documents 폴더에서 파일 찾기
+        # rag_documents 폴더와 documents 폴더에서 파일 찾기
         file_path = None
-        for folder in ["rag", "documents"]:
+        for folder in ["rag_documents", "documents"]:
             test_path = Path(f"./{folder}") / filename
             if test_path.exists():
                 file_path = test_path
