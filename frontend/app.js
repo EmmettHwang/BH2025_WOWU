@@ -19369,6 +19369,50 @@ function renderRAGDocuments() {
 async function handleMultipleFiles(files) {
     if (files.length === 0) return;
     
+    // 오늘 하루 보지 않기 체크 확인
+    const hideRAGWarning = localStorage.getItem('hideRAGWarning');
+    const hideUntil = localStorage.getItem('hideRAGWarningUntil');
+    const now = new Date().getTime();
+    
+    let showWarning = true;
+    if (hideRAGWarning === 'true' && hideUntil && parseInt(hideUntil) > now) {
+        showWarning = false;
+    }
+    
+    // AI 학습 경고 메시지 표시
+    if (showWarning) {
+        const warningHtml = `
+            <div class="text-left space-y-3">
+                <p class="text-yellow-600 font-semibold text-base">⚠️ 중요 안내</p>
+                <p class="text-gray-700">RAG 시스템은 <span class="font-bold text-red-600">AI 학습 과정</span>이 포함되어 있어 <span class="font-bold">시간이 오래 걸립니다</span>.</p>
+                <ul class="list-disc list-inside text-sm text-gray-600 space-y-1 ml-2">
+                    <li>문서 크기에 따라 <span class="font-semibold">1~5분</span> 소요됩니다</li>
+                    <li>처리 중 브라우저를 닫지 마세요</li>
+                    <li>완료될 때까지 기다려주세요</li>
+                </ul>
+                <label class="flex items-center space-x-2 text-sm text-gray-600 cursor-pointer mt-4 p-2 bg-gray-100 rounded">
+                    <input type="checkbox" id="dont-show-today" class="form-checkbox h-4 w-4 text-blue-600">
+                    <span>오늘 하루 보지 않기</span>
+                </label>
+            </div>
+        `;
+        
+        const proceed = await window.showCustomConfirm(warningHtml, 'RAG 처리 안내', '계속하기', '취소');
+        
+        if (!proceed) {
+            return;
+        }
+        
+        // 오늘 하루 보지 않기 체크 확인
+        const dontShowCheckbox = document.getElementById('dont-show-today');
+        if (dontShowCheckbox && dontShowCheckbox.checked) {
+            const tomorrow = new Date();
+            tomorrow.setHours(24, 0, 0, 0); // 다음날 자정
+            localStorage.setItem('hideRAGWarning', 'true');
+            localStorage.setItem('hideRAGWarningUntil', tomorrow.getTime().toString());
+        }
+    }
+    
     // RAG 인덱싱 여부 확인
     const useRAG = await window.showCustomConfirm(
         `📚 ${files.length}개 파일을 RAG 시스템에 인덱싱하시겠습니까?\n\n✅ 예: 문서 내용을 학습하고 질문에 답변할 수 있습니다\n❌ 아니오: 단순히 파일만 저장합니다`,
@@ -19696,7 +19740,8 @@ function showRAGProcessingModal() {
                     <h2 class="text-3xl font-bold text-white mb-2" style="animation: pulse 2s ease-in-out infinite;">
                         <i class="fas fa-brain mr-3"></i>문서 처리 중...
                     </h2>
-                    <p class="text-blue-200 text-sm">RAG 시스템이 문서를 분석하고 있습니다</p>
+                    <p id="rag-filename-display" class="text-yellow-300 text-base font-semibold mb-2"></p>
+                    <p class="text-blue-200 text-sm">RAG 시스템이 AI 학습을 위해 문서를 분석하고 있습니다 (시간이 소요될 수 있습니다)</p>
                 </div>
                 
                 <!-- 중앙 그래픽 영역 -->
@@ -19949,6 +19994,12 @@ async function processRAGDocument(file) {
     
     // RAG 처리 모달 표시
     showRAGProcessingModal();
+    
+    // 파일 이름 표시
+    const filenameDisplay = document.getElementById('rag-filename-display');
+    if (filenameDisplay) {
+        filenameDisplay.textContent = `📄 ${file.name}`;
+    }
     
     const stages = ['parsing', 'chunking', 'embedding', 'indexing'];
     const stageMessages = {
