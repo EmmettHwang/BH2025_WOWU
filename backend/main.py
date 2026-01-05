@@ -8430,3 +8430,40 @@ async def get_document_rag_status(filename: str):
     except Exception as e:
         print(f"[ERROR] RAG 상태 조회 실패: {str(e)}")
         raise HTTPException(status_code=500, detail=f"RAG 상태 조회 실패: {str(e)}")
+
+
+# ==================== 서버 시작 ====================
+if __name__ == "__main__":
+    import uvicorn
+    
+    print("\n" + "="*60)
+    print("🚀 BH2025 WOWU 백엔드 서버 시작")
+    print("="*60)
+    
+    # 등록된 라우트 확인
+    print("\n📋 등록된 API 엔드포인트:")
+    doc_routes = []
+    rag_routes = []
+    for route in app.routes:
+        if hasattr(route, 'path') and hasattr(route, 'methods'):
+            if '/api/documents' in route.path:
+                doc_routes.append(f"  {', '.join(route.methods)} {route.path}")
+            elif '/api/rag' in route.path:
+                rag_routes.append(f"  {', '.join(route.methods)} {route.path}")
+    
+    if doc_routes:
+        print("\n📁 Documents API:")
+        for r in sorted(doc_routes):
+            print(r)
+    
+    if rag_routes:
+        print("\n🤖 RAG API:")
+        for r in sorted(rag_routes):
+            print(r)
+    
+    print("\n" + "="*60)
+    print("✅ 서버 URL: http://localhost:8000")
+    print("📚 API 문서: http://localhost:8000/docs")
+    print("="*60 + "\n")
+    
+    uvicorn.run(app, host="0.0.0.0", port=8000)
