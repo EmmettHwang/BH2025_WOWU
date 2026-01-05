@@ -19950,7 +19950,25 @@ async function processRAGDocument(file) {
     
     let currentStage = 0;
     
-    // 스테이지 애니메이션 시뮬레이션
+    // 첫 번째 스테이지를 즉시 표시 (모달이 표시되자마자 애니메이션 시작)
+    setTimeout(() => {
+        const firstStage = document.getElementById('stage-parsing');
+        if (firstStage) firstStage.classList.remove('hidden');
+        
+        const statusText = document.getElementById('rag-status-text');
+        if (statusText) {
+            statusText.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i>${stageMessages.parsing}`;
+        }
+        
+        const progressBar = document.getElementById('rag-progress-bar');
+        const progressPercent = document.getElementById('rag-progress-percentage');
+        if (progressBar) progressBar.style.width = '25%';
+        if (progressPercent) progressPercent.textContent = '25%';
+        
+        currentStage = 1; // 다음 스테이지부터 시작
+    }, 100); // 모달 렌더링 직후 실행
+    
+    // 스테이지 애니메이션 시뮬레이션 (첫 번째 스테이지는 이미 표시됨)
     const stageInterval = setInterval(() => {
         // 이전 스테이지 숨기기
         stages.forEach(s => {
