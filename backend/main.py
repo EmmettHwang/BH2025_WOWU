@@ -7246,9 +7246,9 @@ if __name__ == "__main__":
 # RAG (Retrieval-Augmented Generation) API
 # ============================================
 
-from backend.rag.document_loader import DocumentLoader
-from backend.rag.vector_store import VectorStoreManager
-from backend.rag.rag_chain import RAGChain
+from rag.document_loader import DocumentLoader
+from rag.vector_store import VectorStoreManager
+from rag.rag_chain import RAGChain
 import shutil
 from typing import Optional
 
