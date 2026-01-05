@@ -14325,86 +14325,6 @@ async function loadNotices() {
 }
 
 // RAG 문서 관리 렌더링
-function renderRAGDocuments() {
-    const app = document.getElementById('app');
-    
-    app.innerHTML = `
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">
-                    <i class="fas fa-file-alt mr-2"></i>문서 관리 (RAG)
-                </h2>
-                <button onclick="window.location.reload()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
-                    <i class="fas fa-sync-alt mr-2"></i>새로고침
-                </button>
-            </div>
-
-            <!-- 문서 업로드 영역 -->
-            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 mb-6 border-2 border-dashed border-blue-300" id="upload-area">
-                <div class="text-center">
-                    <i class="fas fa-cloud-upload-alt text-6xl text-blue-400 mb-4"></i>
-                    <h3 class="text-xl font-semibold text-gray-700 mb-2">파일을 드래그하거나 클릭하여 업로드</h3>
-                    <p class="text-gray-500 mb-4">PDF, DOCX, TXT 파일 지원 (최대 50MB)</p>
-                    <input type="file" id="file-input" accept=".pdf,.docx,.doc,.txt" multiple class="hidden">
-                    <button onclick="document.getElementById('file-input').click()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
-                        <i class="fas fa-folder-open mr-2"></i>파일 선택
-                    </button>
-                </div>
-                
-                <!-- 업로드 진행률 -->
-                <div id="upload-progress" class="hidden mt-4">
-                    <div class="bg-white rounded-lg p-4">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-semibold text-gray-700">업로드 중...</span>
-                            <span id="upload-percent" class="text-sm text-blue-600">0%</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div id="upload-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-                        </div>
-                        <p id="upload-file-name" class="text-xs text-gray-500 mt-2"></p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- RAG 시스템 상태 -->
-            <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 mb-6 border border-green-200">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <i class="fas fa-database text-2xl text-green-600 mr-3"></i>
-                        <div>
-                            <h3 class="font-semibold text-gray-700">RAG 시스템 상태</h3>
-                            <p id="rag-status-text" class="text-sm text-gray-600">로딩 중...</p>
-                        </div>
-                    </div>
-                    <button onclick="clearVectorDB()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">
-                        <i class="fas fa-trash mr-2"></i>벡터 DB 초기화
-                    </button>
-                </div>
-            </div>
-
-            <!-- 업로드된 문서 목록 -->
-            <div class="bg-gray-50 rounded-lg p-6">
-                <h3 class="text-lg font-semibold text-gray-700 mb-4">
-                    <i class="fas fa-list mr-2"></i>업로드된 문서 (<span id="document-count">0</span>개)
-                </h3>
-                <div id="documents-list" class="space-y-3">
-                    <div class="text-center text-gray-500 py-8">
-                        <i class="fas fa-folder-open text-4xl mb-2"></i>
-                        <p>업로드된 문서가 없습니다</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // 이벤트 리스너 설정
-    setupRAGUploadListeners();
-    
-    // 문서 목록 및 상태 로드
-    loadRAGStatus();
-    loadRAGDocuments();
-}
-
 // RAG 업로드 리스너 설정
 function setupRAGUploadListeners() {
     const uploadArea = document.getElementById('upload-area');
@@ -19720,16 +19640,6 @@ async function loadDocuments() {
             </div>
         `;
         }).join('');
-                        </a>
-                        <button onclick="deleteDocument('${doc.filename}')" 
-                                class="text-red-600 hover:text-red-800 px-3 py-1 rounded bg-red-50 hover:bg-red-100 transition-colors"
-                                title="삭제">
-                            <i class="fas fa-trash mr-1"></i>삭제
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `).join('');
     } catch (error) {
         console.error('문서 목록 로드 실패:', error);
         document.getElementById('documents-list').innerHTML = `
@@ -19739,20 +19649,6 @@ async function loadDocuments() {
             </div>
         `;
     }
-}
-
-function getFileIcon(extension) {
-    const icons = {
-        '.pdf': 'pdf',
-        '.docx': 'word',
-        '.doc': 'word',
-        '.pptx': 'powerpoint',
-        '.ppt': 'powerpoint',
-        '.xlsx': 'excel',
-        '.xls': 'excel',
-        '.txt': 'alt'
-    };
-    return icons[extension] || 'alt';
 }
 
 async function deleteDocument(filename) {
