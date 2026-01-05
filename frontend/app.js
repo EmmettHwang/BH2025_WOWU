@@ -20021,6 +20021,11 @@ async function processRAGDocument(file) {
     
     // 스테이지 업데이트 함수
     const updateStage = () => {
+        // 마지막 단계를 넘어가면 더 이상 업데이트하지 않음
+        if (currentStage >= stages.length) {
+            return;
+        }
+        
         // 모든 스테이지 숨기기
         stages.forEach(s => {
             const el = document.getElementById(`stage-${s}`);
@@ -20042,8 +20047,8 @@ async function processRAGDocument(file) {
         if (progressBar) progressBar.style.width = `${progress}%`;
         if (progressPercent) progressPercent.textContent = `${Math.round(progress)}%`;
         
-        // 다음 스테이지로 (반복)
-        currentStage = (currentStage + 1) % stages.length;
+        // 다음 스테이지로
+        currentStage++;
     };
     
     // 첫 번째 스테이지를 즉시 표시
