@@ -7965,10 +7965,12 @@ D) [선택지 4]
 """
         
         # RAG를 사용하여 문제 생성
-        result = rag_chain.query(
+        # RAGChain 인스턴스 생성 (API 키 포함)
+        from rag.rag_chain import RAGChain
+        exam_rag_chain = RAGChain(vector_store_manager, groq_api_key, api_type='groq')
+        result = await exam_rag_chain.query(
             prompt,
-            k=5,
-            groq_api_key=groq_api_key
+            k=5
         )
         
         return {
