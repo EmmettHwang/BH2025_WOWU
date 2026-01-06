@@ -1,7 +1,12 @@
-// API 베이스 URL - 백엔드 포트로 변경
-// 프록시를 통해 백엔드와 통신하므로 API_BASE_URL은 빈 문자열
-const API_BASE_URL = '';
+// API 베이스 URL - 환경에 따라 자동 설정
+// 로컬 개발 환경: http://localhost:8000
+// 배포 환경: 빈 문자열 (Nginx 프록시 사용)
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:8000' 
+    : '';
 window.API_BASE_URL = API_BASE_URL; // 전역으로 노출
+
+console.log('🌐 API_BASE_URL:', API_BASE_URL || '(프록시 사용)');
 
 // YouTube API cross-origin 에러 무시 (sandbox 환경)
 window.addEventListener('error', function(event) {
