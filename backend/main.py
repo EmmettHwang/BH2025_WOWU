@@ -1892,10 +1892,15 @@ async def create_project(data: dict):
         # Ensure description column exists (TEXT type for markdown support)
         try:
             cursor.execute("SHOW COLUMNS FROM projects LIKE 'description'")
-            if not cursor.fetchone():
+            result = cursor.fetchone()
+            if not result:
+                print("[INFO] Adding description column to projects table...")
                 cursor.execute("ALTER TABLE projects ADD COLUMN description TEXT")
                 conn.commit()
-        except:
+                print("[OK] Description column added successfully")
+        except Exception as e:
+            print(f"[WARN] Description column check failed: {e}")
+            # Column might already exist, continue anyway
             pass
         
         query = """
@@ -1948,10 +1953,15 @@ async def update_project(code: str, data: dict):
         # Ensure description column exists (TEXT type for markdown support)
         try:
             cursor.execute("SHOW COLUMNS FROM projects LIKE 'description'")
-            if not cursor.fetchone():
+            result = cursor.fetchone()
+            if not result:
+                print("[INFO] Adding description column to projects table...")
                 cursor.execute("ALTER TABLE projects ADD COLUMN description TEXT")
                 conn.commit()
-        except:
+                print("[OK] Description column added successfully")
+        except Exception as e:
+            print(f"[WARN] Description column check failed: {e}")
+            # Column might already exist, continue anyway
             pass
         
         query = """
