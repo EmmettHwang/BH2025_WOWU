@@ -9142,6 +9142,7 @@ window.renderProjectsList = function() {
                         <th class="px-2 py-2 text-center text-xs font-medium text-gray-700 w-12">사진</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀 코드</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">팀명</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">설명</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">그룹구분</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">과정</th>
                         <th class="px-4 py-2 text-left text-xs font-medium text-gray-700">주강사</th>
@@ -9169,6 +9170,7 @@ window.renderProjectsList = function() {
                             </td>
                             <td class="px-4 py-2 text-xs font-mono">${p.code}</td>
                             <td class="px-4 py-2 text-xs font-semibold">${p.name}</td>
+                            <td class="px-4 py-2 text-xs" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${p.description || ''}">${p.description || '-'}</td>
                             <td class="px-4 py-2 text-xs">${p.group_type || '-'}</td>
                             <td class="px-4 py-2 text-xs text-blue-600">${p.course_name || p.course_code || '-'}</td>
                             <td class="px-4 py-2 text-xs">${p.instructor_name || '-'}</td>
@@ -9227,9 +9229,12 @@ window.showProjectForm = function(code = null) {
                 <label class="block text-sm font-medium text-gray-700 mb-1">팀명 *</label>
                 <input type="text" id="proj-name" placeholder="팀명" value="${existing ? existing.name : ''}" class="border rounded px-3 py-2 w-full">
             </div>
-            <div>
+            <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-1">설명</label>
-                <input type="text" id="proj-description" placeholder="프로젝트 설명" value="${existing ? existing.description || '' : ''}" class="border rounded px-3 py-2 w-full">
+                <textarea id="proj-description" placeholder="프로젝트 설명 (최대 500자)" rows="3" maxlength="500" class="border rounded px-3 py-2 w-full resize-y">${existing ? (existing.description || '') : ''}</textarea>
+                <p class="text-xs text-gray-500 mt-1">
+                    <span id="proj-description-count">0</span> / 500자
+                </p>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">그룹 구분 *</label>
@@ -9373,6 +9378,17 @@ window.showProjectForm = function(code = null) {
         } catch (e) {
             console.error('사진 URL 파싱 오류:', e);
         }
+    }
+    
+    // 설명 필드 글자수 카운터 초기화
+    const descTextarea = document.getElementById('proj-description');
+    const descCount = document.getElementById('proj-description-count');
+    if (descTextarea && descCount) {
+        const updateCount = () => {
+            descCount.textContent = descTextarea.value.length;
+        };
+        updateCount(); // 초기값 설정
+        descTextarea.addEventListener('input', updateCount);
     }
 }
 
