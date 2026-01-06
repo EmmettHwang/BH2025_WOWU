@@ -1945,6 +1945,15 @@ async def update_project(code: str, data: dict):
         # Ensure photo_urls column exists
         ensure_photo_urls_column(cursor, 'projects')
         
+        # Ensure description column exists (TEXT type for markdown support)
+        try:
+            cursor.execute("SHOW COLUMNS FROM projects LIKE 'description'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE projects ADD COLUMN description TEXT")
+                conn.commit()
+        except:
+            pass
+        
         query = """
             UPDATE projects
             SET name = %s, description = %s, group_type = %s, course_code = %s, 
