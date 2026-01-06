@@ -1889,8 +1889,17 @@ async def create_project(data: dict):
         # Ensure photo_urls column exists
         ensure_photo_urls_column(cursor, 'projects')
         
+        # Ensure description column exists (TEXT type for markdown support)
+        try:
+            cursor.execute("SHOW COLUMNS FROM projects LIKE 'description'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE projects ADD COLUMN description TEXT")
+                conn.commit()
+        except:
+            pass
+        
         query = """
-            INSERT INTO projects (code, name, group_type, course_code, instructor_code, mentor_code,
+            INSERT INTO projects (code, name, description, group_type, course_code, instructor_code, mentor_code,
                                  member1_name, member1_phone, member1_code,
                                  member2_name, member2_phone, member2_code,
                                  member3_name, member3_phone, member3_code,
@@ -1903,11 +1912,11 @@ async def create_project(data: dict):
                                  account4_name, account4_id, account4_pw,
                                  account5_name, account5_id, account5_pw,
                                  photo_urls)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                     %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (
-            data['code'], data['name'], data.get('group_type'), data.get('course_code'),
+            data['code'], data['name'], data.get('description'), data.get('group_type'), data.get('course_code'),
             data.get('instructor_code'), data.get('mentor_code'),
             data.get('member1_name'), data.get('member1_phone'), data.get('member1_code'),
             data.get('member2_name'), data.get('member2_phone'), data.get('member2_code'),
@@ -1938,7 +1947,7 @@ async def update_project(code: str, data: dict):
         
         query = """
             UPDATE projects
-            SET name = %s, group_type = %s, course_code = %s, 
+            SET name = %s, description = %s, group_type = %s, course_code = %s, 
                 instructor_code = %s, mentor_code = %s,
                 member1_name = %s, member1_phone = %s, member1_code = %s,
                 member2_name = %s, member2_phone = %s, member2_code = %s,
@@ -1955,7 +1964,7 @@ async def update_project(code: str, data: dict):
             WHERE code = %s
         """
         cursor.execute(query, (
-            data['name'], data.get('group_type'), data.get('course_code'),
+            data['name'], data.get('description'), data.get('group_type'), data.get('course_code'),
             data.get('instructor_code'), data.get('mentor_code'),
             data.get('member1_name'), data.get('member1_phone'), data.get('member1_code'),
             data.get('member2_name'), data.get('member2_phone'), data.get('member2_code'),

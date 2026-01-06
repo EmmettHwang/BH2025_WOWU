@@ -8964,6 +8964,36 @@ window.deleteCourse = async function(code) {
 // ==================== 팀 관리 ====================
 let projects = [];
 
+// 간단한 마크다운 렌더러
+function renderMarkdown(text) {
+    if (!text) return '';
+    
+    // HTML 이스케이프 먼저
+    let html = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    
+    // 마크다운 변환
+    html = html
+        // 헤딩 (## 제목)
+        .replace(/^### (.+)$/gm, '<h3 class="text-md font-semibold mt-3 mb-1">$1</h3>')
+        .replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold mt-4 mb-2">$1</h2>')
+        .replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold mt-4 mb-2">$1</h1>')
+        // 링크 [텍스트](URL)
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline"><i class="fas fa-external-link-alt text-xs mr-1"></i>$1</a>')
+        // 굵게 **텍스트**
+        .replace(/\*\*([^*]+)\*\*/g, '<strong class="font-semibold">$1</strong>')
+        // 기울임 *텍스트*
+        .replace(/\*([^*]+)\*/g, '<em class="italic">$1</em>')
+        // 리스트 - 항목
+        .replace(/^- (.+)$/gm, '<li class="ml-4">• $1</li>')
+        // 줄바꿈
+        .replace(/\n/g, '<br>');
+    
+    return html;
+}
+
 async function loadProjects() {
     try {
         window.showLoading('팀 데이터를 불러오는 중...');
@@ -9170,7 +9200,15 @@ window.renderProjectsList = function() {
                             </td>
                             <td class="px-4 py-2 text-xs font-mono">${p.code}</td>
                             <td class="px-4 py-2 text-xs font-semibold">${p.name}</td>
-                            <td class="px-4 py-2 text-xs" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${p.description || ''}">${p.description || '-'}</td>
+                            <td class="px-4 py-2 text-xs" style="max-width: 200px;">
+                                ${p.description ? `
+                                    <button onclick="window.showProjectDescription('${p.code.replace(/'/g, "\\'")}', \`${(p.description || '').replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)" 
+                                            class="text-blue-600 hover:text-blue-800 underline text-left w-full" 
+                                            style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">
+                                        <i class="fas fa-file-alt mr-1"></i>${(p.description || '').substring(0, 30)}${p.description.length > 30 ? '...' : ''}
+                                    </button>
+                                ` : '<span class="text-gray-400">-</span>'}
+                            </td>
                             <td class="px-4 py-2 text-xs">${p.group_type || '-'}</td>
                             <td class="px-4 py-2 text-xs text-blue-600">${p.course_name || p.course_code || '-'}</td>
                             <td class="px-4 py-2 text-xs">${p.instructor_name || '-'}</td>
@@ -9230,11 +9268,22 @@ window.showProjectForm = function(code = null) {
                 <input type="text" id="proj-name" placeholder="팀명" value="${existing ? existing.name : ''}" class="border rounded px-3 py-2 w-full">
             </div>
             <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">설명</label>
-                <textarea id="proj-description" placeholder="프로젝트 설명 (최대 500자)" rows="3" maxlength="500" class="border rounded px-3 py-2 w-full resize-y">${existing ? (existing.description || '') : ''}</textarea>
-                <p class="text-xs text-gray-500 mt-1">
-                    <span id="proj-description-count">0</span> / 500자
-                </p>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    설명 및 링크
+                    <span class="text-xs text-gray-500 font-normal ml-2">
+                        (마크다운 지원: **굵게**, *기울임*, [링크](URL))
+                    </span>
+                </label>
+                <textarea id="proj-description" placeholder="예시:&#10;## 프로젝트 소개&#10;우리 팀의 웹사이트입니다.&#10;&#10;**사이트 링크**: [우리 팀 사이트](https://example.com)&#10;**GitHub**: [저장소](https://github.com/...)&#10;&#10;### 주요 기능&#10;- 기능 1&#10;- 기능 2" rows="6" maxlength="2000" class="border rounded px-3 py-2 w-full resize-y font-mono text-sm">${existing ? (existing.description || '') : ''}</textarea>
+                <div class="flex justify-between items-center mt-1">
+                    <p class="text-xs text-gray-500">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        마크다운으로 작성하면 보기 좋게 표시됩니다
+                    </p>
+                    <p class="text-xs text-gray-500">
+                        <span id="proj-description-count">0</span> / 2000자
+                    </p>
+                </div>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">그룹 구분 *</label>
@@ -9564,6 +9613,25 @@ window.saveProject = async function(existingCode, autoSave = false) {
 window.editProject = function(code) {
     window.showProjectForm(code);
 }
+
+window.showProjectDescription = function(code, description) {
+    const project = projects.find(p => p.code === code);
+    if (!project) return;
+    
+    const renderedMarkdown = renderMarkdown(description);
+    
+    window.showCustomAlert(`
+        <div class="text-left">
+            <h3 class="text-lg font-bold mb-3 text-gray-800 border-b pb-2">
+                <i class="fas fa-users mr-2 text-blue-600"></i>${project.name || code}
+            </h3>
+            <div class="prose prose-sm max-w-none text-gray-700 leading-relaxed">
+                ${renderedMarkdown}
+            </div>
+            ${!description || description.trim() === '' ? '<p class="text-gray-400 italic">설명이 없습니다.</p>' : ''}
+        </div>
+    `, 'info', '팀 설명');
+};
 
 window.deleteProject = async function(code) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
