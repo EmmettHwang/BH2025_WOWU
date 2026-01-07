@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>바이오헬스교육관리 - 모바일</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* 모바일 최적화 */
+        body {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: pan-y;
+            overflow-x: hidden;
+        }
+        
+        /* 스와이프 컨테이너 */
+        #swipeContainer {
+            display: flex;
+            width: 200%;
+            transition: transform 0.3s ease-out;
+        }
+        
+        #swipeContainer.menu-active {
+            transform: translateX(-50%);
+        }
+        
+        #dashboardPage, #menuPage {
+            width: 50%;
+            min-height: 100vh;
+        }
+        
+        /* 애니메이션 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .slide-up {
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        /* 카드 호버 효과 */
+        .menu-card {
+            transition: all 0.3s ease;
+        }
+        
+        .menu-card:active {
+            transform: scale(0.95);
+        }
+        
+        /* 페이지 인디케이터 */
+        .page-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        
+        .page-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            transition: all 0.3s;
+        }
+        
+        .page-dot.active {
+            width: 24px;
+            border-radius: 4px;
+            background: white;
+        }
+        
+        /* 스와이프 힌트 */
+        .swipe-hint {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            animation: swipe-bounce 2s infinite;
+            z-index: 50;
+        }
+        
+        @keyframes swipe-bounce {
+            0%, 100% { transform: translateY(-50%) translateX(0); }
+            50% { transform: translateY(-50%) translateX(-10px); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100">
+    
+    <!-- 스와이프 컨테이너 -->
+    <div id="swipeContainer">
+        <!-- 대시보드 페이지 -->
+        <div id="dashboardPage">
+            <!-- 헤더 -->
+            <header class="bg-white shadow-md sticky top-0 z-50">
+                <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-heartbeat text-3xl text-blue-600"></i>
+                        <div>
+                            <h1 class="text-xl font-bold text-gray-800">대시보드</h1>
+                            <p class="text-xs text-gray-600" id="userInfo">로딩중...</p>
+                        </div>
+                    </div>
+                    <button onclick="logout()" 
+                            class="text-red-500 hover:text-red-700 transition-colors px-3 py-2 rounded-lg hover:bg-red-50">
+                        <i class="fas fa-sign-out-alt text-xl"></i>
+                    </button>
+                </div>
+            </header>
+            
+            <!-- 대시보드 컨텐츠 -->
+            <main class="max-w-7xl mx-auto px-4 py-6">
+                <!-- 환영 메시지 -->
+                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                        <span id="welcomeName">환영합니다</span> 👋
+                    </h2>
+                    <p class="text-gray-600" id="welcomeMessage">오늘도 좋은 하루 되세요</p>
+                    <p class="text-sm text-gray-500 mt-2" id="currentDate"></p>
+                </div>
+                
+                <!-- 통계 카드 -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white fade-in">
+                        <i class="fas fa-book-open text-3xl mb-3"></i>
+                        <h3 class="text-lg font-semibold mb-1">SSIRN메모</h3>
+                        <p class="text-3xl font-bold" id="memoCount">-</p>
+                        <p class="text-xs mt-2 opacity-75" id="memoThisWeek">이번 주: -개</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg p-6 text-white fade-in" style="animation-delay: 0.1s">
+                        <i class="fas fa-clipboard-list text-3xl mb-3"></i>
+                        <h3 class="text-lg font-semibold mb-1">훈련일지</h3>
+                        <p class="text-3xl font-bold" id="trainingCount">-</p>
+                        <p class="text-xs mt-2 opacity-75" id="trainingThisWeek">이번 주: -개</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-lg p-6 text-white fade-in" style="animation-delay: 0.2s">
+                        <i class="fas fa-comments text-3xl mb-3"></i>
+                        <h3 class="text-lg font-semibold mb-1">상담</h3>
+                        <p class="text-3xl font-bold" id="counselingCount">-</p>
+                        <p class="text-xs mt-2 opacity-75" id="counselingPending">대기중: -건</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white fade-in" style="animation-delay: 0.3s">
+                        <i class="fas fa-users text-3xl mb-3"></i>
+                        <h3 class="text-lg font-semibold mb-1">팀 활동</h3>
+                        <p class="text-3xl font-bold" id="teamCount">-</p>
+                        <p class="text-xs mt-2 opacity-75" id="teamThisWeek">이번 주: -개</p>
+                    </div>
+                </div>
+                
+                <!-- 빠른 실행 버튼 -->
+                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in" style="animation-delay: 0.4s">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-bolt mr-2 text-yellow-500"></i>빠른 실행
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="navigateToPage('ssirn.html')" 
+                                class="flex items-center gap-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors">
+                            <i class="fas fa-plus-circle text-2xl text-blue-600"></i>
+                            <span class="text-sm font-semibold text-gray-700">메모 작성</span>
+                        </button>
+                        <button onclick="navigateToPage('training.html')" 
+                                class="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-xl transition-colors">
+                            <i class="fas fa-clipboard-list text-2xl text-green-600"></i>
+                            <span class="text-sm font-semibold text-gray-700">훈련일지</span>
+                        </button>
+                        <button onclick="navigateToPage('counseling.html')" 
+                                class="flex items-center gap-3 p-4 bg-orange-50 hover:bg-orange-100 rounded-xl transition-colors">
+                            <i class="fas fa-calendar-check text-2xl text-orange-600"></i>
+                            <span class="text-sm font-semibold text-gray-700">상담예약</span>
+                        </button>
+                        <button onclick="navigateToPage('profile.html')" 
+                                class="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors">
+                            <i class="fas fa-user-cog text-2xl text-purple-600"></i>
+                            <span class="text-sm font-semibold text-gray-700">내 정보</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 주간 활동 차트 -->
+                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in" style="animation-delay: 0.5s">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-chart-line mr-2 text-blue-600"></i>주간 활동 추이
+                    </h3>
+                    <canvas id="weeklyChart" style="max-height: 250px;"></canvas>
+                </div>
+                
+                <!-- 활동 분포 차트 -->
+                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in" style="animation-delay: 0.6s">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-chart-pie mr-2 text-green-600"></i>활동 분포
+                    </h3>
+                    <canvas id="distributionChart" style="max-height: 250px;"></canvas>
+                </div>
+                
+                <!-- 최근 활동 -->
+                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in" style="animation-delay: 0.7s">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-clock mr-2 text-blue-600"></i>최근 활동
+                        </h3>
+                        <div class="flex gap-2">
+                            <button onclick="filterActivities('all')" 
+                                    class="activity-filter-btn text-xs px-3 py-1 rounded-full bg-blue-600 text-white"
+                                    data-filter="all">
+                                전체
+                            </button>
+                            <button onclick="filterActivities('memo')" 
+                                    class="activity-filter-btn text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-700"
+                                    data-filter="memo">
+                                메모
+                            </button>
+                            <button onclick="filterActivities('training')" 
+                                    class="activity-filter-btn text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-700"
+                                    data-filter="training">
+                                훈련
+                            </button>
+                            <button onclick="filterActivities('counseling')" 
+                                    class="activity-filter-btn text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-700"
+                                    data-filter="counseling">
+                                상담
+                            </button>
+                        </div>
+                    </div>
+                    <div id="recentActivities" class="space-y-3">
+                        <p class="text-gray-500 text-center py-4">로딩중...</p>
+                    </div>
+                </div>
+                
+                <!-- 스와이프 힌트 (첫 방문 시만) -->
+                <div class="swipe-hint" id="swipeHint">
+                    <div class="bg-white rounded-full p-3 shadow-lg">
+                        <i class="fas fa-arrow-left text-2xl text-blue-600"></i>
+                    </div>
+                    <p class="text-xs text-gray-600 mt-2 text-center">메뉴 →</p>
+                </div>
+            </main>
+        </div>
+        
+        <!-- 메뉴 페이지 -->
+        <div id="menuPage">
+            <!-- 헤더 -->
+            <header class="bg-white shadow-md sticky top-0 z-50">
+                <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-th-large text-3xl text-blue-600"></i>
+                        <div>
+                            <h1 class="text-xl font-bold text-gray-800">메뉴</h1>
+                            <p class="text-xs text-gray-600">원하는 메뉴를 선택하세요</p>
+                        </div>
+                    </div>
+                    <button onclick="logout()" 
+                            class="text-red-500 hover:text-red-700 transition-colors px-3 py-2 rounded-lg hover:bg-red-50">
+                        <i class="fas fa-sign-out-alt text-xl"></i>
+                    </button>
+                </div>
+            </header>
+            
+            <!-- 메뉴 컨텐츠 -->
+            <main class="max-w-7xl mx-auto px-4 py-6">
+                <!-- 메뉴 그리드 -->
+                <div class="grid grid-cols-2 gap-4" id="menuGrid">
+                    <!-- 메뉴 카드들이 여기에 동적으로 생성됩니다 -->
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- 페이지 인디케이터 -->
+    <div class="page-indicator">
+        <div class="page-dot active" id="dot1"></div>
+        <div class="page-dot" id="dot2"></div>
+    </div>
+
+    <script>
+        // API Base URL
+        const API_BASE_URL = window.location.origin.replace('3000', '8000');
+        
+        let currentUser = null;
+        let userType = null;
+        let currentPage = 'dashboard'; // 'dashboard' or 'menu'
+        
+        // 스와이프 관련 변수
+        let touchStartX = 0;
+        let touchEndX = 0;
+        let touchStartY = 0;
+        let touchEndY = 0;
+        
+        // 데이터 저장 변수
+        let allActivitiesData = {
+            memos: [],
+            training: [],
+            counseling: [],
+            team: []
+        };
+        
+        // 차트 객체
+        let weeklyChart = null;
+        let distributionChart = null;
+        
+        // 메뉴 정의 (권한별)
+        const MENUS = {
+            // 공통 메뉴
+            common: [
+                {
+                    id: 'profile',
+                    title: '내 정보',
+                    icon: 'fa-user-circle',
+                    color: 'from-blue-500 to-blue-600',
+                    page: 'profile.html',
+                    description: '프로필 관리'
+                },
+                {
+                    id: 'ssirn',
+                    title: 'SSIRN메모장',
+                    icon: 'fa-book-open',
+                    color: 'from-green-500 to-green-600',
+                    page: 'ssirn.html',
+                    description: '메모 작성·조회'
+                },
+                {
+                    id: 'notices',
+                    title: '공지사항',
+                    icon: 'fa-bullhorn',
+                    color: 'from-purple-500 to-purple-600',
+                    page: 'notices.html',
+                    description: '공지 확인'
+                }
+            ],
+            
+            // 강사 전용 메뉴
+            instructor: [
+                {
+                    id: 'counseling',
+                    title: '상담관리',
+                    icon: 'fa-comments',
+                    color: 'from-orange-500 to-orange-600',
+                    page: 'counseling.html',
+                    description: '학생 상담'
+                },
+                {
+                    id: 'training',
+                    title: '훈련일지',
+                    icon: 'fa-clipboard-list',
+                    color: 'from-indigo-500 to-indigo-600',
+                    page: 'training.html',
+                    description: '일지 관리'
+                },
+                {
+                    id: 'team',
+                    title: '팀 활동일지',
+                    icon: 'fa-users',
+                    color: 'from-pink-500 to-pink-600',
+                    page: 'team.html',
+                    description: '팀 활동 기록'
+                }
+            ],
+            
+            // 학생 전용 메뉴
+            student: [
+                {
+                    id: 'counseling',
+                    title: '상담신청',
+                    icon: 'fa-comments',
+                    color: 'from-orange-500 to-orange-600',
+                    page: 'counseling.html',
+                    description: '상담 신청'
+                },
+                {
+                    id: 'training',
+                    title: '훈련일지',
+                    icon: 'fa-clipboard-list',
+                    color: 'from-indigo-500 to-indigo-600',
+                    page: 'training.html',
+                    description: '일지 작성'
+                },
+                {
+                    id: 'team',
+                    title: '팀 활동',
+                    icon: 'fa-users',
+                    color: 'from-pink-500 to-pink-600',
+                    page: 'team.html',
+                    description: '팀 프로젝트'
+                }
+            ]
+        };
+        
+        // 스와이프 이벤트 핸들러
+        function initSwipe() {
+            const container = document.getElementById('swipeContainer');
+            
+            document.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }, { passive: true });
+            
+            document.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX;
+                touchEndY = e.changedTouches[0].screenY;
+                
+                // 세로 스크롤인지 가로 스와이프인지 판단
+                const deltaX = Math.abs(touchEndX - touchStartX);
+                const deltaY = Math.abs(touchEndY - touchStartY);
+                
+                // 가로 이동이 세로 이동보다 크고, 최소 이동 거리를 만족하면 스와이프로 인식
+                if (deltaX > deltaY && deltaX > 50) {
+                    handleSwipe();
+                }
+            });
+        }
+        
+        function handleSwipe() {
+            const swipeDistance = touchEndX - touchStartX;
+            
+            if (swipeDistance > 50 && currentPage === 'menu') {
+                // 우측으로 스와이프 → 대시보드로
+                switchPage('dashboard');
+            } else if (swipeDistance < -50 && currentPage === 'dashboard') {
+                // 좌측으로 스와이프 → 메뉴로
+                switchPage('menu');
+                // 힌트 숨기기
+                document.getElementById('swipeHint').style.display = 'none';
+            }
+        }
+        
+        function switchPage(page) {
+            const container = document.getElementById('swipeContainer');
+            const dot1 = document.getElementById('dot1');
+            const dot2 = document.getElementById('dot2');
+            
+            if (page === 'menu') {
+                container.classList.add('menu-active');
+                dot1.classList.remove('active');
+                dot2.classList.add('active');
+                currentPage = 'menu';
+            } else {
+                container.classList.remove('menu-active');
+                dot1.classList.add('active');
+                dot2.classList.remove('active');
+                currentPage = 'dashboard';
+            }
+        }
+        
+        // 대시보드 데이터 로드
+        async function loadDashboardData() {
+            try {
+                // 현재 날짜 표시
+                const now = new Date();
+                document.getElementById('currentDate').textContent = 
+                    now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+                
+                // 통계 데이터 로드
+                const params = userType === 'instructor' 
+                    ? `instructor_code=${currentUser.code}` 
+                    : `student_id=${currentUser.id}`;
+                
+                // 메모 개수
+                const memos = await axios.get(`${API_BASE_URL}/api/class-notes?${params}`);
+                allActivitiesData.memos = memos.data || [];
+                const memoThisWeek = getThisWeekCount(allActivitiesData.memos, 'note_date');
+                document.getElementById('memoCount').textContent = allActivitiesData.memos.length;
+                document.getElementById('memoThisWeek').textContent = `이번 주: ${memoThisWeek}개`;
+                
+                // 훈련일지 개수
+                const training = await axios.get(`${API_BASE_URL}/api/training-logs?${params}`);
+                allActivitiesData.training = training.data || [];
+                const trainingThisWeek = getThisWeekCount(allActivitiesData.training, 'training_date');
+                document.getElementById('trainingCount').textContent = allActivitiesData.training.length;
+                document.getElementById('trainingThisWeek').textContent = `이번 주: ${trainingThisWeek}개`;
+                
+                // 상담 개수
+                const counseling = await axios.get(`${API_BASE_URL}/api/counselings?${params}`);
+                allActivitiesData.counseling = counseling.data || [];
+                const counselingPending = allActivitiesData.counseling.filter(c => c.status === '예약').length;
+                document.getElementById('counselingCount').textContent = allActivitiesData.counseling.length;
+                document.getElementById('counselingPending').textContent = `대기중: ${counselingPending}건`;
+                
+                // 팀 활동 개수
+                const team = await axios.get(`${API_BASE_URL}/api/team-activity-logs?${params}`);
+                allActivitiesData.team = team.data || [];
+                const teamThisWeek = getThisWeekCount(allActivitiesData.team, 'activity_date');
+                document.getElementById('teamCount').textContent = allActivitiesData.team.length;
+                document.getElementById('teamThisWeek').textContent = `이번 주: ${teamThisWeek}개`;
+                
+                // 차트 렌더링
+                renderWeeklyChart();
+                renderDistributionChart();
+                
+                // 최근 활동 표시
+                displayRecentActivities('all');
+                
+            } catch (error) {
+                console.error('Failed to load dashboard data:', error);
+            }
+        }
+        
+        // 이번 주 데이터 개수 계산
+        function getThisWeekCount(data, dateField) {
+            const now = new Date();
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - now.getDay()); // 일요일
+            startOfWeek.setHours(0, 0, 0, 0);
+            
+            return data.filter(item => {
+                const itemDate = new Date(item[dateField]);
+                return itemDate >= startOfWeek;
+            }).length;
+        }
+        
+        // 주간 활동 차트 렌더링
+        function renderWeeklyChart() {
+            const ctx = document.getElementById('weeklyChart');
+            
+            // 최근 7일 라벨
+            const labels = [];
+            const now = new Date();
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(now);
+                date.setDate(now.getDate() - i);
+                labels.push(date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }));
+            }
+            
+            // 각 날짜별 데이터 집계
+            const memoData = new Array(7).fill(0);
+            const trainingData = new Array(7).fill(0);
+            const counselingData = new Array(7).fill(0);
+            const teamData = new Array(7).fill(0);
+            
+            // 메모 데이터
+            allActivitiesData.memos.forEach(item => {
+                const itemDate = new Date(item.note_date);
+                const daysDiff = Math.floor((now - itemDate) / (1000 * 60 * 60 * 24));
+                if (daysDiff >= 0 && daysDiff < 7) {
+                    memoData[6 - daysDiff]++;
+                }
+            });
+            
+            // 훈련일지 데이터
+            allActivitiesData.training.forEach(item => {
+                const itemDate = new Date(item.training_date);
+                const daysDiff = Math.floor((now - itemDate) / (1000 * 60 * 60 * 24));
+                if (daysDiff >= 0 && daysDiff < 7) {
+                    trainingData[6 - daysDiff]++;
+                }
+            });
+            
+            // 상담 데이터
+            allActivitiesData.counseling.forEach(item => {
+                const itemDate = new Date(item.consultation_date);
+                const daysDiff = Math.floor((now - itemDate) / (1000 * 60 * 60 * 24));
+                if (daysDiff >= 0 && daysDiff < 7) {
+                    counselingData[6 - daysDiff]++;
+                }
+            });
+            
+            // 팀 활동 데이터
+            allActivitiesData.team.forEach(item => {
+                const itemDate = new Date(item.activity_date);
+                const daysDiff = Math.floor((now - itemDate) / (1000 * 60 * 60 * 24));
+                if (daysDiff >= 0 && daysDiff < 7) {
+                    teamData[6 - daysDiff]++;
+                }
+            });
+            
+            // 차트 생성
+            if (weeklyChart) weeklyChart.destroy();
+            
+            weeklyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'SSIRN메모',
+                            data: memoData,
+                            borderColor: 'rgb(59, 130, 246)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: '훈련일지',
+                            data: trainingData,
+                            borderColor: 'rgb(34, 197, 94)',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: '상담',
+                            data: counselingData,
+                            borderColor: 'rgb(249, 115, 22)',
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: '팀 활동',
+                            data: teamData,
+                            borderColor: 'rgb(168, 85, 247)',
+                            backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 활동 분포 차트 렌더링
+        function renderDistributionChart() {
+            const ctx = document.getElementById('distributionChart');
+            
+            const data = [
+                allActivitiesData.memos.length,
+                allActivitiesData.training.length,
+                allActivitiesData.counseling.length,
+                allActivitiesData.team.length
+            ];
+            
+            // 차트 생성
+            if (distributionChart) distributionChart.destroy();
+            
+            distributionChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['SSIRN메모', '훈련일지', '상담', '팀 활동'],
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(34, 197, 94, 0.8)',
+                            'rgba(249, 115, 22, 0.8)',
+                            'rgba(168, 85, 247, 0.8)'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 최근 활동 표시
+        function displayRecentActivities(filter = 'all') {
+            const container = document.getElementById('recentActivities');
+            
+            let activities = [];
+            
+            // 필터링 적용
+            if (filter === 'all' || filter === 'memo') {
+                activities = activities.concat(
+                    (allActivitiesData.memos || []).map(m => ({
+                        type: 'memo',
+                        icon: 'fa-book-open',
+                        color: 'text-blue-600',
+                        bgColor: 'bg-blue-50',
+                        title: 'SSIRN메모',
+                        content: m.content?.substring(0, 40) || '내용 없음',
+                        date: m.note_date
+                    }))
+                );
+            }
+            
+            if (filter === 'all' || filter === 'training') {
+                activities = activities.concat(
+                    (allActivitiesData.training || []).map(t => ({
+                        type: 'training',
+                        icon: 'fa-clipboard-list',
+                        color: 'text-green-600',
+                        bgColor: 'bg-green-50',
+                        title: '훈련일지',
+                        content: t.content?.substring(0, 40) || '내용 없음',
+                        date: t.training_date
+                    }))
+                );
+            }
+            
+            if (filter === 'all' || filter === 'counseling') {
+                activities = activities.concat(
+                    (allActivitiesData.counseling || []).map(c => ({
+                        type: 'counseling',
+                        icon: 'fa-comments',
+                        color: 'text-orange-600',
+                        bgColor: 'bg-orange-50',
+                        title: '상담',
+                        content: c.consultation_content?.substring(0, 40) || '내용 없음',
+                        date: c.consultation_date,
+                        status: c.status
+                    }))
+                );
+            }
+            
+            if (filter === 'all' || filter === 'team') {
+                activities = activities.concat(
+                    (allActivitiesData.team || []).map(t => ({
+                        type: 'team',
+                        icon: 'fa-users',
+                        color: 'text-purple-600',
+                        bgColor: 'bg-purple-50',
+                        title: '팀 활동',
+                        content: t.activity_content?.substring(0, 40) || '내용 없음',
+                        date: t.activity_date
+                    }))
+                );
+            }
+            
+            // 날짜순 정렬
+            activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            // 상위 10개만
+            const recentActivities = activities.slice(0, 10);
+            
+            if (recentActivities.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">최근 활동이 없습니다</p>';
+                return;
+            }
+            
+            container.innerHTML = recentActivities.map(activity => `
+                <div class="flex items-start gap-3 p-4 ${activity.bgColor} rounded-xl">
+                    <i class="fas ${activity.icon} ${activity.color} text-2xl mt-1"></i>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <p class="text-sm font-bold text-gray-800">${activity.title}</p>
+                            ${activity.status ? `<span class="text-xs px-2 py-1 rounded-full ${
+                                activity.status === '예약' ? 'bg-orange-200 text-orange-800' :
+                                activity.status === '완료' ? 'bg-green-200 text-green-800' :
+                                'bg-gray-200 text-gray-800'
+                            }">${activity.status}</span>` : ''}
+                        </div>
+                        <p class="text-xs text-gray-700 mb-2">${activity.content}</p>
+                        <div class="flex items-center gap-2 text-xs text-gray-500">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>${new Date(activity.date).toLocaleDateString('ko-KR')}</span>
+                            <span>${new Date(activity.date).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // 활동 필터링
+        function filterActivities(filter) {
+            // 버튼 스타일 업데이트
+            document.querySelectorAll('.activity-filter-btn').forEach(btn => {
+                if (btn.dataset.filter === filter) {
+                    btn.classList.remove('bg-gray-200', 'text-gray-700');
+                    btn.classList.add('bg-blue-600', 'text-white');
+                } else {
+                    btn.classList.remove('bg-blue-600', 'text-white');
+                    btn.classList.add('bg-gray-200', 'text-gray-700');
+                }
+            });
+            
+            // 데이터 필터링 및 표시
+            displayRecentActivities(filter);
+        }
+        
+        // 페이지 초기화
+        async function initializePage() {
+            const user = JSON.parse(sessionStorage.getItem('user'));
+            const type = sessionStorage.getItem('user_type');
+            
+            // 로그인 체크
+            if (!user || !type) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            currentUser = user;
+            userType = type;
+            
+            // 사용자 정보 표시
+            const userName = user.name || '사용자';
+            const userRole = userType === 'instructor' ? '강사' : '학생';
+            
+            document.getElementById('userInfo').textContent = `${userName} (${userRole})`;
+            document.getElementById('welcomeName').textContent = `${userName}님`;
+            document.getElementById('welcomeMessage').textContent = 
+                userType === 'instructor' ? '오늘도 열정적인 교육 부탁드립니다' : '오늘도 열심히 공부하세요';
+            
+            // 스와이프 초기화
+            initSwipe();
+            
+            // 메뉴 생성
+            renderMenus(userType);
+            
+            // 대시보드 데이터 로드
+            await loadDashboardData();
+        }
+        
+        // 메뉴 렌더링
+        function renderMenus(userType) {
+            const menuGrid = document.getElementById('menuGrid');
+            
+            // 공통 메뉴 + 권한별 메뉴
+            const menus = [
+                ...MENUS.common,
+                ...(userType === 'instructor' ? MENUS.instructor : MENUS.student)
+            ];
+            
+            menuGrid.innerHTML = menus.map((menu, index) => `
+                <div class="menu-card bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer fade-in"
+                     style="animation-delay: ${index * 0.1}s"
+                     onclick="navigateToPage('${menu.page}')">
+                    <div class="bg-gradient-to-br ${menu.color} p-6 text-white">
+                        <i class="fas ${menu.icon} text-5xl mb-3"></i>
+                        <h3 class="text-xl font-bold">${menu.title}</h3>
+                    </div>
+                    <div class="p-4">
+                        <p class="text-sm text-gray-600">${menu.description}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // 페이지 이동
+        function navigateToPage(page) {
+            window.location.href = page;
+        }
+        
+        // 로그아웃
+        function logout() {
+            if (confirm('정말 로그아웃 하시겠습니까?')) {
+                sessionStorage.clear();
+                localStorage.removeItem('user');
+                localStorage.removeItem('user_type');
+                window.location.href = 'login.html';
+            }
+        }
+        
+        // 페이지 로드 시 초기화
+        window.addEventListener('DOMContentLoaded', initializePage);
+    </script>
+</body>
+</html>

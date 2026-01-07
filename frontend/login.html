@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="description" content="교육 기관의 강사, 학생, 상담, 훈련일지를 통합 관리하는 스마트 교육관리 플랫폼">
+    <meta name="theme-color" content="#3B82F6">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="BH2025">
+    
+    <title>바이오헬스교육관리시스템 - 로그인</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Favicon and Icons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192x192.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- 디바이스 감지 및 리다이렉션 -->
+    <script>
+        (function() {
+            // 모바일 디바이스 감지 함수
+            function isMobileDevice() {
+                const ua = navigator.userAgent || navigator.vendor || window.opera;
+                const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
+                const isSmallScreen = window.innerWidth <= 768;
+                const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+                return mobileRegex.test(ua) || (isSmallScreen && isTouchDevice);
+            }
+            
+            const currentPath = window.location.pathname;
+            const isAlreadyOnMobile = currentPath.includes('/mobile/');
+            
+            if (isMobileDevice() && !isAlreadyOnMobile) {
+                console.log('📱 모바일 디바이스 감지 - 모바일 로그인 페이지로 리다이렉트');
+                window.location.replace('/mobile/login.html');
+            } else {
+                console.log('💻 데스크탑 로그인 페이지 로드');
+            }
+        })();
+    </script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center">
+    <div class="container max-w-2xl mx-auto px-4">
+        <!-- 로그인 카드 -->
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <!-- 헤더 -->
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-center">
+                <div class="inline-block bg-white rounded-lg p-3 mb-4">
+                    <img src="/woosong-logo.png" alt="우송대학교 로고" class="h-16 w-auto object-contain">
+                </div>
+                <h1 id="system-title-login" class="text-2xl font-bold text-white mb-2">바이오헬스교육관리시스템</h1>
+                <p class="text-blue-100 text-sm" id="system-subtitle1-login">보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단</p>
+                <p class="text-blue-100 text-sm mb-2" id="system-subtitle2-login">바이오헬스아카데미 올인원테크 이노베이터</p>
+            </div>
+            
+            <!-- 로그인 타입 선택 탭 제거 (Unified Login) -->
+            
+            <!-- 로그인 폼 -->
+            <div class="p-8">
+                <!-- 통합 로그인 폼 -->
+                <form id="loginForm" class="space-y-6">
+                    <!-- 이름 입력 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-user mr-2"></i>이름
+                        </label>
+                        <input 
+                            type="text" 
+                            id="instructorName" 
+                            placeholder="이름을 입력하세요"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
+                            required
+                            autocomplete="username"
+                        >
+                    </div>
+                    
+                    <!-- 비밀번호 입력 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-lock mr-2"></i>비밀번호
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="password" 
+                                id="password" 
+                                placeholder="비밀번호를 입력하세요"
+                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none pr-12"
+                                required
+                                autocomplete="current-password"
+                            >
+                            <button 
+                                type="button" 
+                                id="togglePassword"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                            >
+                                <i class="fas fa-eye" id="eyeIcon"></i>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>최초 비밀번호: kdt2025
+                        </p>
+                    </div>
+                    
+                    <!-- 체크박스 옵션 -->
+                    <div class="space-y-2">
+                        <label class="flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                id="rememberName" 
+                                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            >
+                            <span class="ml-2 text-sm text-gray-700">
+                                <i class="fas fa-user-check mr-1 text-blue-500"></i>아이디 저장
+                            </span>
+                        </label>
+                    </div>
+                    
+                    <!-- 로그인 버튼 -->
+                    <button 
+                        type="submit" 
+                        id="loginButton"
+                        class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                    >
+                        <i class="fas fa-sign-in-alt mr-2"></i>로그인
+                    </button>
+                </form>
+                
+                <!-- 학생 로그인 폼 제거 -->
+                <form id="studentLoginForm" class="space-y-6 hidden" style="display:none;">
+                    <!-- 학생 이름 입력 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-user-graduate mr-2"></i>학생 이름
+                        </label>
+                        <input 
+                            type="text" 
+                            id="studentName" 
+                            placeholder="학생 이름을 입력하세요"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none"
+                            autocomplete="username"
+                        >
+                    </div>
+                    
+                    <!-- 비밀번호 입력 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-lock mr-2"></i>비밀번호
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="password" 
+                                id="studentPassword" 
+                                placeholder="비밀번호를 입력하세요"
+                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none pr-12"
+                                autocomplete="current-password"
+                            >
+                            <button 
+                                type="button" 
+                                id="toggleStudentPassword"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                            >
+                                <i class="fas fa-eye" id="studentEyeIcon"></i>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>기본 비밀번호: kdt2025
+                        </p>
+                    </div>
+                    
+                    <!-- 체크박스 옵션 -->
+                    <div class="space-y-2">
+                        <label class="flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                id="rememberStudentName" 
+                                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            >
+                            <span class="ml-2 text-sm text-gray-700">
+                                <i class="fas fa-user-check mr-1 text-blue-500"></i>이름 저장
+                            </span>
+                        </label>
+                    </div>
+                    
+                    <!-- 로그인 버튼 -->
+                    <button 
+                        type="submit" 
+                        id="studentLoginButton"
+                        class="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-bold py-3 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                    >
+                        <i class="fas fa-sign-in-alt mr-2"></i>학생 로그인
+                    </button>
+                </form>
+                
+                <!-- 알림 메시지 -->
+                <div id="alertMessage" class="hidden mt-4 p-4 rounded-lg"></div>
+                
+                <!-- 추가 정보 -->
+                <div class="mt-6 pt-6 border-t border-gray-200 text-center text-sm text-gray-600">
+                    <p>
+                        <i class="fas fa-question-circle mr-1"></i>
+                        문제가 있으신가요? 관리자에게 문의하세요.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 푸터 -->
+        <div class="text-center mt-6 text-gray-600 text-sm">
+            <p>© 2025 교육관리시스템. All rights reserved.</p>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <script>
+        const API_BASE_URL = window.location.origin.replace('3000', '8000'); // 백엔드 포트로 변경
+        
+        // 페이지 로드 시 시스템 설정 불러오기
+        async function loadSystemSettings() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
+                const settings = response.data;
+                
+                // 제목 업데이트 - 기본값 고정 (시스템 설정 무시)
+                // document.getElementById('system-title-login').textContent = settings.system_title || '바이오헬스교육관리시스템';
+                
+                // 부제목 업데이트 - 기본값 고정 (시스템 설정 무시)
+                // document.getElementById('system-subtitle1-login').textContent = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
+                // document.getElementById('system-subtitle2-login').textContent = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
+                
+                // 로고 업데이트
+                const logoImg = document.querySelector('img[alt*="로고"]');
+                if (logoImg && settings.logo_url) {
+                    if (settings.logo_url.startsWith('ftp://')) {
+                        logoImg.src = API_BASE_URL + '/api/download-image?url=' + encodeURIComponent(settings.logo_url);
+                    } else {
+                        logoImg.src = settings.logo_url;
+                    }
+                }
+                
+                console.log('✅ 로그인 페이지 시스템 설정 로드 완료');
+            } catch (error) {
+                console.error('❌ 시스템 설정 로드 실패:', error);
+            }
+        }
+        
+        // 페이지 로드 시 실행
+        window.addEventListener('DOMContentLoaded', loadSystemSettings);
+        
+        // 통합 로그인 폼
+        const loginForm = document.getElementById('loginForm');
+        const instructorNameInput = document.getElementById('instructorName');
+        const passwordInput = document.getElementById('password');
+        const rememberNameCheckbox = document.getElementById('rememberName');
+        const loginButton = document.getElementById('loginButton');
+        const alertMessage = document.getElementById('alertMessage');
+        const togglePasswordBtn = document.getElementById('togglePassword');
+        const eyeIcon = document.getElementById('eyeIcon');
+        
+        // 페이지 로드 시 로그인 상태 확인 및 저장된 정보 불러오기
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('=== 로그인 페이지 초기화 ===');
+            
+            // 이미 로그인되어 있는지 확인 (sessionStorage 사용)
+            const loggedIn = sessionStorage.getItem('logged_in');
+            const instructor = sessionStorage.getItem('instructor');
+            const student = sessionStorage.getItem('student');
+            
+            // 강사 또는 학생으로 이미 로그인되어 있으면 메인 페이지로 리다이렉트
+            if (loggedIn === 'true' && (instructor || student)) {
+                console.log('✅ 이미 로그인됨 - 메인 페이지로 리다이렉트');
+                
+                // 학생인 경우
+                if (student) {
+                    window.location.replace('/student.html');
+                    return;
+                }
+                
+                // 강사인 경우
+                if (instructor) {
+                    try {
+                        const instructorData = JSON.parse(instructor);
+                        // 초기 화면 설정이 있으면 해당 탭으로
+                        if (instructorData.default_screen) {
+                            window.location.replace(`/?tab=${instructorData.default_screen}`);
+                        } else {
+                            window.location.replace('/');
+                        }
+                    } catch (e) {
+                        console.error('강사 정보 파싱 오류:', e);
+                        window.location.replace('/');
+                    }
+                    return;
+                }
+            }
+            
+            console.log('❌ 로그인 안 됨 - 로그인 페이지 표시');
+            
+            // 저장된 아이디 불러오기 (Unified)
+            const savedName = localStorage.getItem('saved_name');
+            const rememberName = localStorage.getItem('remember_name') === 'true';
+            
+            // 아이디 저장만 지원 (자동 로그인 제거)
+            if (rememberName && savedName) {
+                instructorNameInput.value = savedName;
+                rememberNameCheckbox.checked = true;
+            }
+            
+            // 자동 로그인 관련 저장값 초기화
+            localStorage.removeItem('instructor_password');
+            localStorage.removeItem('auto_login');
+        });
+        
+        // 탭 전환 제거 (Unified Login)
+        
+        // 비밀번호 표시/숨김 토글
+        togglePasswordBtn.addEventListener('click', () => {
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
+            eyeIcon.classList.toggle('fa-eye');
+            eyeIcon.classList.toggle('fa-eye-slash');
+        });
+        
+        // 학생 비밀번호 토글 제거 (Unified Login)
+        
+        // 로그인 폼 제출
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = instructorNameInput.value.trim();
+            const password = passwordInput.value;
+            const rememberName = rememberNameCheckbox.checked;
+            
+            if (!name || !password) {
+                showAlert('이름과 비밀번호를 입력하세요', 'error');
+                return;
+            }
+            
+            // 로그인 버튼 비활성화
+            loginButton.disabled = true;
+            loginButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>로그인 중...';
+            
+            try {
+                const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+                    name: name,
+                    password: password
+                });
+                
+                if (response.data.success) {
+                    const userType = response.data.user_type;
+                    
+                    // 아이디 저장 옵션
+                    if (rememberName) {
+                        localStorage.setItem('saved_name', name);
+                        localStorage.setItem('remember_name', 'true');
+                    } else {
+                        localStorage.removeItem('saved_name');
+                        localStorage.removeItem('remember_name');
+                    }
+                    
+                    // 자동 로그인 관련 저장값 제거 (보안 강화)
+                    localStorage.removeItem('instructor_password');
+                    localStorage.removeItem('student_password');
+                    localStorage.removeItem('auto_login');
+                    
+                    showAlert(response.data.message, 'success');
+                    
+                    // 1초 후 해당 페이지로 이동
+                    setTimeout(() => {
+                        if (userType === 'instructor') {
+                            // 강사 로그인
+                            const instructor = response.data.instructor;
+                            sessionStorage.setItem('instructor', JSON.stringify(instructor));
+                            sessionStorage.setItem('logged_in', 'true');
+                            sessionStorage.setItem('user_type', 'instructor');
+                            
+                            const defaultScreen = instructor.default_screen;
+                            if (defaultScreen) {
+                                window.location.href = `/?tab=${defaultScreen}`;
+                            } else {
+                                window.location.href = '/';
+                            }
+                        } else if (userType === 'student') {
+                            // 학생 로그인
+                            const student = response.data.student;
+                            sessionStorage.setItem('student', JSON.stringify(student));
+                            sessionStorage.setItem('logged_in', 'true');
+                            sessionStorage.setItem('user_type', 'student');
+                            
+                            window.location.href = '/student.html';
+                        }
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error('로그인 오류:', error);
+                const message = error.response?.data?.detail || '로그인에 실패했습니다';
+                showAlert(message, 'error');
+                
+                // 로그인 버튼 다시 활성화
+                loginButton.disabled = false;
+                loginButton.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>로그인';
+            }
+        });
+        
+        // 알림 메시지 표시
+        function showAlert(message, type) {
+            alertMessage.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'bg-blue-100', 'text-blue-800');
+            
+            if (type === 'error') {
+                alertMessage.classList.add('bg-red-100', 'text-red-800');
+                alertMessage.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i>${message}`;
+            } else if (type === 'success') {
+                alertMessage.classList.add('bg-green-100', 'text-green-800');
+                alertMessage.innerHTML = `<i class="fas fa-check-circle mr-2"></i>${message}`;
+            } else if (type === 'info') {
+                alertMessage.classList.add('bg-blue-100', 'text-blue-800');
+                alertMessage.innerHTML = `<i class="fas fa-info-circle mr-2"></i>${message}`;
+            }
+            
+            alertMessage.classList.remove('hidden');
+        }
+        
+        // PWA Service Worker 비활성화
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                    console.log('✅ Service Worker unregistered');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

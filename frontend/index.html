@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="description" content="교육 기관의 강사, 학생, 상담, 훈련일지를 통합 관리하는 스마트 교육관리 플랫폼">
+    <meta name="theme-color" content="#3B82F6">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="BH2025">
+    
+    <title>바이오헬스교육관리시스템</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Favicon and Icons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="72x72" href="/icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="96x96" href="/icon-96x96.png">
+    <link rel="apple-touch-icon" sizes="128x128" href="/icon-128x128.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192x192.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- 마크다운 렌더링 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.0/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    
+    <link href="/pwa-styles.css" rel="stylesheet">
+    
+    <style>
+        /* 마크다운 미리보기 스타일 */
+        .prose {
+            max-width: none;
+        }
+        .prose h1 { font-size: 2em; font-weight: bold; margin-top: 0.5em; margin-bottom: 0.5em; }
+        .prose h2 { font-size: 1.5em; font-weight: bold; margin-top: 0.5em; margin-bottom: 0.5em; }
+        .prose h3 { font-size: 1.25em; font-weight: bold; margin-top: 0.5em; margin-bottom: 0.5em; }
+        .prose p { margin-top: 0.5em; margin-bottom: 0.5em; line-height: 1.6; }
+        .prose ul, .prose ol { margin-left: 1.5em; margin-top: 0.5em; margin-bottom: 0.5em; }
+        .prose li { margin-top: 0.25em; margin-bottom: 0.25em; }
+        .prose a { color: #3b82f6; text-decoration: underline; }
+        .prose a:hover { color: #2563eb; }
+        .prose code { background-color: #f3f4f6; padding: 0.2em 0.4em; border-radius: 0.25rem; font-size: 0.9em; }
+        .prose pre { background-color: #1f2937; color: #f3f4f6; padding: 1em; border-radius: 0.5rem; overflow-x: auto; margin-top: 0.5em; margin-bottom: 0.5em; }
+        .prose pre code { background-color: transparent; padding: 0; color: inherit; }
+        .prose blockquote { border-left: 4px solid #d1d5db; padding-left: 1em; color: #6b7280; margin-top: 0.5em; margin-bottom: 0.5em; }
+        .prose strong { font-weight: bold; }
+        .prose em { font-style: italic; }
+        .prose hr { border-top: 1px solid #e5e7eb; margin-top: 1em; margin-bottom: 1em; }
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        /* RAG Toggle Switch */
+        .slider {
+            background-color: #cbd5e1; /* OFF 상태: 회색 */
+        }
+        .switch input:checked + .slider {
+            background-color: #10b981; /* ON 상태: 초록색 */
+        }
+        .switch input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+    </style>
+    
+    <!-- 디바이스 감지 및 리다이렉션 (최우선 실행) -->
+    <script>
+        (function() {
+            // 모바일 디바이스 감지 함수
+            function isMobileDevice() {
+                // 1. User Agent 체크
+                const ua = navigator.userAgent || navigator.vendor || window.opera;
+                const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
+                
+                // 2. 화면 크기 체크 (768px 이하)
+                const isSmallScreen = window.innerWidth <= 768;
+                
+                // 3. 터치 스크린 체크
+                const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+                
+                // User Agent가 모바일이거나, 작은 화면 + 터치인 경우
+                return mobileRegex.test(ua) || (isSmallScreen && isTouchDevice);
+            }
+            
+            // 이미 모바일 페이지에 있는지 체크 (무한 루프 방지)
+            const currentPath = window.location.pathname;
+            const isAlreadyOnMobile = currentPath.includes('/mobile/');
+            const isLoginPage = currentPath.includes('/login.html');
+            
+            // 모바일 디바이스이고, 아직 모바일 페이지가 아니고, 로그인 페이지도 아닌 경우
+            if (isMobileDevice() && !isAlreadyOnMobile && !isLoginPage) {
+                console.log('📱 모바일 디바이스 감지 - 모바일 로그인 페이지로 리다이렉트');
+                window.location.replace('/mobile/login.html');
+                return; // 이후 코드 실행 중단
+            }
+            
+            console.log('💻 데스크탑 디바이스 - 데스크탑 페이지 로드');
+        })();
+    </script>
+    
+    <!-- 로그인 체크 (즉시 실행) - sessionStorage 사용 (브라우저 닫으면 세션 삭제) -->
+    <script>
+        (function() {
+            console.log('🔒 즉시 로그인 체크 실행');
+            const loggedIn = sessionStorage.getItem('logged_in');
+            const instructor = sessionStorage.getItem('instructor');
+            
+            // 로그인 정보가 없으면 즉시 로그인 페이지로 리다이렉트
+            if (!loggedIn || loggedIn !== 'true' || !instructor) {
+                console.log('❌ 로그인 안 됨 - 로그인 페이지로 즉시 리다이렉트');
+                window.location.replace('/login.html');
+                // 페이지 로딩 중단
+                document.addEventListener('DOMContentLoaded', function(e) {
+                    e.stopImmediatePropagation();
+                }, true);
+            } else {
+                console.log('✅ 로그인 확인됨 - 페이지 로드 계속');
+            }
+        })();
+    </script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- 헤더 -->
+        <header class="bg-blue-600 text-white shadow-lg relative z-30">
+            <div class="container mx-auto px-4 py-6">
+                <div class="flex justify-between items-start">
+                    <div class="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity" onclick="showTab('dashboard')" title="대시보드로 이동">
+                        <div class="bg-white rounded-lg px-3 py-2 flex items-center justify-center shadow-md" style="height: 80px;">
+                            <img src="/woosong-logo.png" alt="우송대학교 로고" class="h-full w-auto object-contain">
+                        </div>
+                        <div>
+                            <h1 id="system-title-header" class="text-3xl font-bold flex items-center">
+                                <i class="fas fa-school mr-3"></i>
+                                바이오헬스교육관리시스템
+                                <span class="ml-3 text-sm font-normal bg-blue-500 text-white px-2 py-1 rounded">v2.0.120</span>
+                            </h1>
+                            <p id="system-subtitle1-header" class="text-blue-100 mt-1">보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단</p>
+                            <p id="system-subtitle2-header" class="text-blue-100">바이오헬스아카데미 올인원테크 이노베이터</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-3">
+                        <!-- 상단: 사용자 정보 + 버튼들 (매우 얇게) -->
+                        <div class="flex items-center justify-end gap-2">
+                            <!-- 사용자 정보 -->
+                            <div id="userInfo" class="text-right">
+                                <p class="text-xs text-blue-100">로그인: <span id="instructorName" class="font-semibold text-white"></span> / <span id="instructorType" class="text-blue-200"></span></p>
+                            </div>
+                            
+                            <!-- 버튼들 (매우 얇게) -->
+                            <button onclick="showMyPageModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5 rounded text-xs transition-all">
+                                <i class="fas fa-user-circle mr-1"></i>MyPage
+                            </button>
+                            <button onclick="logout()" class="bg-white text-blue-600 hover:bg-blue-50 px-2 py-0.5 rounded text-xs transition-all">
+                                <i class="fas fa-sign-out-alt mr-1"></i>로그아웃
+                            </button>
+                        </div>
+                        
+                        <!-- 하단: 날짜/시간 + 카운트다운 바 (얇게) -->
+                        <div class="flex items-center justify-between bg-blue-500 bg-opacity-50 rounded px-3 py-1 border border-blue-400">
+                            <span class="text-white text-xs" id="currentDateTime">
+                                <i class="fas fa-calendar-day mr-1"></i>로딩 중...
+                            </span>
+                            <span class="text-blue-100 text-xs" id="refreshCountdownContainer" style="display: none;">
+                                <i class="fas fa-sync-alt mr-1"></i>새로고침: <span id="refresh-countdown" class="font-mono text-white">--:--</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 네비게이션 탭 (2단 메뉴) -->
+        <nav class="bg-white shadow-md relative z-40">
+            <div class="container mx-auto px-4">
+                <div class="flex space-x-1 border-b border-gray-200">
+                    <!-- 대시보드 -->
+                    <button onclick="showTab('dashboard')" class="tab-btn px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-t bg-blue-50 text-blue-600" data-tab="dashboard">
+                        <i class="fas fa-tachometer-alt mr-1"></i>대시보드
+                    </button>
+                    
+                    <!-- 시스템관리 메뉴 -->
+                    <div class="relative group">
+                        <button class="px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-t">
+                            <i class="fas fa-cogs mr-1"></i>시스템관리
+                            <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                        </button>
+                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-50 w-[300px] flex-col">
+                            <button onclick="showTab('instructor-codes')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="instructor-codes" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-user-shield mr-2" style="width: 16px;"></i>강사코드/권한
+                            </button>
+                            <button onclick="showTab('instructors')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="instructors" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-user-tie mr-2" style="width: 16px;"></i>강사관리
+                            </button>
+                            <button onclick="showTab('system-settings')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="system-settings" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-cog mr-2" style="width: 16px;"></i>시스템 등록
+                            </button>
+                            <button onclick="showTab('backup-manager')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="backup-manager" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-database mr-2" style="width: 16px;"></i>DB 백업
+                            </button>
+                            <button onclick="showTab('notices')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="notices" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-bullhorn mr-2" style="width: 16px;"></i>공지사항
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 과정 메뉴 -->
+                    <div class="relative group">
+                        <button class="px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-t">
+                            <i class="fas fa-graduation-cap mr-1"></i>과정
+                            <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                        </button>
+                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-50 w-[300px] flex-col">
+                            <button onclick="showTab('subjects')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="subjects" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-book mr-2" style="width: 16px;"></i>교과목
+                            </button>
+                            <button onclick="showTab('holidays')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="holidays" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-calendar-alt mr-2" style="width: 16px;"></i>공휴일
+                            </button>
+                            <button onclick="showTab('courses')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="courses" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-school mr-2" style="width: 16px;"></i>과정관리
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 학생 메뉴 -->
+                    <div class="relative group">
+                        <button class="px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-t">
+                            <i class="fas fa-user-graduate mr-1"></i>학생
+                            <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                        </button>
+                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-50 w-[300px] flex-col">
+                            <button onclick="showTab('students')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50 bg-blue-50 text-blue-600" data-tab="students" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-users mr-2" style="width: 16px;"></i>학생관리
+                            </button>
+                            <button onclick="showTab('counselings')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="counselings" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-comments mr-2" style="width: 16px;"></i>상담관리
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 강의 메뉴 -->
+                    <div class="relative group">
+                        <button class="px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-t">
+                            <i class="fas fa-chalkboard mr-1"></i>강의
+                            <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                        </button>
+                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-50 w-[300px] flex-col">
+                            <button onclick="showTab('timetables')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="timetables" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-clock mr-2" style="width: 16px;"></i>시간표
+                            </button>
+                            <button onclick="showTab('training-logs')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="training-logs" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-clipboard-list mr-2" style="width: 16px;"></i>훈련일지 관리
+                            </button>
+                            <button onclick="showTab('rag-documents')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="rag-documents" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-file-alt mr-2" style="width: 16px;"></i>문서 관리 (RAG)
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- AI 메뉴 -->
+                    <div class="relative group">
+                        <button class="px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-t">
+                            <i class="fas fa-robot mr-1"></i>AI
+                            <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                        </button>
+                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-50 w-[300px] flex-col">
+                            <button onclick="showTab('class-notes')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="class-notes" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-book-open mr-2" style="width: 16px;"></i>SSIRN메모장(수업,기억,정보,etc)
+                            </button>
+                            <button onclick="showTab('ai-report')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="ai-report" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-file-alt mr-2" style="width: 16px;"></i>AI 생기부
+                            </button>
+                            <button onclick="showTab('ai-timetable')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="ai-timetable" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-calendar-alt mr-2" style="width: 16px;"></i>AI 시간표
+                            </button>
+                            <button onclick="showTab('ai-training-log')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="ai-training-log" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-brain mr-2" style="width: 16px;"></i>AI 훈련일지
+                            </button>
+                            <button onclick="showTab('ai-counseling')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="ai-counseling" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-comments mr-2" style="width: 16px;"></i>AI 상담일지
+                            </button>
+                            <button onclick="showTab('exam-bank')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="exam-bank" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-clipboard-question mr-2" style="width: 16px;"></i>문제은행
+                            </button>
+                            <button onclick="showTab('aesong-3d-chat')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="aesong-3d-chat" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-robot mr-2" style="width: 16px;"></i>🐶 예진이 만나기
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 팀 메뉴 (드롭다운) -->
+                    <div class="relative group">
+                        <button class="px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-t">
+                            <i class="fas fa-users mr-1"></i>팀
+                            <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                        </button>
+                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-50 w-[300px] flex-col">
+                            <button onclick="showTab('projects')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="projects" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-users mr-2" style="width: 16px;"></i>팀 관리
+                            </button>
+                            <button onclick="showTab('team-activity-logs')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="team-activity-logs" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-clipboard-list mr-2" style="width: 16px;"></i>팀 활동일지
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </nav>
+
+        <!-- 메인 콘텐츠 -->
+        <main class="container mx-auto px-4 py-8">
+            <div id="app">
+                <div class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-4xl text-blue-600"></i>
+                    <p class="text-gray-600 mt-4">로딩 중...</p>
+                </div>
+            </div>
+            
+            <!-- 과정 추가/수정 폼 (모달) -->
+            <div id="course-form" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg shadow-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                    <!-- 폼 내용은 JavaScript에서 동적 생성 -->
+                </div>
+            </div>
+            
+            <!-- 교과목 선택 모달 -->
+            <div id="subject-selector" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div class="bg-white rounded-xl shadow-2xl p-8 max-w-7xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                    <!-- 내용은 JavaScript에서 동적 생성 -->
+                </div>
+            </div>
+            
+            <!-- 커스텀 알림 모달 -->
+            <div id="custom-alert" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] animate-fade-in">
+                <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 animate-scale-in">
+                    <!-- 아이콘 -->
+                    <div class="flex justify-center mb-4">
+                        <div id="alert-icon-container" class="bg-blue-100 rounded-full p-4">
+                            <i id="alert-icon" class="fas fa-info-circle text-4xl text-blue-600"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- 제목 -->
+                    <h3 id="alert-title" class="text-xl font-bold text-gray-900 text-center mb-3">
+                        알림
+                    </h3>
+                    
+                    <!-- 메시지 -->
+                    <p id="alert-message" class="text-gray-600 text-center mb-6 whitespace-pre-line leading-relaxed">
+                    </p>
+                    
+                    <!-- 버튼 -->
+                    <div class="flex justify-center">
+                        <button onclick="window.hideAlert()" 
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg">
+                            <i class="fas fa-check mr-2"></i>확인
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 커스텀 확인 모달 -->
+            <div id="custom-confirm" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] animate-fade-in">
+                <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 animate-scale-in">
+                    <!-- 아이콘 -->
+                    <div class="flex justify-center mb-4">
+                        <div class="bg-red-100 rounded-full p-4">
+                            <i class="fas fa-exclamation-triangle text-4xl text-red-600"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- 제목 -->
+                    <h3 id="confirm-title" class="text-xl font-bold text-gray-900 text-center mb-3">
+                        삭제 확인
+                    </h3>
+                    
+                    <!-- 메시지 -->
+                    <p id="confirm-message" class="text-gray-600 text-center mb-6 whitespace-pre-line leading-relaxed">
+                        정말로 삭제하시겠습니까?
+                    </p>
+                    
+                    <!-- 버튼 -->
+                    <div class="flex gap-3">
+                        <button onclick="window.handleConfirm(false)" 
+                                class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105">
+                            <i class="fas fa-times mr-2"></i>취소
+                        </button>
+                        <button onclick="window.handleConfirm(true)" 
+                                class="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105">
+                            <i class="fas fa-trash-alt mr-2"></i>삭제
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <style>
+                @keyframes fade-in {
+                    from {
+                        opacity: 0;
+                    }
+                    to {
+                        opacity: 1;
+                    }
+                }
+                
+                @keyframes scale-in {
+                    from {
+                        transform: scale(0.9);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: scale(1);
+                        opacity: 1;
+                    }
+                }
+                
+                .animate-fade-in {
+                    animation: fade-in 0.2s ease-out;
+                }
+                
+                .animate-scale-in {
+                    animation: scale-in 0.3s ease-out;
+                }
+            </style>
+            
+            <!-- 로딩 오버레이 -->
+            <div id="loading-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70]">
+                <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
+                    <div class="text-center">
+                        <div class="mb-4">
+                            <i class="fas fa-spinner fa-spin text-5xl text-blue-600"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-800 mb-2">데이터 로딩 중</h3>
+                        <p class="text-gray-600 mb-4">잠시만 기다려주세요...</p>
+                        
+                        <!-- 프로그레스 바 -->
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                            <div id="loading-progress" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <p id="loading-message" class="text-sm text-gray-500">데이터를 불러오는 중...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 학생 상세보기 모달 -->
+            <div id="student-detail" class="hidden"></div>
+            
+            <!-- 예쁜 알림 모달 -->
+            <div id="alert-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col transform transition-all">
+                    <div id="alert-header" class="p-6 rounded-t-2xl flex-shrink-0">
+                        <div class="flex items-center gap-4">
+                            <div id="alert-icon" class="text-4xl"></div>
+                            <h3 id="alert-title" class="text-xl font-bold text-white"></h3>
+                        </div>
+                    </div>
+                    <div class="overflow-y-auto flex-1 px-6 py-4">
+                        <p id="alert-message" class="text-gray-700 text-lg leading-relaxed whitespace-pre-line"></p>
+                    </div>
+                    <div class="p-6 pt-4 flex justify-end gap-3 flex-shrink-0 border-t border-gray-200">
+                        <button id="alert-cancel-btn" class="hidden px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-semibold transition-colors">
+                            취소
+                        </button>
+                        <button id="alert-confirm-btn" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors">
+                            확인
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- 전역 플로팅 챗봇 (모든 페이지에서 사용 가능) -->
+        <div id="global-floating-chatbot">
+            <!-- 챗봇 위젯 (처음엔 숨김) -->
+            <div id="chatbot-widget" style="display: none; position: fixed; bottom: 90px; right: 20px; width: 650px; max-height: 700px; background: white; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 1000; flex-direction: column;">
+                <!-- 챗봇 헤더 -->
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 15px 15px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 40px; height: 40px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                            🐶
+                        </div>
+                        <div>
+                            <div style="font-weight: bold; font-size: 16px;">예진이</div>
+                            <div style="font-size: 12px; opacity: 0.9;">AI 어시스턴트</div>
+                        </div>
+                    </div>
+                    <button onclick="window.toggleChatbot()" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.3s;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <!-- 챗봇 메시지 영역 -->
+                <div id="chatbot-messages" style="flex: 1; padding: 15px; overflow-y: auto; max-height: 550px; background: #f9fafb;">
+                    <div class="chatbot-message bot-message" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <div style="width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">
+                            🐶
+                        </div>
+                        <div style="background: white; padding: 10px 15px; border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 70%;">
+                            <div style="font-size: 14px; color: #374151;">안녕하세요! 저는 예진이입니다. 무엇을 도와드릴까요? 😊</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 챗봇 입력 영역 -->
+                <div style="padding: 15px; border-top: 1px solid #e5e7eb; background: white; border-radius: 0 0 15px 15px;">
+                    <!-- RAG 토글 -->
+                    <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f3f4f6; border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-database" style="color: #667eea; font-size: 14px;"></i>
+                            <span style="font-size: 13px; color: #374151; font-weight: 500;">RAG 검색 사용</span>
+                        </div>
+                        <label class="switch" style="position: relative; display: inline-block; width: 44px; height: 24px;">
+                            <input type="checkbox" id="rag-mode-toggle" checked style="opacity: 0; width: 0; height: 0;">
+                            <span class="slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; transition: .4s; border-radius: 24px;"></span>
+                        </label>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="chatbot-input" placeholder="메시지를 입력하세요..." 
+                               style="flex: 1; padding: 10px 15px; border: 2px solid #e5e7eb; border-radius: 25px; outline: none; font-size: 14px;"
+                               onkeypress="if(event.key==='Enter'){window.sendChatMessage();}">
+                        <button onclick="window.sendChatMessage()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 플로팅 버튼 -->
+            <button id="chatbot-toggle-btn" onclick="window.toggleChatbot()" 
+                    style="position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 50%; cursor: pointer; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); display: flex; align-items: center; justify-content: center; font-size: 24px; z-index: 999; transition: transform 0.3s, box-shadow 0.3s;">
+                <i class="fas fa-comments"></i>
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    
+    <!-- 완전 캐시 제거 (로그인 정보는 유지) -->
+    <script>
+        // 서비스 워커 완전 제거
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
+        }
+        
+        // 모든 캐시 스토리지 삭제
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) {
+                    caches.delete(name);
+                }
+            });
+        }
+        
+        // 캐시만 삭제 (로그인 정보는 유지)
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('cache_')) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+    </script>
+    
+    <!-- 캐시 버스팅을 위한 버전 쿼리 -->
+    <script src="/app.js?v=2.0.280"></script>
+    
+    <!-- 3D 모듈 (Three.js) -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="/screensaver-3d.js"></script>
+    <script type="module" src="/aesong-3d-module.js?v=2.0.220"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+        // Service Worker 완전 비활성화
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                    console.log('Service Worker unregistered');
+                }
+            });
+        }
+        
+        // 아래 코드는 실행되지 않음
+        if (false) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then((registration) => 
