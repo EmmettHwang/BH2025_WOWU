@@ -1,40 +1,13 @@
-# BH2025 바이오헬스 교육관리 플랫폼
-
-> **보건복지부(한국보건산업진흥원) K-디지털 트레이닝**
-> 우송대학교산학협력단 바이오헬스아카데미 올인원테크 이노베이터
+# 교육관리 플랫폼
 
 **통합 교육 관리 시스템 + RAG 기반 지식 검색 + AI 문제 생성**
 
 ## 🎓 프로젝트 개요
-
-바이오헬스 분야 K-디지털 트레이닝 과정을 위한 **올인원 교육관리 플랫폼**입니다.
 FastAPI 백엔드 + Vanilla JavaScript 프론트엔드 + RAG 시스템으로 구성된 통합 솔루션입니다.
 
 - **완성일**: 2026년 01월 08일
 - **버전**: v1.1.202601080107
 - **상태**: ✅ 프로덕션 배포 완료
-
-### 개략적인 개발 환경
-<img width="425" height="406" alt="image" src="https://github.com/user-attachments/assets/2ba34988-415f-4876-9a9f-000f1fa842ac" />
-
----
-
-## 🚀 빠른 시작
-
-### 개발 환경 실행
-```bash
-# 백엔드 실행
-cd /home/user/webapp
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
-
-# 프론트엔드 접속
-http://localhost:8000/
-```
-
-### 배포 (Cafe24 서버)
-```bash
-# 최신 코드 받기
-git pull origin main
 
 # DB 마이그레이션 (필요시)
 mysql -h [DB_HOST] -u [DB_USER] -p[DB_PASSWORD] minilms < migrations/0003_add_menu_permissions.sql
@@ -57,7 +30,7 @@ journalctl -u minilms -f   # 로그 실시간 확인
 ## 📂 프로젝트 구조
 
 ```
-BH2025_WOWU/
+??????????_WOWU/
 ├── backend/
 │   ├── main.py                 # FastAPI 통합 API (8,554 lines, 120+ endpoints)
 │   ├── rag/                    # RAG 시스템
@@ -87,33 +60,6 @@ BH2025_WOWU/
 ├── package.json                # Node.js 의존성
 └── README.md                   # 이 파일
 ```
-
----
-
-## ✨ 주요 기능
-
-### 📚 교육 관리 시스템
-- **강사/학생 관리**: CRUD, Excel 업로드, 사진 관리
-- **강의 관리**: 시간표, 교과목, 훈련일지
-- **상담 관리**: 상담 기록, AI 생활기록부 자동 생성
-- **팀 관리**: 팀 프로젝트, 팀 활동일지
-- **공지사항**: 마크다운 지원, 게시 기간 설정
-
-### 🤖 AI 기능
-- **RAG 지식 검색**: 문서 기반 질의응답 (GROQ Llama 3.3 70B, Gemini 2.0)
-- **문제은행**: RAG 기반 시험 문제 자동 생성
-- **AI 생활기록부**: OpenAI GPT 기반 자동 생성
-- **예진이 3D 채팅**: Three.js 3D 캐릭터 + 음성 대화
-
-### 🔍 RAG (Retrieval-Augmented Generation) 시스템
-- **벡터 DB**: FAISS IndexFlatL2 (CPU)
-- **임베딩 모델**: `jhgan/ko-sroberta-multitask` (한국어 특화, 768차원)
-- **LLM API**: GROQ Llama 3.3 70B (기본), Google Gemini 2.0 Flash (대체)
-- **문서 포맷**: PDF, DOCX, TXT
-- **자동 문서 로드**: startup 시 `documents/` 폴더 스캔
-- **청크 설정**: 1000자 (overlap 200자)
-- **유사도 임계값**: 30% (min_similarity=0.3)
-- **검색 문서 수**: Top-K = 5
 
 ---
 
@@ -171,10 +117,10 @@ BH2025_WOWU/
 ## 📖 문서 가이드
 
 ### 🚀 시작하기
-- **[개발 환경 종합 가이드](documents/manual/DEVELOPMENT_ENVIRONMENT.md)** ⭐ 신규 개발자 필독!
-- [로컬 개발 환경 설정](documents/manual/LOCAL_DEVELOPMENT.md)
-- [Cafe24 배포 가이드](documents/manual/DEPLOY_CAFE24.md)
-- [긴급 배포 (5분)](documents/manual/CAFE24_QUICK_DEPLOY.md)
+- **[개발 환경 종합 가이드](./documents/manual/DEVELOPMENT_ENVIRONMENT.md)** ⭐ 신규 개발자 필독!
+- [로컬 개발 환경 설정](./documents/manual/LOCAL_DEVELOPMENT.md)
+- [Cafe24 배포 가이드](./documents/manual/DEPLOY_CAFE24.md)
+- [긴급 배포 (5분)](./documents/manual/CAFE24_QUICK_DEPLOY.md)
 
 ### 🔧 시스템 관리
 - [데이터베이스 마이그레이션](documents/manual/DB_MIGRATION_COMPLETE.md)
@@ -221,25 +167,16 @@ BH2025_WOWU/
 | Host | `localhost` |
 | Port | `3306` |
 | User | `iyrc` |
-| Password | `dodan1004` |
-| Database | `minilms` |
+| Password | `xxxxxxxx` |
+| Database | `xxxxxxx` |
 
 #### 2. FTP 서버 (Synology NAS)
 | 항목 | 값 |
 |------|-----|
 | Host | `bitnmeta2.synology.me` |
 | Port | `2121` |
-| User | `ha` |
-| Password | `dodan1004~` |
-
-**FTP 경로:**
-| 용도 | 경로 |
-|------|------|
-| 상담일지 | `/homes/ha/camFTP/BH2025/guidance` |
-| 훈련일지 | `/homes/ha/camFTP/BH2025/train` |
-| 학생 | `/homes/ha/camFTP/BH2025/student` |
-| 강사 | `/homes/ha/camFTP/BH2025/teacher` |
-| 팀/프로젝트 | `/homes/ha/camFTP/BH2025/team` |
+| User | `xxxxxxx` |
+| Password | `xxxxxxx` |
 
 #### 3. AI API 엔드포인트
 | 서비스 | URL | 모델 |
@@ -254,14 +191,14 @@ BH2025_WOWU/
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=iyrc
-DB_PASSWORD=dodan1004
-DB_NAME=minilms
+DB_PASSWORD=xxxxxx
+DB_NAME=xxxxx
 
 # FTP 서버
 FTP_HOST=bitnmeta2.synology.me
 FTP_PORT=2121
-FTP_USER=ha
-FTP_PASSWORD=dodan1004~
+FTP_USER=xxxxxx
+FTP_PASSWORD=xxxxxx
 
 # AI API Keys (각 서비스에서 발급 필요)
 GROQ_API_KEY=your_groq_api_key
@@ -333,14 +270,6 @@ pip install -r requirements.txt
 - DB 관리 모달 포커스 오류 수정
 - 백업/복구 후 페이지 데이터 새로고침 안 되는 문제 수정
 - `closeDbManagementModal()`에서 액션 초기화로 인한 작업 실패 수정
-
----
-
-## 🔗 링크
-
-- **GitHub Repository**: https://github.com/EmmettHwang/BH2025_WOWU
-- **Branch**: `hun` (개발), `main` (프로덕션)
-- **Latest PR**: https://github.com/EmmettHwang/BH2025_WOWU/compare/main...hun
 
 ---
 
