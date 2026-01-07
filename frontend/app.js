@@ -14287,7 +14287,14 @@ async function updateHeader() {
             }
             logoElement.style.display = '';
         }
-        
+
+        // localStorage에 설정 저장 (로그인 페이지에서 사용)
+        localStorage.setItem('system_title', systemTitle);
+        if (settings.logo_url) {
+            localStorage.setItem('logo_url', settings.logo_url);
+        }
+        console.log('💾 설정 localStorage 저장 완료');
+
         // 강사 이름 업데이트
         const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
         const nameElement = document.getElementById('instructorName');
@@ -14595,13 +14602,40 @@ window.applyTheme = function(theme) {
 
 // 테마 저장 함수
 window.saveThemeSettings = function() {
-    const theme = {
-        menubar: document.getElementById('theme-menubar')?.value || '#1e40af',
-        title: document.getElementById('theme-title')?.value || '#1e3a8a',
-        subtitle: document.getElementById('theme-subtitle')?.value || '#374151',
-        menuActive: document.getElementById('theme-menu-active')?.value || '#3b82f6'
-    };
+    // 먼저 input 요소에서 읽기 시도
+    const menubarInput = document.getElementById('theme-menubar');
+    const titleInput = document.getElementById('theme-title');
+    const subtitleInput = document.getElementById('theme-subtitle');
+    const menuActiveInput = document.getElementById('theme-menu-active');
 
+    let theme;
+    if (menubarInput && menubarInput.value) {
+        // input 요소가 있으면 거기서 읽기
+        theme = {
+            menubar: menubarInput.value,
+            title: titleInput?.value || '#1e3a8a',
+            subtitle: subtitleInput?.value || '#374151',
+            menuActive: menuActiveInput?.value || '#3b82f6'
+        };
+    } else {
+        // input 요소가 없으면 현재 CSS에서 읽기 또는 기존 저장값 사용
+        const existingTheme = JSON.parse(localStorage.getItem('system_theme') || 'null');
+        if (existingTheme && existingTheme.menubar) {
+            theme = existingTheme;
+        } else {
+            // CSS 변수에서 읽기
+            const computedStyle = getComputedStyle(document.documentElement);
+            const cssMenubar = computedStyle.getPropertyValue('--theme-menubar').trim();
+            theme = {
+                menubar: cssMenubar || '#1e40af',
+                title: computedStyle.getPropertyValue('--theme-title').trim() || '#1e3a8a',
+                subtitle: computedStyle.getPropertyValue('--theme-subtitle').trim() || '#374151',
+                menuActive: computedStyle.getPropertyValue('--theme-menu-active').trim() || '#3b82f6'
+            };
+        }
+    }
+
+    console.log('💾 테마 저장:', theme);
     localStorage.setItem('system_theme', JSON.stringify(theme));
     window.applyTheme(theme);
 
@@ -14611,6 +14645,12 @@ window.saveThemeSettings = function() {
 // 테마 로드 함수 (설정 폼에 값 채우기)
 window.loadThemeSettings = function() {
     const theme = JSON.parse(localStorage.getItem('system_theme') || 'null') || THEME_PRESETS.default;
+
+    // 테마가 localStorage에 없었으면 저장
+    if (!localStorage.getItem('system_theme')) {
+        localStorage.setItem('system_theme', JSON.stringify(theme));
+        console.log('💾 기본 테마 localStorage에 저장:', theme);
+    }
 
     const menubarInput = document.getElementById('theme-menubar');
     const titleInput = document.getElementById('theme-title');
@@ -18993,12 +19033,22 @@ if (document.readyState === 'loading') {
         updateHeader();
         applyMenuPermissions();
         window.restoreBGMSettings(); // BGM 설정 복원 (헤더)
+        // 테마가 localStorage에 없으면 기본 테마 저장
+        if (!localStorage.getItem('system_theme')) {
+            localStorage.setItem('system_theme', JSON.stringify(THEME_PRESETS.default));
+            console.log('💾 기본 테마 저장됨');
+        }
     });
 } else {
     // 이미 로드된 경우 즉시 실행
     updateHeader();
     applyMenuPermissions();
     window.restoreBGMSettings(); // BGM 설정 복원 (헤더)
+    // 테마가 localStorage에 없으면 기본 테마 저장
+    if (!localStorage.getItem('system_theme')) {
+        localStorage.setItem('system_theme', JSON.stringify(THEME_PRESETS.default));
+        console.log('💾 기본 테마 저장됨');
+    }
 }
 
 // ==================== DB 관리 ====================
