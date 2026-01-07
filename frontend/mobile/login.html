@@ -76,22 +76,41 @@
             animation: fadeIn 0.5s ease-out;
         }
     </style>
+
+    <!-- 테마 즉시 적용 -->
+    <script>
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('system_theme');
+                if (savedTheme) {
+                    const theme = JSON.parse(savedTheme);
+                    if (theme.menubar) {
+                        const style = document.createElement('style');
+                        style.id = 'instant-theme';
+                        style.textContent = `.login-header-bg { background-color: ${theme.menubar} !important; }`;
+                        document.head.appendChild(style);
+                        window.__THEME_COLOR__ = theme.menubar;
+                    }
+                }
+            } catch(e) {}
+        })();
+    </script>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
     
     <!-- 로그인 컨테이너 -->
     <div class="w-full max-w-md fade-in">
         <!-- 로고 및 타이틀 -->
-        <div class="text-center mb-8">
-            <div class="inline-block bg-white rounded-3xl p-6 shadow-2xl mb-6">
-                <img src="/woosong-logo.png" alt="우송대학교 로고" class="h-24 w-auto mx-auto">
+        <div id="login-header" class="login-header-bg text-center mb-8 rounded-2xl p-6 shadow-2xl" style="background: linear-gradient(to right, #2563eb, #4f46e5);">
+            <div class="inline-block bg-white rounded-lg mb-4 shadow-md" style="width: 180px; height: 72px; padding: 8px;">
+                <img id="login-logo" src="/woosong-logo.png" alt="로고" style="width: 100%; height: 100%; object-fit: fill;">
             </div>
-            <h1 id="system-title-login" class="text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center">
-                <i class="fas fa-school mr-3 text-blue-600"></i>
+            <h1 id="system-title-login" class="text-2xl font-bold text-white mb-2 flex items-center justify-center">
+                <i class="fas fa-school mr-3"></i>
                 <span id="system-title-text">교육관리시스템</span>
             </h1>
-            <p id="system-subtitle1-login" class="text-gray-600">보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단</p>
-            <p id="system-subtitle2-login" class="text-gray-500 text-sm">바이오헬스아카데미 올인원테크 이노베이터</p>
+            <p id="system-subtitle1-login" class="text-blue-100 text-sm">보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단</p>
+            <p id="system-subtitle2-login" class="text-blue-100 text-xs">바이오헬스아카데미 올인원테크 이노베이터</p>
         </div>
         
         <!-- 로그인 폼 -->
@@ -199,13 +218,27 @@
                 document.getElementById('system-subtitle2-login').textContent = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
 
                 // 로고 업데이트
-                const logoImg = document.querySelector('img[alt*="로고"]');
+                const logoImg = document.getElementById('login-logo');
                 if (logoImg && settings.logo_url) {
                     if (settings.logo_url.startsWith('ftp://')) {
                         logoImg.src = API_BASE_URL + '/api/download-image?url=' + encodeURIComponent(settings.logo_url);
                     } else {
                         logoImg.src = settings.logo_url;
                     }
+                }
+
+                // 테마색 적용
+                const savedTheme = localStorage.getItem('system_theme');
+                if (savedTheme) {
+                    try {
+                        const theme = JSON.parse(savedTheme);
+                        if (theme.menubar) {
+                            const header = document.getElementById('login-header');
+                            if (header) {
+                                header.style.background = theme.menubar;
+                            }
+                        }
+                    } catch(e) {}
                 }
 
                 console.log('✅ 모바일 로그인 페이지 시스템 설정 로드 완료');
