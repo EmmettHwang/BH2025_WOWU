@@ -3,9 +3,11 @@
 const API_BASE_URL = '';
 window.API_BASE_URL = API_BASE_URL; // 전역으로 노출
 
-// ==================== 앱 버전 관리 ====================
-const APP_VERSION = '1.0.0'; // 앱 버전
+// ==================== 앱 버전 및 기본값 관리 ====================
+const APP_VERSION = '1.0.7'; // 앱 버전
+const DEFAULT_SYSTEM_TITLE = '바이오헬스교육관리시스템'; // 기본 시스템 제목
 window.APP_VERSION = APP_VERSION;
+window.DEFAULT_SYSTEM_TITLE = DEFAULT_SYSTEM_TITLE;
 
 // YouTube API cross-origin 에러 무시 (sandbox 환경)
 window.addEventListener('error', function(event) {
@@ -2869,7 +2871,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     console.log('✅ 로그인 확인 완료 - 앱 로드 시작');
-    
+
+    // 버전 배지 업데이트
+    const versionBadge = document.getElementById('version-badge');
+    if (versionBadge) {
+        versionBadge.textContent = 'v' + APP_VERSION;
+    }
+
     // 시계 시작 (날짜/시간 및 카운트다운)
     startClock();
     
@@ -13559,7 +13567,7 @@ function renderSystemSettings(settings) {
                         </label>
                         <input type="text" id="system-title" 
                                class="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500 bg-white"
-                               placeholder="예: 바이오헬스교육관리시스템">
+                               placeholder="예: ${DEFAULT_SYSTEM_TITLE}">
                         <p class="text-sm text-gray-600 mt-1">헤더 상단에 표시되는 메인 제목입니다</p>
                     </div>
                     
@@ -13895,7 +13903,7 @@ function renderSystemSettings(settings) {
         const logoImg = document.getElementById('current-logo');
         const refreshIntervalInput = document.getElementById('refresh-interval');
         
-        if (titleInput) titleInput.value = settings.system_title || '바이오헬스교육관리시스템';
+        if (titleInput) titleInput.value = settings.system_title || DEFAULT_SYSTEM_TITLE;
         if (subtitle1Input) subtitle1Input.value = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
         if (subtitle2Input) subtitle2Input.value = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
         if (logoUrlInput) logoUrlInput.value = settings.logo_url || '/woosong-logo.png';
@@ -14244,7 +14252,7 @@ async function updateHeader() {
         // 제목 업데이트
         const titleTextElement = document.getElementById('system-title-text');
         if (titleTextElement) {
-            titleTextElement.textContent = settings.system_title || '바이오헬스교육관리시스템';
+            titleTextElement.textContent = settings.system_title || DEFAULT_SYSTEM_TITLE;
         }
         
         // 부제목 1 업데이트
@@ -14377,7 +14385,7 @@ window.resetSystemSettings = async function() {
     
     try {
         const formData = new FormData();
-        formData.append('system_title', '바이오헬스교육관리시스템');
+        formData.append('system_title', DEFAULT_SYSTEM_TITLE);
         formData.append('system_subtitle1', '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단');
         formData.append('system_subtitle2', '바이오헬스아카데미 올인원테크 이노베이터');
         formData.append('logo_url', '/woosong-logo.png');

@@ -142,22 +142,50 @@
             }
         })();
     </script>
+
+    <!-- 테마 즉시 적용 (페이지 렌더링 전) -->
+    <script>
+        (function() {
+            try {
+                const savedSettings = localStorage.getItem('system_settings');
+                if (savedSettings) {
+                    const settings = JSON.parse(savedSettings);
+                    const themeColor = settings.theme_menubar || settings.themeColor;
+                    if (themeColor) {
+                        // 헤더에 즉시 적용할 스타일 생성
+                        const style = document.createElement('style');
+                        style.id = 'instant-theme';
+                        style.textContent = `
+                            header.instant-theme-header { background-color: ${themeColor} !important; }
+                            .text-blue-100 { color: rgba(255,255,255,0.8) !important; }
+                            .text-blue-200 { color: rgba(255,255,255,0.7) !important; }
+                        `;
+                        document.head.appendChild(style);
+                        // 헤더에 클래스 적용을 위해 전역 변수 설정
+                        window.__INSTANT_THEME_COLOR__ = themeColor;
+                    }
+                }
+            } catch(e) {
+                console.log('테마 즉시 적용 실패:', e);
+            }
+        })();
+    </script>
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen">
         <!-- 헤더 -->
-        <header class="bg-blue-600 text-white shadow-lg relative z-30">
+        <header class="bg-blue-600 text-white shadow-lg relative z-30 instant-theme-header">
             <div class="container mx-auto px-4 py-6">
                 <div class="flex justify-between items-start">
                     <div class="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity" onclick="showTab('dashboard')" title="대시보드로 이동">
-                        <div class="bg-white rounded-lg px-3 py-2 flex items-center justify-center shadow-md" style="height: 80px; max-width: 200px;">
-                            <img id="header-logo" src="" alt="로고" class="max-h-full max-w-full object-contain" style="display:none;">
+                        <div class="bg-white rounded-lg px-3 py-2 flex items-center justify-center shadow-md" style="height: 80px;">
+                            <img id="header-logo" src="" alt="로고" class="h-full w-auto object-contain" style="display:none;">
                         </div>
                         <div>
                             <h1 id="system-title-header" class="text-3xl font-bold flex items-center">
                                 <i class="fas fa-school mr-3"></i>
                                 <span id="system-title-text">로딩중...</span>
-                                <span id="version-badge" class="ml-3 text-sm font-normal px-2 py-1 rounded" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(4px);">v1.0.0</span>
+                                <span id="version-badge" class="ml-3 text-sm font-normal px-2 py-1 rounded" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(4px);"></span>
                             </h1>
                             <p id="system-subtitle1-header" class="text-blue-100 mt-1">보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단</p>
                             <p id="system-subtitle2-header" class="text-blue-100">바이오헬스아카데미 올인원테크 이노베이터</p>
@@ -630,7 +658,7 @@
     </script>
     
     <!-- 캐시 버스팅을 위한 버전 쿼리 -->
-    <script src="/app.js?v=1.0.2"></script>
+    <script src="/app.js?v=1.0.7"></script>
     
     <!-- 3D 모듈 (Three.js) -->
     <script type="importmap">
