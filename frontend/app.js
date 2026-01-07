@@ -2628,45 +2628,6 @@ async function loadDashboard() {
                         </div>
                     </div>
                     ` : ''}
-                    
-                    <!-- 빠른 액션 (컴팩트) -->
-                    <div class="bg-white rounded-lg shadow p-3">
-                        <h3 class="text-sm font-bold text-gray-800 mb-2">
-                            <i class="fas fa-bolt mr-2 text-yellow-600"></i>빠른 액션
-                        </h3>
-                        <div class="grid grid-cols-2 gap-2">
-                            ${isMenuAllowed('students') ? `
-                            <button onclick="showTab('students')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold py-2 px-2 rounded text-xs transition">
-                                <i class="fas fa-user-plus mr-1"></i>학생
-                            </button>
-                            ` : ''}
-                            ${isMenuAllowed('counselings') ? `
-                            <button onclick="showTab('counselings')" class="bg-green-50 hover:bg-green-100 text-green-700 font-semibold py-2 px-2 rounded text-xs transition">
-                                <i class="fas fa-comment-medical mr-1"></i>상담
-                            </button>
-                            ` : ''}
-                            ${isMenuAllowed('timetables') ? `
-                            <button onclick="showTab('timetables')" class="bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold py-2 px-2 rounded text-xs transition">
-                                <i class="fas fa-calendar-plus mr-1"></i>시간표
-                            </button>
-                            ` : ''}
-                            ${isMenuAllowed('training-logs') ? `
-                            <button onclick="showTab('training-logs')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-2 px-2 rounded text-xs transition">
-                                <i class="fas fa-clipboard-check mr-1"></i>일지
-                            </button>
-                            ` : ''}
-                            ${isMenuAllowed('projects') ? `
-                            <button onclick="showTab('projects')" class="bg-pink-50 hover:bg-pink-100 text-pink-700 font-semibold py-2 px-2 rounded text-xs transition">
-                                <i class="fas fa-users mr-1"></i>팀
-                            </button>
-                            ` : ''}
-                            ${isMenuAllowed('instructors') ? `
-                            <button onclick="showTab('instructors')" class="bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold py-2 px-2 rounded text-xs transition">
-                                <i class="fas fa-chalkboard-teacher mr-1"></i>강사
-                            </button>
-                            ` : ''}
-                        </div>
-                    </div>
                 </div>
             </div>
         `;
