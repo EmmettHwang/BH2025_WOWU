@@ -7900,6 +7900,8 @@ async def generate_exam_questions(request: Request):
     """RAG 기반 문제 생성"""
     try:
         data = await request.json()
+        print(f"[INFO] 문제 생성 요청: {data.get('exam_name')}, 문서: {data.get('document_context')}")
+        
         exam_name = data.get('exam_name')
         subject = data.get('subject')
         exam_date = data.get('exam_date')
@@ -7910,11 +7912,16 @@ async def generate_exam_questions(request: Request):
         description = data.get('description', '')
         document_context = data.get('document_context', [])  # 선택된 RAG 문서 리스트
         
+        print(f"[DEBUG] vector_store_manager: {vector_store_manager is not None}")
+        print(f"[DEBUG] rag_chain: {rag_chain is not None}")
+        
         # RAG 시스템 확인
-        if not vector_store_manager or not rag_chain:
-            raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
+        if not vector_store_manager:
+            print("[ERROR] vector_store_manager가 None입니다")
+            raise HTTPException(status_code=503, detail="RAG 시스템(Vector Store)이 초기화되지 않았습니다. 먼저 문서를 업로드하고 RAG 인덱싱을 완료해주세요.")
         
         # GROQ API 키 가져오기
+        print("[INFO] GROQ API 키 조회 중...")
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute("SELECT setting_value FROM system_settings WHERE setting_key = 'groq_api_key'")
@@ -7922,8 +7929,11 @@ async def generate_exam_questions(request: Request):
         groq_api_key = result['setting_value'] if result else os.getenv('GROQ_API_KEY', '')
         conn.close()
         
+        print(f"[DEBUG] GROQ API 키 존재: {bool(groq_api_key)}")
+        
         if not groq_api_key:
-            raise HTTPException(status_code=400, detail="GROQ API 키가 설정되지 않았습니다")
+            print("[ERROR] GROQ API 키가 없습니다")
+            raise HTTPException(status_code=400, detail="GROQ API 키가 설정되지 않았습니다. 시스템 설정에서 GROQ API 키를 등록해주세요.")
         
         # 난이도에 따른 프롬프트 조정
         difficulty_prompts = {
@@ -7966,18 +7976,32 @@ D) [선택지 4]
 """
         
         # RAG를 사용하여 문제 생성
-        # RAGChain 인스턴스 생성 (API 키 포함)
+        print(f"[INFO] RAGChain 초기화 중... (k={10 if document_context else 5})")
         from rag.rag_chain import RAGChain
-        exam_rag_chain = RAGChain(vector_store_manager, groq_api_key, api_type='groq')
+        
+        try:
+            exam_rag_chain = RAGChain(vector_store_manager, groq_api_key, api_type='groq')
+            print("[OK] RAGChain 초기화 완료")
+        except Exception as chain_error:
+            print(f"[ERROR] RAGChain 초기화 실패: {chain_error}")
+            raise HTTPException(status_code=500, detail=f"RAGChain 초기화 실패: {str(chain_error)}")
         
         # 문서 컨텍스트가 있으면 더 많은 청크 검색
         k_value = 10 if document_context else 5
         
-        result = await exam_rag_chain.query(
-            prompt,
-            k=k_value,
-            document_context=document_context if document_context else None
-        )
+        print(f"[INFO] RAG 쿼리 실행 중... (프롬프트 길이: {len(prompt)})")
+        try:
+            result = await exam_rag_chain.query(
+                prompt,
+                k=k_value,
+                document_context=document_context if document_context else None
+            )
+            print(f"[OK] RAG 쿼리 완료 (응답 길이: {len(result.get('answer', ''))})")
+        except Exception as query_error:
+            print(f"[ERROR] RAG 쿼리 실패: {query_error}")
+            import traceback
+            print(f"[ERROR] Traceback:\n{traceback.format_exc()}")
+            raise HTTPException(status_code=500, detail=f"RAG 쿼리 실패: {str(query_error)}")
         
         return {
             "success": True,
