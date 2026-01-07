@@ -51,12 +51,15 @@ FastAPI 백엔드 + Vanilla JavaScript 프론트엔드 + RAG 시스템으로 구
 
 
 # 시스템 운영 참고 사항
-## 시스템 관리 
+## 시스템 관리
 
 ### DB 마이그레이션 (필요시)
+```bash
 mysql -h [DB_HOST] -u [DB_USER] -p[DB_PASSWORD] minilms < migrations/0003_add_menu_permissions.sql
+```
 
 ### 서비스 재시작
+```bash
 systemctl restart minilms
 ```
 
