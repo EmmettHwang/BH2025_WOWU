@@ -77,33 +77,34 @@
         }
     </style>
 
-    <!-- 테마 즉시 적용 -->
+    <!-- 테마 및 로고 즉시 적용 -->
     <script>
-        (function() {
-            try {
-                const savedTheme = localStorage.getItem('system_theme');
-                if (savedTheme) {
-                    const theme = JSON.parse(savedTheme);
-                    if (theme.menubar) {
-                        const style = document.createElement('style');
-                        style.id = 'instant-theme';
-                        style.textContent = `.login-header-bg { background-color: ${theme.menubar} !important; }`;
-                        document.head.appendChild(style);
-                        window.__THEME_COLOR__ = theme.menubar;
-                    }
-                }
-            } catch(e) {}
-        })();
+        var __THEME_COLOR__ = null;
+        var __LOGO_URL__ = null;
+        try {
+            const savedTheme = localStorage.getItem('system_theme');
+            if (savedTheme) {
+                const theme = JSON.parse(savedTheme);
+                if (theme.menubar) __THEME_COLOR__ = theme.menubar;
+            }
+            __LOGO_URL__ = localStorage.getItem('logo_url');
+        } catch(e) {}
     </script>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
-    
+
     <!-- 로그인 컨테이너 -->
     <div class="w-full max-w-md fade-in">
         <!-- 로고 및 타이틀 -->
-        <div id="login-header" class="login-header-bg text-center mb-8 rounded-2xl p-6 shadow-2xl" style="background: linear-gradient(to right, #2563eb, #4f46e5);">
+        <script>document.write('<div id="login-header" class="login-header-bg text-center mb-8 rounded-2xl p-6 shadow-2xl" style="background: ' + (__THEME_COLOR__ || 'linear-gradient(to right, #2563eb, #4f46e5)') + ';">');</script>
             <div class="inline-block bg-white rounded-lg overflow-hidden mb-4 shadow-md" style="width: 180px; height: 72px;">
-                <img id="login-logo" src="/woosong-logo.png" alt="로고" style="width: 100%; height: 100%; object-fit: fill;">
+                <script>
+                    var logoSrc = __LOGO_URL__ || '/woosong-logo.png';
+                    if (logoSrc.startsWith('ftp://')) {
+                        logoSrc = '/api/download-image?url=' + encodeURIComponent(logoSrc);
+                    }
+                    document.write('<img id="login-logo" src="' + logoSrc + '" alt="로고" style="width: 100%; height: 100%; object-fit: fill;">');
+                </script>
             </div>
             <h1 id="system-title-login" class="text-2xl font-bold text-white mb-2 flex items-center justify-center">
                 <i class="fas fa-school mr-3"></i>

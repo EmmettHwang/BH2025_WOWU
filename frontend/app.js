@@ -4,7 +4,7 @@ const API_BASE_URL = '';
 window.API_BASE_URL = API_BASE_URL; // 전역으로 노출
 
 // ==================== 앱 버전 및 기본값 관리 ====================
-const APP_VERSION = '1.1.0'; // 앱 버전
+const APP_VERSION = '1.1.1'; // 앱 버전
 const DEFAULT_SYSTEM_TITLE = '교육관리시스템'; // 기본 시스템 제목
 window.APP_VERSION = APP_VERSION;
 window.DEFAULT_SYSTEM_TITLE = DEFAULT_SYSTEM_TITLE;
@@ -14133,9 +14133,11 @@ window.saveSystemSettings = async function() {
     const systemSubtitle2 = subtitle2Element.value;
     const logoUrl = logoElement.value;
 
-    // 시스템 타이틀을 localStorage에 저장 (즉시 로딩용)
+    // 시스템 설정을 localStorage에 저장 (즉시 로딩용)
     localStorage.setItem('system_title', systemTitle);
+    localStorage.setItem('logo_url', logoUrl);
     console.log('💾 시스템 타이틀 저장:', systemTitle);
+    console.log('💾 로고 URL 저장:', logoUrl);
 
     // YouTube API 키 저장
     const youtubeApiKey = document.getElementById('youtube-api-key')?.value || '';
