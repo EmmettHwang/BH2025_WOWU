@@ -20838,6 +20838,10 @@ async function loadExamList() {
                                         class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded bg-blue-50 hover:bg-blue-100">
                                     <i class="fas fa-eye mr-1"></i>상세보기
                                 </button>
+                                <button onclick="editExam(${exam.exam_id})" 
+                                        class="text-green-600 hover:text-green-800 px-3 py-1 rounded bg-green-50 hover:bg-green-100">
+                                    <i class="fas fa-edit mr-1"></i>수정
+                                </button>
                                 <button onclick="deleteExam(${exam.exam_id}, '${exam.exam_name}')" 
                                         class="text-red-600 hover:text-red-800 px-3 py-1 rounded bg-red-50 hover:bg-red-100">
                                     <i class="fas fa-trash mr-1"></i>삭제
@@ -20961,6 +20965,209 @@ async function viewExamDetail(examId) {
     }
 }
 
+async function editExam(examId) {
+    try {
+        window.showLoading('시험 정보 로딩 중...');
+        
+        const response = await axios.get(`${API_BASE_URL}/api/exam-bank/${examId}`);
+        const exam = response.data.exam;
+        
+        window.hideLoading();
+        
+        const app = document.getElementById('app');
+        app.innerHTML = `
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-edit mr-2"></i>시험 수정
+                    </h2>
+                    <button onclick="showExamBank()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-arrow-left mr-2"></i>목록으로
+                    </button>
+                </div>
+
+                <form id="exam-edit-form" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">시험명칭 *</label>
+                            <input type="text" name="exam_name" required value="${exam.exam_name}"
+                                   class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">교과목 *</label>
+                            <input type="text" name="subject" required value="${exam.subject}"
+                                   class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">시험일자 *</label>
+                            <input type="date" name="exam_date" required value="${exam.exam_date}"
+                                   class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">난이도 *</label>
+                            <select name="difficulty" class="w-full border rounded px-3 py-2">
+                                <option value="easy" ${exam.difficulty === 'easy' ? 'selected' : ''}>쉬움</option>
+                                <option value="medium" ${exam.difficulty === 'medium' ? 'selected' : ''}>보통</option>
+                                <option value="hard" ${exam.difficulty === 'hard' ? 'selected' : ''}>어려움</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">설명</label>
+                        <textarea name="description" rows="3" class="w-full border rounded px-3 py-2">${exam.description || ''}</textarea>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold flex-1">
+                            <i class="fas fa-save mr-2"></i>저장
+                        </button>
+                        <button type="button" onclick="showExamBank()" 
+                                class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg">
+                            취소
+                        </button>
+                    </div>
+                </form>
+
+                <!-- 문제 목록 (수정 가능) -->
+                <div class="mt-8">
+                    <h3 class="text-xl font-bold mb-4">문제 목록</h3>
+                    <div id="questions-edit-list" class="space-y-4">
+                        ${exam.questions.map((q, idx) => `
+                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <div class="flex justify-between items-start mb-3">
+                                    <h4 class="font-bold text-blue-600">문제 ${q.question_number}</h4>
+                                    <button type="button" onclick="deleteQuestion(${examId}, ${q.question_id})" 
+                                            class="text-red-600 hover:text-red-800 text-sm">
+                                        <i class="fas fa-trash mr-1"></i>삭제
+                                    </button>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold mb-1">문제 내용</label>
+                                    <textarea class="w-full border rounded px-3 py-2 mb-2" rows="2" 
+                                              data-question-id="${q.question_id}" 
+                                              data-field="question_text">${q.question_text}</textarea>
+                                </div>
+                                ${q.options && q.options.length > 0 ? `
+                                    <div class="mb-2">
+                                        <label class="block text-sm font-semibold mb-1">선택지</label>
+                                        ${q.options.map((opt, optIdx) => `
+                                            <input type="text" class="w-full border rounded px-3 py-1 mb-1 text-sm"
+                                                   data-question-id="${q.question_id}" 
+                                                   data-field="option_${optIdx}"
+                                                   value="${opt}">
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-sm font-semibold mb-1">정답</label>
+                                        <input type="text" class="w-full border rounded px-3 py-1 text-sm"
+                                               data-question-id="${q.question_id}" 
+                                               data-field="correct_answer"
+                                               value="${q.correct_answer}">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold mb-1">참고 문서</label>
+                                        <input type="text" class="w-full border rounded px-3 py-1 text-sm"
+                                               data-question-id="${q.question_id}" 
+                                               data-field="reference_document"
+                                               value="${q.reference_document || ''}">
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <label class="block text-sm font-semibold mb-1">해설</label>
+                                    <textarea class="w-full border rounded px-3 py-1 text-sm" rows="2"
+                                              data-question-id="${q.question_id}" 
+                                              data-field="explanation">${q.explanation || ''}</textarea>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 폼 제출 이벤트
+        document.getElementById('exam-edit-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await updateExam(examId, e.target, exam.questions);
+        });
+
+    } catch (error) {
+        window.hideLoading();
+        console.error('시험 정보 로딩 실패:', error);
+        await window.showCustomAlert('시험 정보 로딩 실패: ' + (error.response?.data?.detail || error.message), 'error');
+    }
+}
+
+async function updateExam(examId, form, originalQuestions) {
+    const formData = new FormData(form);
+    const examData = Object.fromEntries(formData.entries());
+    
+    // 문제 데이터 수집
+    const updatedQuestions = originalQuestions.map(q => {
+        const questionId = q.question_id;
+        const questionText = document.querySelector(`[data-question-id="${questionId}"][data-field="question_text"]`)?.value || q.question_text;
+        const correctAnswer = document.querySelector(`[data-question-id="${questionId}"][data-field="correct_answer"]`)?.value || q.correct_answer;
+        const explanation = document.querySelector(`[data-question-id="${questionId}"][data-field="explanation"]`)?.value || q.explanation;
+        const referenceDocument = document.querySelector(`[data-question-id="${questionId}"][data-field="reference_document"]`)?.value || q.reference_document;
+        
+        // 선택지 수집
+        const options = [];
+        for (let i = 0; i < (q.options?.length || 0); i++) {
+            const optValue = document.querySelector(`[data-question-id="${questionId}"][data-field="option_${i}"]`)?.value;
+            if (optValue) options.push(optValue);
+        }
+        
+        return {
+            question_id: questionId,
+            question_text: questionText,
+            options: options.length > 0 ? options : q.options,
+            correct_answer: correctAnswer,
+            explanation: explanation,
+            reference_document: referenceDocument
+        };
+    });
+    
+    try {
+        window.showLoading('시험 수정 중...');
+        
+        const updateData = {
+            ...examData,
+            questions: updatedQuestions
+        };
+        
+        await axios.put(`${API_BASE_URL}/api/exam-bank/${examId}`, updateData);
+        
+        window.hideLoading();
+        await window.showCustomAlert('시험이 성공적으로 수정되었습니다', 'success');
+        showExamBank();
+    } catch (error) {
+        window.hideLoading();
+        console.error('시험 수정 실패:', error);
+        await window.showCustomAlert('시험 수정 실패: ' + (error.response?.data?.detail || error.message), 'error');
+    }
+}
+
+async function deleteQuestion(examId, questionId) {
+    if (!confirm('이 문제를 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    try {
+        window.showLoading('문제 삭제 중...');
+        await axios.delete(`${API_BASE_URL}/api/exam-bank/${examId}/question/${questionId}`);
+        window.hideLoading();
+        await window.showCustomAlert('문제가 삭제되었습니다', 'success');
+        editExam(examId); // 페이지 새로고침
+    } catch (error) {
+        window.hideLoading();
+        console.error('문제 삭제 실패:', error);
+        await window.showCustomAlert('문제 삭제 실패: ' + (error.response?.data?.detail || error.message), 'error');
+    }
+}
+
 async function deleteExam(examId, examName) {
     if (!confirm(`시험 "${examName}"을(를) 삭제하시겠습니까?\n삭제된 시험은 복구할 수 없습니다.`)) {
         return;
@@ -20970,12 +21177,12 @@ async function deleteExam(examId, examName) {
         window.showLoading('시험 삭제 중...');
         await axios.delete(`${API_BASE_URL}/api/exam-bank/${examId}`);
         window.hideLoading();
-        alert('시험이 삭제되었습니다');
+        await window.showCustomAlert('시험이 삭제되었습니다', 'success');
         loadExamList();
     } catch (error) {
         window.hideLoading();
         console.error('시험 삭제 실패:', error);
-        alert('시험 삭제 실패: ' + (error.response?.data?.detail || error.message));
+        await window.showCustomAlert('시험 삭제 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
