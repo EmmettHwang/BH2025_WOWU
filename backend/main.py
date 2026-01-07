@@ -7993,8 +7993,14 @@ D) [선택지 4]
             }
         }
         
+    except HTTPException as he:
+        # HTTPException은 그대로 전달
+        raise he
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         print(f"[ERROR] 문제 생성 실패: {str(e)}")
+        print(f"[ERROR] Traceback:\n{error_trace}")
         raise HTTPException(status_code=500, detail=f"문제 생성 실패: {str(e)}")
 
 
@@ -8268,6 +8274,49 @@ async def delete_exam(exam_id: int):
         raise HTTPException(status_code=500, detail=f"시험 삭제 실패: {str(e)}")
 
 
+@app.delete("/api/exam-bank/{exam_id}/question/{question_id}")
+async def delete_question(exam_id: int, question_id: int):
+    """개별 문제 삭제"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # 문제 존재 확인
+        cursor.execute("""
+            SELECT question_id FROM exam_questions 
+            WHERE question_id = %s AND exam_id = %s
+        """, (question_id, exam_id))
+        
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="문제를 찾을 수 없습니다")
+        
+        # 문제 삭제
+        cursor.execute("DELETE FROM exam_questions WHERE question_id = %s", (question_id,))
+        
+        # 시험의 총 문항수 업데이트
+        cursor.execute("""
+            UPDATE exam_bank 
+            SET total_questions = (
+                SELECT COUNT(*) FROM exam_questions WHERE exam_id = %s
+            )
+            WHERE exam_id = %s
+        """, (exam_id, exam_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return {
+            "success": True,
+            "message": "문제가 삭제되었습니다"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] 문제 삭제 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"문제 삭제 실패: {str(e)}")
+
+
 @app.put("/api/exam-bank/{exam_id}")
 async def update_exam(exam_id: int, request: Request):
     """시험 정보 수정"""
@@ -8306,8 +8355,35 @@ async def update_exam(exam_id: int, request: Request):
             params.append(exam_id)
             query = f"UPDATE exam_bank SET {', '.join(update_fields)} WHERE exam_id = %s"
             cursor.execute(query, params)
-            conn.commit()
         
+        # 문제 업데이트
+        if 'questions' in data:
+            import json
+            for question in data['questions']:
+                question_id = question.get('question_id')
+                if question_id:
+                    # options를 JSON 문자열로 변환
+                    options_json = json.dumps(question.get('options', []), ensure_ascii=False) if question.get('options') else None
+                    
+                    cursor.execute("""
+                        UPDATE exam_questions 
+                        SET question_text = %s, 
+                            options = %s, 
+                            correct_answer = %s, 
+                            explanation = %s, 
+                            reference_document = %s
+                        WHERE question_id = %s AND exam_id = %s
+                    """, (
+                        question.get('question_text', ''),
+                        options_json,
+                        question.get('correct_answer', ''),
+                        question.get('explanation', ''),
+                        question.get('reference_document', ''),
+                        question_id,
+                        exam_id
+                    ))
+        
+        conn.commit()
         conn.close()
         
         return {
