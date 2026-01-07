@@ -19968,9 +19968,12 @@ window.executeDbManagement = async function() {
         const operatorName = verifyRes.data.instructor_name;
         const operatorCode = verifyRes.data.instructor_code;
 
+        // 액션을 먼저 저장 (closeDbManagementModal에서 초기화되므로)
+        const currentAction = dbManagementAction;
+
         closeDbManagementModal();
 
-        if (dbManagementAction === 'backup') {
+        if (currentAction === 'backup') {
             // 백업 진행 모달 표시
             showBackupProgress('backup');
 
@@ -20016,7 +20019,7 @@ window.executeDbManagement = async function() {
                 console.error('백업 API 호출 실패:', backupError);
                 showAlert(backupError.response?.data?.detail || '백업 생성에 실패했습니다.', 'error');
             }
-        } else if (dbManagementAction === 'reset') {
+        } else if (currentAction === 'reset') {
             // 최종 확인
             const confirmed = await showConfirm(`정말로 DB를 초기화하시겠습니까?\n\n작업자: ${operatorName}\n\n이 작업은 되돌릴 수 없습니다.\n(백업 파일에서 수동 복원 필요)`, 'DB 초기화 최종 확인');
 
