@@ -19,7 +19,7 @@
     <meta name="display" content="standalone">
     <meta name="apple-touch-fullscreen" content="yes">
     
-    <title>로그인 - 바이오헬스교육관리시스템</title>
+    <title>로그인 - 교육관리시스템</title>
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="/mobile/manifest.json">
@@ -86,11 +86,12 @@
             <div class="inline-block bg-white rounded-3xl p-6 shadow-2xl mb-6">
                 <img src="/woosong-logo.png" alt="우송대학교 로고" class="h-24 w-auto mx-auto">
             </div>
-            <h1 class="text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center">
+            <h1 id="system-title-login" class="text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center">
                 <i class="fas fa-school mr-3 text-blue-600"></i>
-                바이오헬스교육관리시스템
+                <span id="system-title-text">교육관리시스템</span>
             </h1>
-            <p class="text-gray-600">모바일 통합 관리 시스템</p>
+            <p id="system-subtitle1-login" class="text-gray-600">보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단</p>
+            <p id="system-subtitle2-login" class="text-gray-500 text-sm">바이오헬스아카데미 올인원테크 이노베이터</p>
         </div>
         
         <!-- 로그인 폼 -->
@@ -181,6 +182,37 @@
         console.log(`%c🚀 Login ${APP_VERSION} 로드됨`, 'color: #10b981; font-weight: bold; font-size: 14px;');
 
         const API_BASE_URL = '';
+
+        // 시스템 설정 로드
+        async function loadSystemSettings() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
+                const settings = response.data;
+
+                // 제목 업데이트
+                const systemTitle = settings.system_title || '교육관리시스템';
+                document.getElementById('system-title-text').textContent = systemTitle;
+                document.title = '로그인 - ' + systemTitle;
+
+                // 부제목 업데이트
+                document.getElementById('system-subtitle1-login').textContent = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
+                document.getElementById('system-subtitle2-login').textContent = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
+
+                // 로고 업데이트
+                const logoImg = document.querySelector('img[alt*="로고"]');
+                if (logoImg && settings.logo_url) {
+                    if (settings.logo_url.startsWith('ftp://')) {
+                        logoImg.src = API_BASE_URL + '/api/download-image?url=' + encodeURIComponent(settings.logo_url);
+                    } else {
+                        logoImg.src = settings.logo_url;
+                    }
+                }
+
+                console.log('✅ 모바일 로그인 페이지 시스템 설정 로드 완료');
+            } catch (error) {
+                console.error('❌ 시스템 설정 로드 실패:', error);
+            }
+        }
         
         // 홈화면 추가 가이드 (HTTP 환경용 - PWA 설치 불가)
         // 페이지 로드 시 항상 버튼 표시
@@ -314,6 +346,9 @@
         
         // 페이지 로드 시 초기화
         window.addEventListener('DOMContentLoaded', () => {
+            // 시스템 설정 로드
+            loadSystemSettings();
+
             // 현재 세션에 로그인 정보가 있으면 메인 페이지로 리다이렉트
             if (sessionStorage.getItem('user')) {
                 window.location.href = 'index.html';

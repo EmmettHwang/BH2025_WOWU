@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BH2025">
     
-    <title>바이오헬스교육관리시스템 - 로그인</title>
+    <title>교육관리시스템 - 로그인</title>
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
@@ -58,7 +58,7 @@
                 <div class="inline-block bg-white rounded-lg p-3 mb-4">
                     <img src="/woosong-logo.png" alt="우송대학교 로고" class="h-16 w-auto object-contain">
                 </div>
-                <h1 id="system-title-login" class="text-2xl font-bold text-white mb-2">바이오헬스교육관리시스템</h1>
+                <h1 id="system-title-login" class="text-2xl font-bold text-white mb-2">교육관리시스템</h1>
                 <p class="text-blue-100 text-sm" id="system-subtitle1-login">보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단</p>
                 <p class="text-blue-100 text-sm mb-2" id="system-subtitle2-login">바이오헬스아카데미 올인원테크 이노베이터</p>
             </div>
@@ -230,12 +230,14 @@
                 const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
                 const settings = response.data;
                 
-                // 제목 업데이트 - 기본값 고정 (시스템 설정 무시)
-                // document.getElementById('system-title-login').textContent = settings.system_title || '바이오헬스교육관리시스템';
-                
-                // 부제목 업데이트 - 기본값 고정 (시스템 설정 무시)
-                // document.getElementById('system-subtitle1-login').textContent = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
-                // document.getElementById('system-subtitle2-login').textContent = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
+                // 제목 업데이트
+                const systemTitle = settings.system_title || '교육관리시스템';
+                document.getElementById('system-title-login').textContent = systemTitle;
+                document.title = systemTitle + ' - 로그인';
+
+                // 부제목 업데이트
+                document.getElementById('system-subtitle1-login').textContent = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
+                document.getElementById('system-subtitle2-login').textContent = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
                 
                 // 로고 업데이트
                 const logoImg = document.querySelector('img[alt*="로고"]');
