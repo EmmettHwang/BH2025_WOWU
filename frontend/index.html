@@ -170,6 +170,19 @@
                 if (savedTitle) {
                     document.title = savedTitle;
                 }
+
+                // 파비콘을 로고로 설정
+                const logoUrl = localStorage.getItem('logo_url');
+                if (logoUrl) {
+                    let faviconUrl = logoUrl;
+                    if (logoUrl.startsWith('ftp://')) {
+                        faviconUrl = '/api/download-image?url=' + encodeURIComponent(logoUrl);
+                    }
+                    const favicon = document.querySelector('link[rel="icon"]');
+                    if (favicon) {
+                        favicon.href = faviconUrl;
+                    }
+                }
             } catch(e) {
                 console.log('초기 설정 적용 실패:', e);
             }

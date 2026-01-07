@@ -88,6 +88,16 @@
                 if (theme.menubar) __THEME_COLOR__ = theme.menubar;
             }
             __LOGO_URL__ = localStorage.getItem('logo_url');
+
+            // 파비콘을 로고로 설정
+            if (__LOGO_URL__) {
+                let faviconUrl = __LOGO_URL__;
+                if (__LOGO_URL__.startsWith('ftp://')) {
+                    faviconUrl = '/api/download-image?url=' + encodeURIComponent(__LOGO_URL__);
+                }
+                const favicon = document.querySelector('link[rel="icon"]');
+                if (favicon) favicon.href = faviconUrl;
+            }
         } catch(e) {}
     </script>
 </head>

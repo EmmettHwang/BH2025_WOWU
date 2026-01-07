@@ -67,6 +67,16 @@
             }
             __LOGO_URL__ = localStorage.getItem('logo_url');
             console.log('🖼️ 로고 URL:', __LOGO_URL__);
+
+            // 파비콘을 로고로 설정
+            if (__LOGO_URL__) {
+                let faviconUrl = __LOGO_URL__;
+                if (__LOGO_URL__.startsWith('ftp://')) {
+                    faviconUrl = '/api/download-image?url=' + encodeURIComponent(__LOGO_URL__);
+                }
+                const favicon = document.querySelector('link[rel="icon"]');
+                if (favicon) favicon.href = faviconUrl;
+            }
         } catch(e) {
             console.error('❌ 테마 로드 오류:', e);
         }
