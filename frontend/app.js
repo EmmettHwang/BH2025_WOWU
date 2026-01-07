@@ -19837,6 +19837,110 @@ function hideBackupProgress() {
     if (modal) modal.remove();
 }
 
+// 완료 화면 표시 (최소 2초 유지)
+function showCompletionScreen(action, result) {
+    const isBackup = action === 'backup';
+    const isReset = action === 'reset';
+    const isRestore = action === 'restore';
+
+    let title, icon, color, details;
+
+    if (isBackup) {
+        title = 'DB 백업 완료!';
+        icon = 'fa-check-circle';
+        color = 'from-green-500 to-green-600';
+        details = `
+            <div class="text-left space-y-2">
+                <p><i class="fas fa-user mr-2 text-gray-400"></i>작업자: ${result.operator || '-'}</p>
+                <p><i class="fas fa-database mr-2 text-gray-400"></i>총 레코드: ${result.total_records?.toLocaleString() || 0}개</p>
+                <p><i class="fas fa-file mr-2 text-gray-400"></i>파일 크기: ${((result.file_size || 0) / 1024 / 1024).toFixed(2)} MB</p>
+                <p class="text-xs text-gray-400 mt-2"><i class="fas fa-save mr-1"></i>${result.backup_file || ''}</p>
+            </div>
+        `;
+    } else if (isReset) {
+        title = 'DB 초기화 완료!';
+        icon = 'fa-check-circle';
+        color = 'from-orange-500 to-red-500';
+        details = `
+            <div class="text-left space-y-2">
+                <p><i class="fas fa-user mr-2 text-gray-400"></i>작업자: ${result.operator || '-'}</p>
+                <p><i class="fas fa-trash mr-2 text-gray-400"></i>삭제된 레코드: ${result.total_deleted?.toLocaleString() || 0}개</p>
+                <p class="text-xs text-gray-400 mt-2"><i class="fas fa-shield-alt mr-1"></i>백업: ${result.backup_file || ''}</p>
+            </div>
+        `;
+    } else if (isRestore) {
+        title = 'DB 복구 완료!';
+        icon = 'fa-check-circle';
+        color = 'from-purple-500 to-purple-600';
+        details = `
+            <div class="text-left space-y-2">
+                <p><i class="fas fa-user mr-2 text-gray-400"></i>작업자: ${result.operator || '-'}</p>
+                <p><i class="fas fa-database mr-2 text-gray-400"></i>복구된 레코드: ${result.total_restored?.toLocaleString() || 0}개</p>
+                <p class="text-xs text-gray-400 mt-2"><i class="fas fa-file-import mr-1"></i>원본: ${result.backup_file || ''}</p>
+                <p class="text-xs text-gray-400"><i class="fas fa-shield-alt mr-1"></i>안전백업: ${result.pre_restore_backup || ''}</p>
+            </div>
+        `;
+    }
+
+    const completionHtml = `
+        <div id="completion-screen-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[10001]">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden transform scale-0 animate-completion-pop">
+                <div class="p-8 bg-gradient-to-r ${color} text-center">
+                    <div class="text-6xl text-white mb-4 animate-bounce-once">
+                        <i class="fas ${icon}"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white">${title}</h3>
+                </div>
+                <div class="p-6">
+                    ${details}
+                    <div class="mt-6 text-center">
+                        <div class="inline-flex items-center gap-2 text-sm text-gray-400">
+                            <i class="fas fa-clock"></i>
+                            <span>잠시 후 자동으로 닫힙니다...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <style>
+            @keyframes completion-pop {
+                0% { transform: scale(0); opacity: 0; }
+                50% { transform: scale(1.05); }
+                100% { transform: scale(1); opacity: 1; }
+            }
+            @keyframes bounce-once {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-10px); }
+            }
+            .animate-completion-pop {
+                animation: completion-pop 0.4s ease-out forwards;
+            }
+            .animate-bounce-once {
+                animation: bounce-once 0.6s ease-in-out;
+            }
+        </style>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', completionHtml);
+
+    // 2.5초 후 자동 닫기
+    return new Promise(resolve => {
+        setTimeout(() => {
+            const modal = document.getElementById('completion-screen-modal');
+            if (modal) {
+                modal.style.transition = 'opacity 0.3s';
+                modal.style.opacity = '0';
+                setTimeout(() => {
+                    modal.remove();
+                    resolve();
+                }, 300);
+            } else {
+                resolve();
+            }
+        }, 2500);
+    });
+}
+
 window.executeDbManagement = async function() {
     const instructorName = document.getElementById('db-mgmt-instructor-name').value.trim();
     const password = document.getElementById('db-mgmt-password').value.trim();
@@ -19871,24 +19975,40 @@ window.executeDbManagement = async function() {
             showBackupProgress('backup');
 
             // 단계별 진행 시뮬레이션과 실제 API 호출
-            await new Promise(resolve => setTimeout(resolve, 500));
-            updateBackupProgress('tables', 40, 'timetables');
+            await new Promise(resolve => setTimeout(resolve, 800));
+            updateBackupProgress('tables', 40, 'students');
 
             try {
-                const response = await axios.post(`${API_BASE_URL}/api/db-management/backup-with-log`, {
+                // API 호출과 동시에 애니메이션 진행
+                const apiPromise = axios.post(`${API_BASE_URL}/api/db-management/backup-with-log`, {
                     operator_name: operatorName,
                     instructor_code: operatorCode
-                }, { timeout: 60000 }); // 60초 타임아웃
+                }, { timeout: 60000 });
 
-                updateBackupProgress('save', 80);
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // 테이블별 애니메이션 (최소 시간 보장)
+                const tables = ['students', 'timetables', 'training_logs', 'consultations', 'notices'];
+                for (let i = 0; i < tables.length; i++) {
+                    await new Promise(resolve => setTimeout(resolve, 400));
+                    updateBackupProgress('tables', 40 + (i * 8), tables[i]);
+                }
+
+                const response = await apiPromise;
+
+                updateBackupProgress('save', 85);
+                await new Promise(resolve => setTimeout(resolve, 600));
                 updateBackupProgress('complete', 100);
-                await new Promise(resolve => setTimeout(resolve, 800));
+                await new Promise(resolve => setTimeout(resolve, 500));
 
                 hideBackupProgress();
 
                 if (response.data.success) {
-                    showAlert(`백업 생성 완료!\n\n작업자: ${operatorName}\n총 레코드: ${response.data.total_records}개\n파일 크기: ${(response.data.file_size / 1024 / 1024).toFixed(2)} MB\n파일명: ${response.data.backup_file}`, 'success', { title: 'DB 백업 완료' });
+                    // 완료 화면 표시 (2.5초 유지)
+                    await showCompletionScreen('backup', {
+                        operator: operatorName,
+                        total_records: response.data.total_records,
+                        file_size: response.data.file_size,
+                        backup_file: response.data.backup_file
+                    });
                     await Promise.all([refreshBackupList(), loadDbManagementLogs()]);
                 }
             } catch (backupError) {
@@ -19905,23 +20025,38 @@ window.executeDbManagement = async function() {
                 showBackupProgress('reset');
 
                 try {
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    updateBackupProgress('tables', 40, '자동 백업 생성');
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                    updateBackupProgress('tables', 30, '안전 백업 생성 중');
 
-                    const response = await axios.post(`${API_BASE_URL}/api/db-management/reset`, {
+                    // API 호출과 동시에 애니메이션 진행
+                    const apiPromise = axios.post(`${API_BASE_URL}/api/db-management/reset`, {
                         operator_name: operatorName,
                         instructor_code: operatorCode
-                    }, { timeout: 120000 }); // 120초 타임아웃
+                    }, { timeout: 120000 });
 
-                    updateBackupProgress('save', 80);
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // 단계별 애니메이션 (최소 시간 보장)
+                    const steps = ['백업 파일 생성', '데이터 삭제 준비', 'consultations 삭제', 'training_logs 삭제', 'students 삭제'];
+                    for (let i = 0; i < steps.length; i++) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        updateBackupProgress('tables', 30 + (i * 12), steps[i]);
+                    }
+
+                    const response = await apiPromise;
+
+                    updateBackupProgress('save', 90);
+                    await new Promise(resolve => setTimeout(resolve, 600));
                     updateBackupProgress('complete', 100);
-                    await new Promise(resolve => setTimeout(resolve, 800));
+                    await new Promise(resolve => setTimeout(resolve, 500));
 
                     hideBackupProgress();
 
                     if (response.data.success) {
-                        showAlert(`DB 초기화 완료!\n\n작업자: ${operatorName}\n삭제된 레코드: ${response.data.total_deleted}개\n백업 파일: ${response.data.backup_file}`, 'success', { title: 'DB 초기화 완료' });
+                        // 완료 화면 표시 (2.5초 유지)
+                        await showCompletionScreen('reset', {
+                            operator: operatorName,
+                            total_deleted: response.data.total_deleted,
+                            backup_file: response.data.backup_file
+                        });
                         await Promise.all([refreshBackupList(), loadDbManagementLogs()]);
                     }
                 } catch (resetError) {
@@ -20184,31 +20319,40 @@ window.executeDbManagement = async function() {
             showRestoreProgress();
 
             try {
-                await new Promise(resolve => setTimeout(resolve, 500));
-                updateRestoreProgress('backup', 30, '현재 상태 자동 백업');
+                await new Promise(resolve => setTimeout(resolve, 800));
+                updateRestoreProgress('backup', 25, '현재 상태 자동 백업');
 
-                const response = await axios.post(`${API_BASE_URL}/api/db-management/restore`, {
+                // API 호출과 동시에 애니메이션 진행
+                const apiPromise = axios.post(`${API_BASE_URL}/api/db-management/restore`, {
                     operator_name: operatorName,
                     instructor_code: operatorCode,
                     backup_file: restoreTargetFile
-                }, { timeout: 180000 }); // 3분 타임아웃
+                }, { timeout: 180000 });
 
-                updateRestoreProgress('restore', 70, '데이터 복구 중');
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // 단계별 애니메이션 (최소 시간 보장)
+                const steps = ['백업 파일 생성', '기존 데이터 정리', 'students 복구', 'timetables 복구', 'training_logs 복구'];
+                for (let i = 0; i < steps.length; i++) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    updateRestoreProgress('restore', 25 + (i * 12), steps[i]);
+                }
+
+                const response = await apiPromise;
+
+                updateRestoreProgress('complete', 95);
+                await new Promise(resolve => setTimeout(resolve, 600));
                 updateRestoreProgress('complete', 100);
-                await new Promise(resolve => setTimeout(resolve, 800));
+                await new Promise(resolve => setTimeout(resolve, 500));
 
                 hideRestoreProgress();
 
                 if (response.data.success) {
-                    showAlert(
-                        `DB 복구 완료!\n\n` +
-                        `작업자: ${operatorName}\n` +
-                        `복구된 레코드: ${response.data.total_restored}개\n` +
-                        `복구 전 백업: ${response.data.pre_restore_backup}`,
-                        'success',
-                        { title: 'DB 복구 완료' }
-                    );
+                    // 완료 화면 표시 (2.5초 유지)
+                    await showCompletionScreen('restore', {
+                        operator: operatorName,
+                        total_restored: response.data.total_restored,
+                        backup_file: restoreTargetFile,
+                        pre_restore_backup: response.data.pre_restore_backup
+                    });
                     await Promise.all([refreshBackupList(), loadDbManagementLogs()]);
                 }
             } catch (restoreError) {
