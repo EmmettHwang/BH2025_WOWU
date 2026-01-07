@@ -8015,6 +8015,53 @@ async def save_exam(request: Request):
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         
+        # exam_bank 테이블 생성 (없으면)
+        try:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS exam_bank (
+                    exam_id INT AUTO_INCREMENT PRIMARY KEY,
+                    exam_name VARCHAR(255) NOT NULL,
+                    subject VARCHAR(255),
+                    exam_date DATE,
+                    total_questions INT DEFAULT 0,
+                    question_type VARCHAR(50) DEFAULT 'multiple_choice',
+                    difficulty VARCHAR(50) DEFAULT 'medium',
+                    instructor_code VARCHAR(50),
+                    description TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_exam_date (exam_date),
+                    INDEX idx_instructor (instructor_code)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+            
+            # exam_questions 테이블 생성 (없으면)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS exam_questions (
+                    question_id INT AUTO_INCREMENT PRIMARY KEY,
+                    exam_id INT NOT NULL,
+                    question_number INT NOT NULL,
+                    question_text TEXT NOT NULL,
+                    question_type VARCHAR(50) DEFAULT 'multiple_choice',
+                    options JSON,
+                    correct_answer TEXT,
+                    explanation TEXT,
+                    reference_page VARCHAR(100),
+                    reference_document VARCHAR(255),
+                    difficulty VARCHAR(50) DEFAULT 'medium',
+                    points INT DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (exam_id) REFERENCES exam_bank(exam_id) ON DELETE CASCADE,
+                    INDEX idx_exam (exam_id),
+                    INDEX idx_question_number (question_number)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+            
+            conn.commit()
+            print("[INFO] exam_bank 테이블 생성/확인 완료")
+        except Exception as table_error:
+            print(f"[WARN] 테이블 생성 중 오류 (무시): {table_error}")
+        
         # 시험 정보 저장
         cursor.execute("""
             INSERT INTO exam_bank (exam_name, subject, exam_date, total_questions, 
@@ -8063,6 +8110,53 @@ async def get_exam_list():
     try:
         conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
+        
+        # exam_bank 테이블 생성 (없으면)
+        try:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS exam_bank (
+                    exam_id INT AUTO_INCREMENT PRIMARY KEY,
+                    exam_name VARCHAR(255) NOT NULL,
+                    subject VARCHAR(255),
+                    exam_date DATE,
+                    total_questions INT DEFAULT 0,
+                    question_type VARCHAR(50) DEFAULT 'multiple_choice',
+                    difficulty VARCHAR(50) DEFAULT 'medium',
+                    instructor_code VARCHAR(50),
+                    description TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_exam_date (exam_date),
+                    INDEX idx_instructor (instructor_code)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+            
+            # exam_questions 테이블 생성 (없으면)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS exam_questions (
+                    question_id INT AUTO_INCREMENT PRIMARY KEY,
+                    exam_id INT NOT NULL,
+                    question_number INT NOT NULL,
+                    question_text TEXT NOT NULL,
+                    question_type VARCHAR(50) DEFAULT 'multiple_choice',
+                    options JSON,
+                    correct_answer TEXT,
+                    explanation TEXT,
+                    reference_page VARCHAR(100),
+                    reference_document VARCHAR(255),
+                    difficulty VARCHAR(50) DEFAULT 'medium',
+                    points INT DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (exam_id) REFERENCES exam_bank(exam_id) ON DELETE CASCADE,
+                    INDEX idx_exam (exam_id),
+                    INDEX idx_question_number (question_number)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+            
+            conn.commit()
+            print("[INFO] exam_bank 테이블 생성/확인 완료")
+        except Exception as table_error:
+            print(f"[WARN] 테이블 생성 중 오류 (무시): {table_error}")
         
         cursor.execute("""
             SELECT exam_id, exam_name, subject, exam_date, total_questions, 
