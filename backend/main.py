@@ -7966,12 +7966,18 @@ D) [선택지 4]
             'essay': f'{num_questions}개의 {difficulty_text} 서술형 문제를 생성해주세요. 각 문제는 "문제:", "모범답안:", "채점기준:", "참고:" 형식으로 작성해주세요.'
         }
         
+        # 선택된 문서 정보를 프롬프트에 명시
+        doc_context_text = ""
+        if document_context:
+            doc_context_text = f"\n선택된 문서: {', '.join(document_context)}\n"
+        
         prompt = f"""
-교과목: {subject}
 시험명: {exam_name}
+교과목: {subject}{doc_context_text}
 
-다음 문서들을 참고하여 {type_prompts.get(question_type, type_prompts['multiple_choice'])}
-문제는 실제 수업 내용과 관련되어야 하며, 학생들의 이해도를 평가할 수 있어야 합니다.
+{type_prompts.get(question_type, type_prompts['multiple_choice'])}
+
+제공된 문서 내용을 기반으로 문제를 출제해주세요.
 """
         
         # RAG를 사용하여 문제 생성
@@ -7990,12 +7996,15 @@ D) [선택지 4]
         
         print(f"[INFO] RAG 쿼리 실행 중... (프롬프트 길이: {len(prompt)})")
         try:
+            # 문제 출제는 낮은 유사도도 허용 (0.0 = 모든 문서 사용)
             result = await exam_rag_chain.query(
                 prompt,
                 k=k_value,
+                min_similarity=0.0,  # 유사도 임계값 제거
                 document_context=document_context if document_context else None
             )
             print(f"[OK] RAG 쿼리 완료 (응답 길이: {len(result.get('answer', ''))})")
+            print(f"[INFO] 사용된 문서 수: {len(result.get('sources', []))}")
         except Exception as query_error:
             print(f"[ERROR] RAG 쿼리 실패: {query_error}")
             import traceback
