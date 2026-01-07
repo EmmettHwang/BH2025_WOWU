@@ -218,7 +218,8 @@ class RAGChain:
                     question: str, 
                     k: int = 5,  # 3에서 5로 증가
                     system_message: Optional[str] = None,
-                    min_similarity: float = 0.3) -> Dict:  # 최소 유사도 임계값 추가
+                    min_similarity: float = 0.3,  # 최소 유사도 임계값 추가
+                    document_context: Optional[List[str]] = None) -> Dict:  # 특정 문서 필터링
         """
         RAG 질문 처리 (개선된 버전)
         
@@ -227,6 +228,7 @@ class RAGChain:
             k: 검색할 문서 수 (기본값 5로 증가)
             system_message: 커스텀 시스템 메시지
             min_similarity: 최소 유사도 임계값 (0.0~1.0, 기본값 0.3)
+            document_context: 특정 문서만 검색 (파일명 리스트)
             
         Returns:
             {
@@ -238,9 +240,26 @@ class RAGChain:
         try:
             # 1. 관련 문서 검색
             print(f"[DEBUG] 질문: {question}")
+            if document_context:
+                print(f"[INFO] 문서 컨텍스트 필터: {document_context}")
             print(f"[DOC] {k}개 문서 검색 중...")
             
             documents = self.vector_store.search_with_score(question, k=k)
+            
+            # 2. document_context가 있으면 해당 문서만 필터링
+            if document_context and documents:
+                print(f"[FILTER] 선택된 {len(document_context)}개 문서로 필터링 중...")
+                filtered_docs = []
+                for doc_dict in documents:
+                    metadata = doc_dict.get('metadata', {})
+                    filename = metadata.get('original_filename') or metadata.get('filename', '')
+                    
+                    # 파일명이 document_context에 있는지 확인
+                    if any(context_file in filename or filename in context_file for context_file in document_context):
+                        filtered_docs.append(doc_dict)
+                
+                documents = filtered_docs
+                print(f"[OK] 필터링 후 {len(documents)}개 문서 사용")
             
             if not documents:
                 return {
