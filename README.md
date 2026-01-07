@@ -211,7 +211,7 @@ DB_HOST=your_db_host
 DB_PORT=3307
 DB_USER=your_db_user
 DB_PASSWORD=your_db_password
-DB_NAME=bh2025
+DB_NAME=minilms
 
 # FTP 서버
 FTP_HOST=your_ftp_host
@@ -250,6 +250,11 @@ pip install -r requirements.txt
 ---
 
 ## 🎯 최신 업데이트 (v3.5)
+
+### ✅ 최근 변경사항 (2026-01-07)
+- **데이터베이스 이름 변경**: `bh2025` → `minilms`
+  - 설정 파일 업데이트 (.env, .env.example)
+  - MySQL 데이터베이스 마이그레이션 완료 (19개 테이블 이동)
 
 ### ✅ 완료된 기능
 - **문서 관리**: 시스템관리 → 강의 메뉴로 이동, 업로드/다운로드/삭제
