@@ -7913,9 +7913,8 @@ async def generate_exam_questions(request: Request):
         document_context = data.get('document_context', [])  # 선택된 RAG 문서 리스트
         
         print(f"[DEBUG] vector_store_manager: {vector_store_manager is not None}")
-        print(f"[DEBUG] rag_chain: {rag_chain is not None}")
         
-        # RAG 시스템 확인
+        # RAG 시스템 확인 (vector_store_manager만 체크)
         if not vector_store_manager:
             print("[ERROR] vector_store_manager가 None입니다")
             raise HTTPException(status_code=503, detail="RAG 시스템(Vector Store)이 초기화되지 않았습니다. 먼저 문서를 업로드하고 RAG 인덱싱을 완료해주세요.")
