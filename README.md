@@ -213,22 +213,57 @@ BH2025_WOWU/
 
 ## 🔧 환경 설정
 
+### 외부 시스템 접속 정보
+
+#### 1. 데이터베이스 (MySQL/MariaDB)
+| 항목 | 값 |
+|------|-----|
+| Host | `localhost` |
+| Port | `3306` |
+| User | `iyrc` |
+| Password | `dodan1004` |
+| Database | `minilms` |
+
+#### 2. FTP 서버 (Synology NAS)
+| 항목 | 값 |
+|------|-----|
+| Host | `bitnmeta2.synology.me` |
+| Port | `2121` |
+| User | `ha` |
+| Password | `dodan1004~` |
+
+**FTP 경로:**
+| 용도 | 경로 |
+|------|------|
+| 상담일지 | `/homes/ha/camFTP/BH2025/guidance` |
+| 훈련일지 | `/homes/ha/camFTP/BH2025/train` |
+| 학생 | `/homes/ha/camFTP/BH2025/student` |
+| 강사 | `/homes/ha/camFTP/BH2025/teacher` |
+| 팀/프로젝트 | `/homes/ha/camFTP/BH2025/team` |
+
+#### 3. AI API 엔드포인트
+| 서비스 | URL | 모델 |
+|--------|-----|------|
+| GROQ | `https://api.groq.com/openai/v1/chat/completions` | `llama-3.3-70b-versatile`, `gemma2-9b-it` |
+| Google Gemini | `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent` | `gemini-2.0-flash-exp` |
+| OpenAI | `https://api.openai.com/v1/chat/completions` | GPT (생활기록부용) |
+
 ### 필수 환경 변수 (.env)
 ```bash
 # 데이터베이스
-DB_HOST=your_db_host
-DB_PORT=3307
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=iyrc
+DB_PASSWORD=dodan1004
 DB_NAME=minilms
 
 # FTP 서버
-FTP_HOST=your_ftp_host
+FTP_HOST=bitnmeta2.synology.me
 FTP_PORT=2121
-FTP_USER=your_ftp_user
-FTP_PASSWORD=your_ftp_password
+FTP_USER=ha
+FTP_PASSWORD=dodan1004~
 
-# AI API Keys
+# AI API Keys (각 서비스에서 발급 필요)
 GROQ_API_KEY=your_groq_api_key
 GOOGLE_CLOUD_TTS_API_KEY=your_gemini_api_key
 OPENAI_API_KEY=your_openai_api_key
