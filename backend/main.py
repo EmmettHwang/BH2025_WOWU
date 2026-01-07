@@ -4747,6 +4747,10 @@ async def upload_image(
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[ERROR] 이미지 업로드 실패 (category={category}): {str(e)}")
+        print(f"[ERROR] Traceback:\n{error_trace}")
         raise HTTPException(status_code=500, detail=f"이미지 업로드 실패: {str(e)}")
 
 @app.post("/api/upload-image-base64")
@@ -4808,6 +4812,10 @@ async def upload_image_base64(data: dict):
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[ERROR] Base64 이미지 업로드 실패: {str(e)}")
+        print(f"[ERROR] Traceback:\n{error_trace}")
         raise HTTPException(status_code=500, detail=f"이미지 업로드 실패: {str(e)}")
 
 @app.get("/api/download-image")
