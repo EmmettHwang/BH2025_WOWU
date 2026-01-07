@@ -7908,6 +7908,7 @@ async def generate_exam_questions(request: Request):
         difficulty = data.get('difficulty', 'medium')
         instructor_code = data.get('instructor_code', '')
         description = data.get('description', '')
+        document_context = data.get('document_context', [])  # 선택된 RAG 문서 리스트
         
         # RAG 시스템 확인
         if not vector_store_manager or not rag_chain:
@@ -7968,9 +7969,14 @@ D) [선택지 4]
         # RAGChain 인스턴스 생성 (API 키 포함)
         from rag.rag_chain import RAGChain
         exam_rag_chain = RAGChain(vector_store_manager, groq_api_key, api_type='groq')
+        
+        # 문서 컨텍스트가 있으면 더 많은 청크 검색
+        k_value = 10 if document_context else 5
+        
         result = await exam_rag_chain.query(
             prompt,
-            k=5
+            k=k_value,
+            document_context=document_context if document_context else None
         )
         
         return {

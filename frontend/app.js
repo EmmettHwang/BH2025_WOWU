@@ -17239,6 +17239,22 @@ function renderAesong3DChat() {
                             ✅ GROQ 사용 중
                         </div>
                     </div>
+                    
+                    <!-- TTS 음성 출력 ON/OFF -->
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm font-semibold text-gray-700">
+                                <i class="fas fa-volume-up mr-1"></i>음성 출력 (TTS)
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="tts-toggle" checked onchange="window.toggleTTS(this.checked)" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            </label>
+                        </div>
+                        <div id="tts-status" style="margin-top: 5px; font-size: 11px; color: #10b981;">
+                            🔊 음성 출력 켜짐
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="status-text" id="status-text" style="display: none;">
@@ -17313,6 +17329,22 @@ function renderAesong3DChat() {
                 window.updateChatbotDocumentContext(documentContext);
                 console.log('📚 문서 컨텍스트 감지:', documentContext);
             }, 500);
+        }
+        
+        // TTS 설정 복원 (기본값: true)
+        const ttsEnabled = localStorage.getItem('tts_enabled') !== 'false';
+        const ttsToggle = document.getElementById('tts-toggle');
+        if (ttsToggle) {
+            ttsToggle.checked = ttsEnabled;
+            window.toggleTTS(ttsEnabled);
+        }
+        
+        // AI 모델 설정 복원 (기본값: groq)
+        const aiModel = localStorage.getItem('ai_model') || 'groq';
+        const aiModelSelect = document.getElementById('ai-model-select');
+        if (aiModelSelect) {
+            aiModelSelect.value = aiModel;
+            window.changeAIModel(aiModel);
         }
     }, 100);
 }
@@ -17694,6 +17726,26 @@ window.changeAIModel = function(model) {
     console.log('🤖 AI 모델 변경:', model);
 };
 
+// TTS 토글 함수
+window.toggleTTS = function(enabled) {
+    localStorage.setItem('tts_enabled', enabled ? 'true' : 'false');
+    const statusDiv = document.getElementById('tts-status');
+    
+    if (enabled) {
+        statusDiv.textContent = '🔊 음성 출력 켜짐';
+        statusDiv.style.color = '#10b981';
+    } else {
+        statusDiv.textContent = '🔇 음성 출력 꺼짐';
+        statusDiv.style.color = '#6b7280';
+        // 현재 재생 중인 TTS 중지
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
+    }
+    
+    console.log('🔊 TTS 설정:', enabled ? '켜짐' : '꺼짐');
+};
+
 // 메시지 전송 함수
 window.sendTextMessage = async function() {
     const input = document.getElementById('text-chat-input');
@@ -17866,6 +17918,13 @@ window.sendTextMessage = async function() {
 // TTS 음성 재생 함수 (Google Cloud TTS 우선, 실패 시 브라우저 TTS)
 async function playTTS(text, characterName) {
     try {
+        // TTS 설정 확인 (기본값: true)
+        const ttsEnabled = localStorage.getItem('tts_enabled') !== 'false';
+        if (!ttsEnabled) {
+            console.log('🔇 TTS가 꺼져있습니다');
+            return;
+        }
+        
         console.log('🔊 TTS 재생 시작:', characterName);
         
         // 1단계: Google Cloud TTS 시도
@@ -20397,11 +20456,23 @@ function showExamGenerateForm() {
                                class="w-full border rounded px-3 py-2"
                                placeholder="예: 중간고사, 1차 평가">
                     </div>
-                    <div>
-                        <label class="block text-gray-700 font-semibold mb-2">교과목 *</label>
-                        <input type="text" name="subject" required 
-                               class="w-full border rounded px-3 py-2"
-                               placeholder="예: 임상간호, 기본간호학">
+                    <div class="md:col-span-2">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            교과목 (RAG 문서 선택) *
+                            <span class="text-sm text-gray-500 font-normal ml-2">체크한 문서로 문제 생성</span>
+                        </label>
+                        <div id="rag-documents-list" class="border rounded px-4 py-3 bg-gray-50 max-h-60 overflow-y-auto">
+                            <div class="text-center text-gray-500 py-2">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>RAG 문서 불러오는 중...
+                            </div>
+                        </div>
+                        <div class="mt-2 flex items-center gap-2">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="select-all-docs" onclick="toggleAllDocuments(this.checked)" class="mr-2">
+                                <span class="text-sm text-gray-700">전체 선택</span>
+                            </label>
+                            <span id="selected-docs-count" class="text-sm text-blue-600 ml-4">0개 선택됨</span>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-gray-700 font-semibold mb-2">시험일자 *</label>
@@ -20473,18 +20544,97 @@ function showExamGenerateForm() {
 
     // 오늘 날짜로 기본값 설정
     document.querySelector('input[name="exam_date"]').valueAsDate = new Date();
+    
+    // RAG 문서 목록 로드
+    loadRAGDocumentsForExam();
+}
+
+// RAG 문서 목록 로드 함수
+async function loadRAGDocumentsForExam() {
+    const container = document.getElementById('rag-documents-list');
+    
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/documents/list`);
+        const documents = response.data.documents || [];
+        
+        if (documents.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-gray-500 py-4">
+                    <i class="fas fa-inbox mr-2"></i>
+                    RAG에 등록된 문서가 없습니다.
+                    <a href="#" onclick="showTab('rag-documents')" class="text-blue-600 ml-2">문서 관리로 이동</a>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = documents.map(doc => `
+            <label class="flex items-start p-2 hover:bg-gray-100 rounded cursor-pointer">
+                <input type="checkbox" 
+                       class="rag-doc-checkbox mt-1 mr-3" 
+                       value="${doc.filename}"
+                       onchange="updateSelectedDocsCount()">
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-900 truncate">${doc.filename}</div>
+                    <div class="text-xs text-gray-500">${doc.size || ''} · ${doc.upload_date || ''}</div>
+                </div>
+            </label>
+        `).join('');
+        
+        console.log('✅ RAG 문서 목록 로드 완료:', documents.length + '개');
+        
+    } catch (error) {
+        console.error('❌ RAG 문서 목록 로드 실패:', error);
+        container.innerHTML = `
+            <div class="text-center text-red-500 py-4">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                문서 목록을 불러오지 못했습니다.
+            </div>
+        `;
+    }
+}
+
+// 전체 선택/해제 토글
+function toggleAllDocuments(checked) {
+    const checkboxes = document.querySelectorAll('.rag-doc-checkbox');
+    checkboxes.forEach(cb => cb.checked = checked);
+    updateSelectedDocsCount();
+}
+
+// 선택된 문서 개수 업데이트
+function updateSelectedDocsCount() {
+    const checkboxes = document.querySelectorAll('.rag-doc-checkbox:checked');
+    const count = checkboxes.length;
+    const countSpan = document.getElementById('selected-docs-count');
+    if (countSpan) {
+        countSpan.textContent = count + '개 선택됨';
+        countSpan.className = count > 0 ? 'text-sm text-blue-600 ml-4 font-semibold' : 'text-sm text-gray-500 ml-4';
+    }
 }
 
 async function generateExamQuestions(form) {
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
     
+    // 선택된 RAG 문서 수집
+    const selectedDocs = Array.from(document.querySelectorAll('.rag-doc-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    if (selectedDocs.length === 0) {
+        await window.showCustomAlert('문제 생성을 위해 최소 1개 이상의 RAG 문서를 선택해주세요.', 'warning');
+        return;
+    }
+    
+    // 선택된 문서명을 교과목으로 설정 (쉼표로 구분)
+    data.subject = selectedDocs.join(', ');
+    data.document_context = selectedDocs; // 백엔드에 문서 컨텍스트 전달
+    
     // 강사 코드 추가
     const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
     data.instructor_code = instructor.code || '';
 
     try {
-        window.showLoading('RAG 시스템으로 문제 생성 중...');
+        window.showLoading(`RAG 시스템으로 문제 생성 중... (${selectedDocs.length}개 문서 분석)`);
 
         const response = await axios.post(`${API_BASE_URL}/api/exam-bank/generate`, data);
 
