@@ -7,7 +7,9 @@ class AesongChatbot {
     constructor() {
         this.chatHistory = [];
         this.isOpen = false;
-        
+        this.ttsEnabled = false;  // 음성출력 ON/OFF 상태
+        this.speechSynth = window.speechSynthesis;  // Web Speech API
+
         // API_BASE_URL 설정
         let baseUrl;
         if (window.API_BASE_URL && window.API_BASE_URL !== '') {
@@ -190,9 +192,15 @@ class AesongChatbot {
                             </p>
                         </div>
                     </div>
-                    <button onclick="window.aesongBot.toggle()" class="text-white hover:bg-white/20 rounded-full p-2 transition-colors">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button id="aesong-tts-btn" onclick="window.aesongBot.toggleTTS()"
+                                class="text-white hover:bg-white/20 rounded-full p-2 transition-colors" title="음성출력 ON/OFF">
+                            <i class="fas fa-volume-mute text-lg" id="aesong-tts-icon"></i>
+                        </button>
+                        <button onclick="window.aesongBot.toggle()" class="text-white hover:bg-white/20 rounded-full p-2 transition-colors">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- 채팅 영역 -->
@@ -299,7 +307,7 @@ class AesongChatbot {
     toggle() {
         this.isOpen = !this.isOpen;
         const chatWindow = document.getElementById('aesong-chat');
-        
+
         if (this.isOpen) {
             chatWindow.classList.add('aesong-chat-open');
             // 입력창에 포커스
@@ -308,6 +316,61 @@ class AesongChatbot {
             }, 300);
         } else {
             chatWindow.classList.remove('aesong-chat-open');
+            // 창 닫을 때 음성 중지
+            this.stopSpeaking();
+        }
+    }
+
+    // 음성출력 ON/OFF 토글
+    toggleTTS() {
+        this.ttsEnabled = !this.ttsEnabled;
+        const icon = document.getElementById('aesong-tts-icon');
+        const btn = document.getElementById('aesong-tts-btn');
+
+        if (this.ttsEnabled) {
+            icon.className = 'fas fa-volume-up text-lg';
+            btn.title = '음성출력 OFF';
+            // 활성화 알림
+            this.speakText('음성 출력이 켜졌어요!');
+        } else {
+            icon.className = 'fas fa-volume-mute text-lg';
+            btn.title = '음성출력 ON';
+            this.stopSpeaking();
+        }
+        console.log('🔊 음성출력:', this.ttsEnabled ? 'ON' : 'OFF');
+    }
+
+    // 텍스트를 음성으로 출력
+    speakText(text) {
+        if (!this.ttsEnabled || !this.speechSynth) return;
+
+        // 이전 음성 중지
+        this.stopSpeaking();
+
+        // 이모지 및 특수문자 제거
+        const cleanText = text.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[*#_~`]/gu, '').trim();
+
+        if (!cleanText) return;
+
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = 'ko-KR';
+        utterance.rate = 1.1;  // 약간 빠르게
+        utterance.pitch = 1.2;  // 약간 높은 톤 (귀여운 느낌)
+
+        // 한국어 음성 선택
+        const voices = this.speechSynth.getVoices();
+        const koreanVoice = voices.find(v => v.lang.includes('ko'));
+        if (koreanVoice) {
+            utterance.voice = koreanVoice;
+        }
+
+        this.speechSynth.speak(utterance);
+    }
+
+    // 음성 중지
+    stopSpeaking() {
+        if (this.speechSynth) {
+            this.speechSynth.cancel();
         }
     }
 
@@ -355,10 +418,13 @@ class AesongChatbot {
             
             // 로딩 제거
             this.removeLoadingMessage();
-            
+
             // AI 응답 표시
             this.addMessageToUI('ai', aiResponse);
-            
+
+            // 음성 출력 (TTS가 켜져 있으면)
+            this.speakText(aiResponse);
+
             // 채팅 히스토리에 추가
             this.chatHistory.push({
                 role: 'assistant',

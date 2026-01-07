@@ -106,7 +106,7 @@
     <!-- 로그인 컨테이너 -->
     <div class="w-full max-w-md fade-in">
         <!-- 로고 및 타이틀 -->
-        <script>document.write('<div id="login-header" class="login-header-bg text-center mb-8 rounded-2xl p-6 shadow-2xl" style="background: ' + (__THEME_COLOR__ || '#3173f1') + ';">');</script>
+        <script>document.write('<div id="login-header" class="login-header-bg text-center mb-8 rounded-2xl p-6 shadow-2xl" style="background: ' + (__THEME_COLOR__ || '#2563eb') + ';">');</script>
             <div class="inline-block bg-white rounded-lg overflow-hidden mb-4 shadow-md" style="width: 180px; height: 72px;">
                 <script>
                     var logoSrc = __LOGO_URL__ || '/woosong-logo.png';
@@ -159,7 +159,7 @@
                         </button>
                     </div>
                     <p class="text-xs text-gray-500 mt-2">
-                        <i class="fas fa-info-circle mr-1"></i>기본 비밀번호: kdt2025
+                        <i class="fas fa-info-circle mr-1"></i>최초 비밀번호는 생년월일 6자리입니다.
                     </p>
                 </div>
                 
@@ -177,13 +177,30 @@
                     type="submit"
                     id="loginButton"
                     class="w-full text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all active:scale-95 hover:opacity-90"
-                    style="background: #3173f1;"
+                    style="background: #2563eb;"
                 >
                     <i class="fas fa-sign-in-alt mr-2"></i>로그인
                 </button>
                 <script>
                     if (__THEME_COLOR__) {
                         document.getElementById('loginButton').style.background = __THEME_COLOR__;
+                    }
+                </script>
+
+                <!-- 신규가입 버튼 -->
+                <button
+                    type="button"
+                    onclick="window.location.href='/register.html'"
+                    id="registerButton"
+                    class="w-full mt-3 bg-white border-2 font-bold py-4 rounded-xl text-lg transition-all transform hover:scale-[1.02] active:scale-95 hover:bg-gray-50"
+                    style="border-color: #2563eb; color: #2563eb;"
+                >
+                    <i class="fas fa-user-plus mr-2"></i>신규가입
+                </button>
+                <script>
+                    if (__THEME_COLOR__) {
+                        document.getElementById('registerButton').style.borderColor = __THEME_COLOR__;
+                        document.getElementById('registerButton').style.color = __THEME_COLOR__;
                     }
                 </script>
             </form>

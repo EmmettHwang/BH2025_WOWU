@@ -3068,6 +3068,21 @@ window.showTab = function(tab, addToHistory = true) {
             removeDashboardActivityListeners();
             showExamBank();
             break;
+        case 'online-exam':
+            stopDashboardAutoRefresh();
+            removeDashboardActivityListeners();
+            showOnlineExam();
+            break;
+        case 'quick-quiz':
+            stopDashboardAutoRefresh();
+            removeDashboardActivityListeners();
+            showQuickQuiz();
+            break;
+        case 'assignments':
+            stopDashboardAutoRefresh();
+            removeDashboardActivityListeners();
+            showAssignments();
+            break;
         case 'backup-manager':
             stopDashboardAutoRefresh();
             removeDashboardActivityListeners();
@@ -3116,6 +3131,9 @@ function renderStudents() {
                     <i class="fas fa-user-graduate mr-2"></i>학생 목록 (총 ${students.length}명)
                 </h2>
                 <div class="space-x-2">
+                    <button onclick="window.showStudentRegistrations()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-user-plus mr-2"></i>신규가입자 처리
+                    </button>
                     <button onclick="window.showStudentForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
                         <i class="fas fa-plus mr-2"></i>학생 추가
                     </button>
@@ -3135,7 +3153,7 @@ function renderStudents() {
                     <select id="student-sort" class="w-full border rounded px-3 py-2" onchange="window.renderStudents()">
                         <option value="name" ${previousSort === 'name' ? 'selected' : ''}>이름순</option>
                         <option value="course" ${previousSort === 'course' ? 'selected' : ''}>과정순</option>
-                        <option value="campus" ${previousSort === 'campus' ? 'selected' : ''}>캠퍼스순</option>
+                        <option value="campus" ${previousSort === 'campus' ? 'selected' : ''}>희망지역순</option>
                         <option value="final_school" ${previousSort === 'final_school' ? 'selected' : ''}>학력순</option>
                         <option value="birth_date" ${previousSort === 'birth_date' ? 'selected' : ''}>생년월일순</option>
                     </select>
@@ -3334,6 +3352,307 @@ window.uploadExcel = async function() {
     }
 }
 
+// ==================== 신규가입자 처리 ====================
+window.showStudentRegistrations = async function() {
+    const app = document.getElementById('app');
+
+    try {
+        window.showLoading('신규가입 신청 목록을 불러오는 중...');
+
+        const [registrationsRes, coursesRes] = await Promise.all([
+            axios.get(`${API_BASE_URL}/api/student-registrations`),
+            axios.get(`${API_BASE_URL}/api/courses`)
+        ]);
+
+        const registrations = registrationsRes.data;
+        const coursesData = coursesRes.data;
+        courses = coursesData;
+
+        // 과정 코드 -> 이름 매핑
+        const courseMap = {};
+        coursesData.forEach(c => courseMap[c.code] = c.name);
+
+        window.hideLoading();
+
+        app.innerHTML = `
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-user-plus mr-2 text-orange-500"></i>신규가입자 처리
+                    </h2>
+                    <div class="space-x-2">
+                        <button onclick="loadStudents()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                            <i class="fas fa-arrow-left mr-2"></i>학생 목록으로
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 필터 -->
+                <div class="mb-4">
+                    <select id="reg-status-filter" onchange="window.filterRegistrations()" class="border rounded px-3 py-2">
+                        <option value="">전체 상태</option>
+                        <option value="pending" selected>대기중</option>
+                        <option value="approved">승인됨</option>
+                        <option value="rejected">거절됨</option>
+                    </select>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white" id="registrations-table">
+                        <thead class="bg-orange-50">
+                            <tr>
+                                <th class="px-4 py-2 text-center">사진</th>
+                                <th class="px-4 py-2 text-left">신청일시</th>
+                                <th class="px-4 py-2 text-left">이름</th>
+                                <th class="px-4 py-2 text-left">신청 과정</th>
+                                <th class="px-4 py-2 text-left">연락처</th>
+                                <th class="px-4 py-2 text-left">이메일</th>
+                                <th class="px-4 py-2 text-left">상태</th>
+                                <th class="px-4 py-2 text-center">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody id="registrations-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        // 전역에 저장
+        window._registrations = registrations;
+        window._courseMap = courseMap;
+
+        // 테이블 렌더링
+        window.filterRegistrations();
+
+    } catch (error) {
+        window.hideLoading();
+        console.error('신규가입 신청 로드 실패:', error);
+        app.innerHTML = `<div class="text-red-600 p-4">신규가입 신청 목록을 불러오는데 실패했습니다: ${error.message}</div>`;
+    }
+};
+
+window.filterRegistrations = function() {
+    const statusFilter = document.getElementById('reg-status-filter')?.value || 'pending';
+    const registrations = window._registrations || [];
+    const courseMap = window._courseMap || {};
+
+    let filtered = registrations;
+    if (statusFilter) {
+        filtered = registrations.filter(r => r.status === statusFilter);
+    }
+
+    const tbody = document.getElementById('registrations-tbody');
+    if (!tbody) return;
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-gray-500">신청 내역이 없습니다.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(reg => {
+        const statusBadge = {
+            'pending': '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">대기중</span>',
+            'approved': '<span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">승인됨</span>',
+            'rejected': '<span class="bg-red-100 text-red-800 px-2 py-1 rounded text-sm">거절됨</span>'
+        };
+
+        const createdAt = reg.created_at ? new Date(reg.created_at).toLocaleString('ko-KR') : '-';
+        const courseName = courseMap[reg.course_code] || reg.course_code || '-';
+
+        // 프로필 사진 표시
+        const profilePhoto = reg.profile_photo
+            ? `<img src="${reg.profile_photo}" alt="프로필" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200">`
+            : `<div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400"><i class="fas fa-user"></i></div>`;
+
+        const actionButtons = reg.status === 'pending' ? `
+            <button onclick="window.viewRegistrationDetail(${reg.id})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-sm mr-1" title="상세보기">
+                <i class="fas fa-eye"></i>
+            </button>
+            <button onclick="window.approveRegistration(${reg.id})" class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-sm mr-1" title="승인">
+                <i class="fas fa-check"></i>
+            </button>
+            <button onclick="window.rejectRegistration(${reg.id})" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm" title="거절">
+                <i class="fas fa-times"></i>
+            </button>
+        ` : `
+            <button onclick="window.viewRegistrationDetail(${reg.id})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-sm" title="상세보기">
+                <i class="fas fa-eye"></i>
+            </button>
+        `;
+
+        return `
+            <tr class="border-b hover:bg-gray-50">
+                <td class="px-4 py-2 text-center">${profilePhoto}</td>
+                <td class="px-4 py-2 text-sm">${createdAt}</td>
+                <td class="px-4 py-2 font-medium">${reg.name || '-'}</td>
+                <td class="px-4 py-2">${courseName}</td>
+                <td class="px-4 py-2">${reg.phone || '-'}</td>
+                <td class="px-4 py-2">${reg.email || '-'}</td>
+                <td class="px-4 py-2">${statusBadge[reg.status] || reg.status}</td>
+                <td class="px-4 py-2 text-center">${actionButtons}</td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.viewRegistrationDetail = function(regId) {
+    const registrations = window._registrations || [];
+    const reg = registrations.find(r => r.id === regId);
+    if (!reg) return;
+
+    const courseMap = window._courseMap || {};
+    const courseName = courseMap[reg.course_code] || reg.course_code || '-';
+
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.id = 'reg-detail-modal';
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-2xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">
+                    <i class="fas fa-user-plus mr-2 text-orange-500"></i>신규가입 상세정보
+                </h3>
+                <button onclick="document.getElementById('reg-detail-modal').remove()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3">
+                <!-- 프로필 사진 -->
+                <div class="flex justify-center mb-4">
+                    ${reg.profile_photo
+                        ? `<img src="${reg.profile_photo}" alt="프로필" class="w-24 h-24 rounded-full object-cover border-4 border-orange-200 shadow-lg">`
+                        : `<div class="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-3xl border-4 border-gray-300"><i class="fas fa-user"></i></div>`
+                    }
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-500">이름</label>
+                        <p class="font-medium">${reg.name || '-'}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500">신청 과정</label>
+                        <p class="font-medium">${courseName}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500">생년월일</label>
+                        <p class="font-medium">${reg.birth_date || '-'}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500">성별</label>
+                        <p class="font-medium">${reg.gender || '-'}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500">연락처</label>
+                        <p class="font-medium">${reg.phone || '-'}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500">이메일</label>
+                        <p class="font-medium">${reg.email || '-'}</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-500">주소</label>
+                    <p class="font-medium">${reg.address || '-'}</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-500">학력</label>
+                    <p class="font-medium">${reg.education || '-'}</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-500">관심분야</label>
+                    <p class="font-medium">${reg.interests || '-'}</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-500">자기소개</label>
+                    <p class="font-medium whitespace-pre-wrap">${reg.introduction || '-'}</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 pt-3 border-t">
+                    <div>
+                        <label class="block text-sm text-gray-500">신청일시</label>
+                        <p class="font-medium text-sm">${reg.created_at ? new Date(reg.created_at).toLocaleString('ko-KR') : '-'}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500">상태</label>
+                        <p class="font-medium">${reg.status === 'pending' ? '대기중' : reg.status === 'approved' ? '승인됨' : '거절됨'}</p>
+                    </div>
+                </div>
+            </div>
+
+            ${reg.status === 'pending' ? `
+                <div class="flex gap-2 mt-6 pt-4 border-t">
+                    <button onclick="document.getElementById('reg-detail-modal').remove(); window.approveRegistration(${reg.id})" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-medium">
+                        <i class="fas fa-check mr-2"></i>승인
+                    </button>
+                    <button onclick="document.getElementById('reg-detail-modal').remove(); window.rejectRegistration(${reg.id})" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-medium">
+                        <i class="fas fa-times mr-2"></i>거절
+                    </button>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+};
+
+window.approveRegistration = async function(regId) {
+    if (!confirm('이 신청을 승인하시겠습니까? 학생으로 등록됩니다.')) return;
+
+    try {
+        window.showLoading('승인 처리 중...');
+
+        const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+
+        const response = await axios.put(`${API_BASE_URL}/api/student-registrations/${regId}/approve`, {
+            processed_by: instructor.name || ''
+        });
+
+        window.hideLoading();
+        window.showAlert(`✅ ${response.data.message} (학생코드: ${response.data.student_code})`, 'success');
+
+        // 캐시 무효화
+        window.invalidateCache('students');
+
+        // 목록 새로고침
+        window.showStudentRegistrations();
+    } catch (error) {
+        window.hideLoading();
+        console.error('승인 처리 실패:', error);
+        window.showAlert('❌ 승인 처리에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
+    }
+};
+
+window.rejectRegistration = async function(regId) {
+    if (!confirm('이 신청을 거절하시겠습니까?')) return;
+
+    try {
+        window.showLoading('거절 처리 중...');
+
+        const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+
+        await axios.put(`${API_BASE_URL}/api/student-registrations/${regId}/reject`, {
+            processed_by: instructor.name || ''
+        });
+
+        window.hideLoading();
+        window.showAlert('✅ 신청이 거절되었습니다.', 'success');
+
+        // 목록 새로고침
+        window.showStudentRegistrations();
+    } catch (error) {
+        window.hideLoading();
+        console.error('거절 처리 실패:', error);
+        window.showAlert('❌ 거절 처리에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
+    }
+};
+
 window.showStudentForm = async function(studentId = null) {
     // courses 배열이 없으면 먼저 로드
     if (!courses || courses.length === 0) {
@@ -3425,15 +3744,10 @@ window.showStudentForm = async function(studentId = null) {
                            class="w-full px-3 py-2 border rounded-lg">
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-2">캠퍼스(과정)</label>
-                    <select name="campus" class="w-full px-3 py-2 border rounded-lg">
-                        <option value="">선택</option>
-                        ${courses.sort((a, b) => (a.name || a.code).localeCompare(b.name || b.code, 'ko')).map(c => `
-                            <option value="${c.name || c.code}" ${student?.campus === (c.name || c.code) ? 'selected' : ''}>
-                                ${c.name || c.code}
-                            </option>
-                        `).join('')}
-                    </select>
+                    <label class="block text-gray-700 mb-2">희망지역</label>
+                    <input type="text" name="campus" value="${student?.campus || ''}"
+                           placeholder="예: 서울, 대전"
+                           class="w-full px-3 py-2 border rounded-lg">
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-2">과정 선택</label>
@@ -3458,8 +3772,8 @@ window.showStudentForm = async function(studentId = null) {
                 </div>
                 <div class="col-span-2">
                     <label class="block text-gray-700 mb-2">학력</label>
-                    <input type="text" name="education" value="${student?.education || ''}" 
-                           placeholder="대학교/학년/학과"
+                    <input type="text" name="education" value="${student?.education || ''}"
+                           placeholder="학교/학년/전공"
                            class="w-full px-3 py-2 border rounded-lg">
                 </div>
                 <div class="col-span-2">
@@ -5894,7 +6208,7 @@ window.generateAIReport = async function() {
         
     } catch (error) {
         console.error('AI 생기부 생성 실패:', error);
-        alert('AI 생기부 생성에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+        showAlert('AI 생기부 생성에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
         document.getElementById('ai-loading').classList.add('hidden');
     }
 }
@@ -6028,11 +6342,14 @@ window.showInstructorCodeForm = function(code = null) {
         { id: 'timetables', name: '시간표', icon: 'fa-clock' },
         { id: 'training-logs', name: '훈련일지 관리', icon: 'fa-clipboard-list' },
         { id: 'rag-documents', name: '문서 관리 (RAG)', icon: 'fa-file-alt' },
+        { id: 'exam-bank', name: '문제은행', icon: 'fa-clipboard-question' },
+        { id: 'online-exam', name: '온라인시험', icon: 'fa-laptop' },
+        { id: 'quick-quiz', name: '선착순 퀴즈', icon: 'fa-bolt' },
+        { id: 'assignments', name: '과제관리', icon: 'fa-tasks' },
         { id: 'ai-report', name: 'AI 생기부', icon: 'fa-file-alt' },
         { id: 'ai-timetable', name: 'AI 시간표', icon: 'fa-calendar-alt' },
         { id: 'ai-training-log', name: 'AI 훈련일지', icon: 'fa-brain' },
         { id: 'ai-counseling', name: 'AI 상담일지', icon: 'fa-comments' },
-        { id: 'exam-bank', name: '문제은행', icon: 'fa-clipboard-question' },
         { id: 'aesong-3d-chat', name: '🐶 예진이 만나기', icon: 'fa-robot' },
         { id: 'projects', name: '팀 관리', icon: 'fa-users' },
         { id: 'team-activity-logs', name: '팀 활동일지', icon: 'fa-clipboard-list' }
@@ -8079,7 +8396,7 @@ window.saveCourseChanges = async function(courseCode) {
         renderCourses();
     } catch (error) {
         console.error('저장 실패:', error);
-        alert('저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+        showAlert('저장에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -8109,7 +8426,7 @@ window.showCalculationResult = function(result, startDate, endDate) {
     const modal = document.getElementById('alert-modal');
     if (!modal) {
         console.error('❌ alert-modal을 찾을 수 없습니다!');
-        alert(`자동계산 완료!\n\n교육기간: ${startDate} ~ ${endDate}\n총 교육시간: ${result.total_hours}시간\n총 교육일수: ${result.total_days}일`);
+        showAlert(`자동계산 완료!\n\n교육기간: ${startDate} ~ ${endDate}\n총 교육시간: ${result.total_hours}시간\n총 교육일수: ${result.total_days}일`, 'success', { title: '자동계산 완료' });
         return;
     }
     
@@ -8124,7 +8441,7 @@ window.showCalculationResult = function(result, startDate, endDate) {
     
     if (!header || !message) {
         console.error('❌ 모달 내부 요소를 찾을 수 없습니다!');
-        alert(`자동계산 완료!\n\n교육기간: ${startDate} ~ ${endDate}\n총 교육시간: ${result.total_hours}시간\n총 교육일수: ${result.total_days}일`);
+        showAlert(`자동계산 완료!\n\n교육기간: ${startDate} ~ ${endDate}\n총 교육시간: ${result.total_hours}시간\n총 교육일수: ${result.total_days}일`, 'success', { title: '자동계산 완료' });
         return;
     }
     
@@ -8455,7 +8772,7 @@ window.autoCalculateDates = async function() {
         }
     } catch (error) {
         console.error('자동계산 실패:', error);
-        alert('자동계산에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+        showAlert('자동계산에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
         
         // 버튼 원상복구
         const button = event.target.closest('button');
@@ -8965,7 +9282,7 @@ window.saveCourse = async function(existingCode) {
         await loadCourses();
     } catch (error) {
         console.error('저장 실패:', error);
-        alert('저장 실패: ' + (error.response?.data?.detail || error.message));
+        showAlert('저장 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -11023,7 +11340,7 @@ window.saveTimetable = async function(id) {
         window.hideTimetableForm();
         loadTimetables();
     } catch (error) {
-        alert('저장 실패: ' + error.response?.data?.detail || error.message);
+        showAlert('저장 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -13662,6 +13979,43 @@ function renderSystemSettings(settings) {
                     </div>
                 </div>
 
+                <!-- 신규가입 설정 섹션 -->
+                <div class="p-6 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border-2 border-orange-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-user-plus mr-2 text-orange-600"></i>
+                        신규가입 설정
+                    </h3>
+
+                    <!-- 모집중인 과정 -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-book-open mr-2 text-orange-500"></i>모집중인 과정
+                        </label>
+                        <div id="open-courses-checkboxes" class="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-white rounded-lg border border-gray-200">
+                            <!-- 과정 체크박스가 동적으로 추가됩니다 -->
+                        </div>
+                        <input type="hidden" id="open-courses">
+                        <p class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            선택한 과정만 신규가입 페이지에서 선택 가능합니다. 선택하지 않으면 전체 과정이 표시됩니다.
+                        </p>
+                    </div>
+
+                    <!-- 관심분야 키워드 -->
+                    <div class="mt-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-heart mr-2 text-red-500"></i>관심분야 키워드
+                        </label>
+                        <input type="text" id="interest-keywords"
+                               placeholder="예: AI, 로봇, 빅데이터, 프로그래밍, 헬스케어 (쉼표로 구분)"
+                               class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-white">
+                        <p class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            쉼표(,)로 구분하여 입력하세요. 신규가입 페이지에서 체크박스로 표시됩니다.
+                        </p>
+                    </div>
+                </div>
+
                 <!-- 테마 설정 섹션 -->
                 <div class="p-6 bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl border-2 border-pink-200 shadow-sm">
                     <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
@@ -14024,10 +14378,65 @@ function renderSystemSettings(settings) {
             refreshInterval: refreshIntervalInput?.value + '분'
         });
 
+        // 모집중인 과정 체크박스 로드
+        loadOpenCoursesCheckboxes(settings.open_courses || '');
+
+        // 관심분야 키워드 로드
+        const interestKeywordsInput = document.getElementById('interest-keywords');
+        if (interestKeywordsInput) {
+            interestKeywordsInput.value = settings.interest_keywords || '';
+            console.log('✅ 관심분야 키워드 로드:', settings.interest_keywords || '미설정');
+        }
+
         // 테마 설정 로드
         window.loadThemeSettings();
         console.log('🎨 테마 설정 로드 완료');
     }, 0);
+}
+
+// 모집중인 과정 체크박스 로드
+async function loadOpenCoursesCheckboxes(savedOpenCourses) {
+    try {
+        const coursesRes = await axios.get(`${API_BASE_URL}/api/courses`);
+        const allCourses = coursesRes.data;
+
+        const container = document.getElementById('open-courses-checkboxes');
+        if (!container) return;
+
+        const openCodesArray = savedOpenCourses ? savedOpenCourses.split(',').map(c => c.trim()) : [];
+
+        if (allCourses.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 col-span-3">등록된 과정이 없습니다.</p>';
+            return;
+        }
+
+        container.innerHTML = allCourses.map(course => {
+            const isChecked = openCodesArray.includes(course.code);
+            return `
+                <label class="flex items-center gap-2 p-2 rounded hover:bg-orange-50 cursor-pointer">
+                    <input type="checkbox" class="open-course-checkbox w-4 h-4 text-orange-500"
+                           value="${course.code}" ${isChecked ? 'checked' : ''}
+                           onchange="window.updateOpenCoursesValue()">
+                    <span class="text-sm">${course.name || course.code}</span>
+                </label>
+            `;
+        }).join('');
+
+        // hidden input에 현재 값 설정
+        document.getElementById('open-courses').value = savedOpenCourses || '';
+
+        console.log('✅ 모집중인 과정 체크박스 로드:', allCourses.length + '개 과정');
+    } catch (error) {
+        console.error('과정 로드 실패:', error);
+    }
+}
+
+// 체크박스 변경 시 hidden input 업데이트
+window.updateOpenCoursesValue = function() {
+    const checkboxes = document.querySelectorAll('.open-course-checkbox:checked');
+    const values = Array.from(checkboxes).map(cb => cb.value);
+    document.getElementById('open-courses').value = values.join(',');
+    console.log('모집중인 과정 업데이트:', values);
 }
 
 // 로고 업로드 처리
@@ -14221,6 +14630,16 @@ window.saveSystemSettings = async function() {
     formData.append('bgm_genre', bgmGenre);
     formData.append('bgm_volume', bgmVolume);
     formData.append('dashboard_refresh_interval', refreshInterval.toString());
+
+    // 모집중인 과정 저장
+    const openCourses = document.getElementById('open-courses')?.value || '';
+    formData.append('open_courses', openCourses);
+    console.log('💾 모집중인 과정 저장:', openCourses || '전체');
+
+    // 관심분야 키워드 저장
+    const interestKeywords = document.getElementById('interest-keywords')?.value || '';
+    formData.append('interest_keywords', interestKeywords);
+    console.log('💾 관심분야 키워드 저장:', interestKeywords || '미설정');
     
     try {
         // 프로그레스바 표시
@@ -14442,7 +14861,7 @@ window.resetSystemSettings = async function() {
 // ==================== 테마 설정 ====================
 const THEME_PRESETS = {
     default: {
-        menubar: '#3173f1',
+        menubar: '#2563eb',
         title: '#1e40af',
         subtitle: '#374151',
         menuActive: '#3b82f6'
@@ -14551,7 +14970,7 @@ window.applyTheme = function(theme) {
         theme = JSON.parse(localStorage.getItem('system_theme') || 'null') || THEME_PRESETS.default;
     }
 
-    const menubar = theme.menubar || '#3173f1';
+    const menubar = theme.menubar || '#2563eb';
     const title = theme.title || '#1e40af';
     const subtitle = theme.subtitle || '#374151';
     const menuActive = theme.menuActive || '#3b82f6';
@@ -19263,13 +19682,160 @@ window.openDbManagementModal = function(action) {
     }
 
     modal.classList.remove('hidden');
-    document.getElementById('db-mgmt-instructor-code').focus();
+    document.getElementById('db-mgmt-instructor-name').focus();
 };
 
 window.closeDbManagementModal = function() {
     document.getElementById('db-management-modal').classList.add('hidden');
     dbManagementAction = '';
 };
+
+// 백업 진행 상황 모달 표시
+function showBackupProgress(action) {
+    const isBackup = action === 'backup';
+    const progressHtml = `
+        <div id="backup-progress-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[10000]">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+                <div class="p-6 ${isBackup ? 'bg-gradient-to-r from-blue-500 to-blue-600' : 'bg-gradient-to-r from-red-500 to-red-600'}">
+                    <div class="flex items-center gap-4">
+                        <div class="text-4xl text-white">
+                            <i class="fas ${isBackup ? 'fa-download' : 'fa-database'} animate-pulse"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white">${isBackup ? 'DB 백업 진행 중' : 'DB 초기화 진행 중'}</h3>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div id="backup-progress-steps" class="space-y-4">
+                        <div id="step-auth" class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <span class="text-gray-700">인증 완료</span>
+                        </div>
+                        <div id="step-prepare" class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                            <span class="text-gray-700">데이터 준비 중...</span>
+                        </div>
+                        <div id="step-tables" class="flex items-center gap-3 opacity-50">
+                            <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-white">
+                                <i class="fas fa-table"></i>
+                            </div>
+                            <span class="text-gray-500">테이블 백업 중...</span>
+                        </div>
+                        <div id="step-save" class="flex items-center gap-3 opacity-50">
+                            <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-white">
+                                <i class="fas fa-save"></i>
+                            </div>
+                            <span class="text-gray-500">파일 저장 중...</span>
+                        </div>
+                    </div>
+
+                    <!-- 진행 바 -->
+                    <div class="mt-6">
+                        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div id="backup-progress-bar" class="h-full ${isBackup ? 'bg-blue-500' : 'bg-red-500'} rounded-full transition-all duration-500" style="width: 25%"></div>
+                        </div>
+                        <p id="backup-progress-text" class="text-center text-sm text-gray-500 mt-2">데이터 준비 중...</p>
+                    </div>
+
+                    <!-- 현재 테이블 표시 -->
+                    <div id="backup-current-table" class="mt-4 p-3 bg-gray-50 rounded-lg text-center hidden">
+                        <p class="text-xs text-gray-400">현재 처리 중</p>
+                        <p id="backup-table-name" class="text-sm font-semibold text-gray-700">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', progressHtml);
+}
+
+function updateBackupProgress(step, progress, tableName = '') {
+    const progressBar = document.getElementById('backup-progress-bar');
+    const progressText = document.getElementById('backup-progress-text');
+    const currentTable = document.getElementById('backup-current-table');
+    const tableNameEl = document.getElementById('backup-table-name');
+
+    if (progressBar) progressBar.style.width = `${progress}%`;
+
+    // 단계 업데이트
+    const steps = {
+        prepare: { text: '데이터 준비 중...', progress: 25 },
+        tables: { text: '테이블 백업 중...', progress: 50 },
+        save: { text: '파일 저장 중...', progress: 75 },
+        complete: { text: '완료!', progress: 100 }
+    };
+
+    if (steps[step] && progressText) {
+        progressText.textContent = steps[step].text;
+    }
+
+    // 테이블 이름 표시
+    if (step === 'tables' && tableName) {
+        if (currentTable) currentTable.classList.remove('hidden');
+        if (tableNameEl) tableNameEl.textContent = tableName;
+    }
+
+    // 단계별 아이콘 업데이트
+    if (step === 'tables') {
+        const stepPrepare = document.getElementById('step-prepare');
+        if (stepPrepare) {
+            stepPrepare.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                    <i class="fas fa-check"></i>
+                </div>
+                <span class="text-gray-700">데이터 준비 완료</span>
+            `;
+        }
+        const stepTables = document.getElementById('step-tables');
+        if (stepTables) {
+            stepTables.classList.remove('opacity-50');
+            stepTables.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <span class="text-gray-700">테이블 백업 중...</span>
+            `;
+        }
+    } else if (step === 'save') {
+        const stepTables = document.getElementById('step-tables');
+        if (stepTables) {
+            stepTables.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                    <i class="fas fa-check"></i>
+                </div>
+                <span class="text-gray-700">테이블 백업 완료</span>
+            `;
+        }
+        const stepSave = document.getElementById('step-save');
+        if (stepSave) {
+            stepSave.classList.remove('opacity-50');
+            stepSave.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <span class="text-gray-700">파일 저장 중...</span>
+            `;
+        }
+    } else if (step === 'complete') {
+        const stepSave = document.getElementById('step-save');
+        if (stepSave) {
+            stepSave.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                    <i class="fas fa-check"></i>
+                </div>
+                <span class="text-gray-700">파일 저장 완료</span>
+            `;
+        }
+    }
+}
+
+function hideBackupProgress() {
+    const modal = document.getElementById('backup-progress-modal');
+    if (modal) modal.remove();
+}
 
 window.executeDbManagement = async function() {
     const instructorName = document.getElementById('db-mgmt-instructor-name').value.trim();
@@ -19288,8 +19854,9 @@ window.executeDbManagement = async function() {
             password: password
         });
 
+        hideLoading();
+
         if (!verifyRes.data.success) {
-            hideLoading();
             showAlert(verifyRes.data.message, 'error');
             return;
         }
@@ -19300,38 +19867,73 @@ window.executeDbManagement = async function() {
         closeDbManagementModal();
 
         if (dbManagementAction === 'backup') {
-            // 백업 실행
-            showLoading('백업 생성 중...');
-            const response = await axios.post(`${API_BASE_URL}/api/db-management/backup-with-log`, {
-                operator_name: operatorName,
-                instructor_code: operatorCode
-            });
-            hideLoading();
+            // 백업 진행 모달 표시
+            showBackupProgress('backup');
 
-            if (response.data.success) {
-                showAlert(`백업 생성 완료!\n\n작업자: ${operatorName}\n총 레코드: ${response.data.total_records}개\n파일 크기: ${(response.data.file_size / 1024 / 1024).toFixed(2)} MB\n파일명: ${response.data.backup_file}`, 'success', { title: 'DB 백업 완료' });
-                await Promise.all([refreshBackupList(), loadDbManagementLogs()]);
+            // 단계별 진행 시뮬레이션과 실제 API 호출
+            await new Promise(resolve => setTimeout(resolve, 500));
+            updateBackupProgress('tables', 40, 'timetables');
+
+            try {
+                const response = await axios.post(`${API_BASE_URL}/api/db-management/backup-with-log`, {
+                    operator_name: operatorName,
+                    instructor_code: operatorCode
+                }, { timeout: 60000 }); // 60초 타임아웃
+
+                updateBackupProgress('save', 80);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                updateBackupProgress('complete', 100);
+                await new Promise(resolve => setTimeout(resolve, 800));
+
+                hideBackupProgress();
+
+                if (response.data.success) {
+                    showAlert(`백업 생성 완료!\n\n작업자: ${operatorName}\n총 레코드: ${response.data.total_records}개\n파일 크기: ${(response.data.file_size / 1024 / 1024).toFixed(2)} MB\n파일명: ${response.data.backup_file}`, 'success', { title: 'DB 백업 완료' });
+                    await Promise.all([refreshBackupList(), loadDbManagementLogs()]);
+                }
+            } catch (backupError) {
+                hideBackupProgress();
+                console.error('백업 API 호출 실패:', backupError);
+                showAlert(backupError.response?.data?.detail || '백업 생성에 실패했습니다.', 'error');
             }
         } else if (dbManagementAction === 'reset') {
             // 최종 확인
             const confirmed = await showConfirm(`정말로 DB를 초기화하시겠습니까?\n\n작업자: ${operatorName}\n\n이 작업은 되돌릴 수 없습니다.\n(백업 파일에서 수동 복원 필요)`, 'DB 초기화 최종 확인');
 
             if (confirmed) {
-                showLoading('백업 생성 후 초기화 중...');
-                const response = await axios.post(`${API_BASE_URL}/api/db-management/reset`, {
-                    operator_name: operatorName,
-                    instructor_code: operatorCode
-                });
-                hideLoading();
+                // 초기화 진행 모달 표시
+                showBackupProgress('reset');
 
-                if (response.data.success) {
-                    showAlert(`DB 초기화 완료!\n\n작업자: ${operatorName}\n삭제된 레코드: ${response.data.total_deleted}개\n백업 파일: ${response.data.backup_file}`, 'success', { title: 'DB 초기화 완료' });
-                    await Promise.all([refreshBackupList(), loadDbManagementLogs()]);
+                try {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    updateBackupProgress('tables', 40, '자동 백업 생성');
+
+                    const response = await axios.post(`${API_BASE_URL}/api/db-management/reset`, {
+                        operator_name: operatorName,
+                        instructor_code: operatorCode
+                    }, { timeout: 120000 }); // 120초 타임아웃
+
+                    updateBackupProgress('save', 80);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    updateBackupProgress('complete', 100);
+                    await new Promise(resolve => setTimeout(resolve, 800));
+
+                    hideBackupProgress();
+
+                    if (response.data.success) {
+                        showAlert(`DB 초기화 완료!\n\n작업자: ${operatorName}\n삭제된 레코드: ${response.data.total_deleted}개\n백업 파일: ${response.data.backup_file}`, 'success', { title: 'DB 초기화 완료' });
+                        await Promise.all([refreshBackupList(), loadDbManagementLogs()]);
+                    }
+                } catch (resetError) {
+                    hideBackupProgress();
+                    console.error('초기화 API 호출 실패:', resetError);
+                    showAlert(resetError.response?.data?.detail || 'DB 초기화에 실패했습니다.', 'error');
                 }
             }
         }
     } catch (error) {
         hideLoading();
+        hideBackupProgress();
         console.error('DB 관리 작업 실패:', error);
         showAlert(error.response?.data?.detail || 'DB 관리 작업에 실패했습니다.', 'error');
     }
@@ -19437,6 +20039,10 @@ async function refreshBackupList() {
                         </div>
                     </div>
                     <div class="flex space-x-2">
+                        <button onclick="restoreBackup('${backup.filename}')"
+                            class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                            <i class="fas fa-undo mr-1"></i>복구
+                        </button>
                         <button onclick="deleteBackup('${backup.filename}')"
                             class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
                             <i class="fas fa-trash mr-1"></i>삭제
@@ -19484,6 +20090,269 @@ async function cleanupOldBackups() {
         console.error('백업 정리 실패:', error);
         showAlert('백업 정리에 실패했습니다', 'error');
     }
+}
+
+// DB 복구 기능
+let restoreTargetFile = '';
+
+window.restoreBackup = async function(filename) {
+    restoreTargetFile = filename;
+
+    // 복구 인증 모달 표시
+    const modal = document.getElementById('db-management-modal');
+    const header = document.getElementById('db-modal-header');
+    const icon = document.getElementById('db-modal-icon');
+    const title = document.getElementById('db-modal-title');
+    const desc = document.getElementById('db-modal-desc');
+    const warning = document.getElementById('db-modal-warning');
+    const confirmBtn = document.getElementById('db-modal-confirm-btn');
+
+    // 입력 필드 초기화
+    document.getElementById('db-mgmt-instructor-name').value = '';
+    document.getElementById('db-mgmt-password').value = '';
+
+    header.className = 'p-6 rounded-t-2xl bg-gradient-to-r from-green-500 to-green-600';
+    icon.innerHTML = '<i class="fas fa-undo text-white"></i>';
+    title.textContent = 'DB 복구 실행';
+    desc.innerHTML = `
+        <strong>복구할 백업 파일:</strong><br>
+        <span class="text-green-600 font-mono">${filename}</span><br><br>
+        데이터베이스를 복구하려면 강사 이름과 비밀번호를 입력해주세요.<br>
+        <span class="text-orange-600">복구 전에 현재 상태가 자동으로 백업됩니다.</span>
+    `;
+    warning.classList.remove('hidden');
+    warning.innerHTML = `
+        <p class="text-yellow-800 text-sm">
+            <i class="fas fa-exclamation-circle mr-1"></i>
+            <strong>주의:</strong> DB 복구는 현재 데이터를 선택한 백업 시점으로 되돌립니다.
+            <br>복구 후에는 백업 이후에 추가된 데이터가 사라집니다.
+        </p>
+    `;
+    confirmBtn.className = 'px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors';
+    confirmBtn.innerHTML = '<i class="fas fa-undo mr-2"></i>복구 실행';
+
+    // 복구 모드로 설정
+    dbManagementAction = 'restore';
+
+    modal.classList.remove('hidden');
+    document.getElementById('db-mgmt-instructor-name').focus();
+};
+
+// executeDbManagement 함수에 복구 로직 추가 (기존 함수 확장)
+const originalExecuteDbManagement = window.executeDbManagement;
+window.executeDbManagement = async function() {
+    if (dbManagementAction === 'restore') {
+        const instructorName = document.getElementById('db-mgmt-instructor-name').value.trim();
+        const password = document.getElementById('db-mgmt-password').value.trim();
+
+        if (!instructorName || !password) {
+            showAlert('강사 이름과 비밀번호를 모두 입력해주세요.', 'warning');
+            return;
+        }
+
+        // 인증 확인
+        try {
+            showLoading('인증 확인 중...');
+            const verifyRes = await axios.post(`${API_BASE_URL}/api/db-management/verify`, {
+                instructor_name: instructorName,
+                password: password
+            });
+
+            hideLoading();
+
+            if (!verifyRes.data.success) {
+                showAlert(verifyRes.data.message, 'error');
+                return;
+            }
+
+            const operatorName = verifyRes.data.instructor_name;
+            const operatorCode = verifyRes.data.instructor_code;
+
+            closeDbManagementModal();
+
+            // 최종 확인
+            const confirmed = await showConfirm(
+                `정말로 "${restoreTargetFile}" 파일로 DB를 복구하시겠습니까?\n\n` +
+                `작업자: ${operatorName}\n\n` +
+                `현재 데이터는 자동으로 백업됩니다.`,
+                'DB 복구 최종 확인'
+            );
+
+            if (!confirmed) return;
+
+            // 복구 진행 모달 표시
+            showRestoreProgress();
+
+            try {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                updateRestoreProgress('backup', 30, '현재 상태 자동 백업');
+
+                const response = await axios.post(`${API_BASE_URL}/api/db-management/restore`, {
+                    operator_name: operatorName,
+                    instructor_code: operatorCode,
+                    backup_file: restoreTargetFile
+                }, { timeout: 180000 }); // 3분 타임아웃
+
+                updateRestoreProgress('restore', 70, '데이터 복구 중');
+                await new Promise(resolve => setTimeout(resolve, 500));
+                updateRestoreProgress('complete', 100);
+                await new Promise(resolve => setTimeout(resolve, 800));
+
+                hideRestoreProgress();
+
+                if (response.data.success) {
+                    showAlert(
+                        `DB 복구 완료!\n\n` +
+                        `작업자: ${operatorName}\n` +
+                        `복구된 레코드: ${response.data.total_restored}개\n` +
+                        `복구 전 백업: ${response.data.pre_restore_backup}`,
+                        'success',
+                        { title: 'DB 복구 완료' }
+                    );
+                    await Promise.all([refreshBackupList(), loadDbManagementLogs()]);
+                }
+            } catch (restoreError) {
+                hideRestoreProgress();
+                console.error('복구 API 호출 실패:', restoreError);
+                showAlert(restoreError.response?.data?.detail || 'DB 복구에 실패했습니다.', 'error');
+            }
+        } catch (error) {
+            hideLoading();
+            console.error('DB 복구 작업 실패:', error);
+            showAlert(error.response?.data?.detail || 'DB 복구 작업에 실패했습니다.', 'error');
+        }
+    } else {
+        // 기존 backup/reset 로직 실행
+        await originalExecuteDbManagement.call(this);
+    }
+};
+
+// 복구 진행 상황 모달
+function showRestoreProgress() {
+    const progressHtml = `
+        <div id="restore-progress-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[10000]">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+                <div class="p-6 bg-gradient-to-r from-green-500 to-green-600">
+                    <div class="flex items-center gap-4">
+                        <div class="text-4xl text-white">
+                            <i class="fas fa-undo animate-pulse"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white">DB 복구 진행 중</h3>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div id="restore-progress-steps" class="space-y-4">
+                        <div id="restore-step-auth" class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <span class="text-gray-700">인증 완료</span>
+                        </div>
+                        <div id="restore-step-backup" class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                            <span class="text-gray-700">현재 상태 백업 중...</span>
+                        </div>
+                        <div id="restore-step-restore" class="flex items-center gap-3 opacity-50">
+                            <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-white">
+                                <i class="fas fa-database"></i>
+                            </div>
+                            <span class="text-gray-500">데이터 복구 중...</span>
+                        </div>
+                        <div id="restore-step-complete" class="flex items-center gap-3 opacity-50">
+                            <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-white">
+                                <i class="fas fa-check-double"></i>
+                            </div>
+                            <span class="text-gray-500">완료</span>
+                        </div>
+                    </div>
+
+                    <!-- 진행 바 -->
+                    <div class="mt-6">
+                        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div id="restore-progress-bar" class="h-full bg-green-500 rounded-full transition-all duration-500" style="width: 20%"></div>
+                        </div>
+                        <p id="restore-progress-text" class="text-center text-sm text-gray-500 mt-2">현재 상태 백업 중...</p>
+                    </div>
+
+                    <!-- 현재 작업 표시 -->
+                    <div id="restore-current-task" class="mt-4 p-3 bg-green-50 rounded-lg text-center">
+                        <p class="text-xs text-gray-400">현재 작업</p>
+                        <p id="restore-task-name" class="text-sm font-semibold text-green-700">자동 백업 생성</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', progressHtml);
+}
+
+function updateRestoreProgress(step, progress, taskName = '') {
+    const progressBar = document.getElementById('restore-progress-bar');
+    const progressText = document.getElementById('restore-progress-text');
+    const taskNameEl = document.getElementById('restore-task-name');
+
+    if (progressBar) progressBar.style.width = `${progress}%`;
+    if (taskNameEl && taskName) taskNameEl.textContent = taskName;
+
+    const steps = {
+        backup: { text: '현재 상태 백업 중...', stepId: 'restore-step-backup' },
+        restore: { text: '데이터 복구 중...', stepId: 'restore-step-restore' },
+        complete: { text: '복구 완료!', stepId: 'restore-step-complete' }
+    };
+
+    if (steps[step] && progressText) {
+        progressText.textContent = steps[step].text;
+    }
+
+    // 단계별 아이콘 업데이트
+    if (step === 'restore') {
+        const stepBackup = document.getElementById('restore-step-backup');
+        if (stepBackup) {
+            stepBackup.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                    <i class="fas fa-check"></i>
+                </div>
+                <span class="text-gray-700">백업 완료</span>
+            `;
+        }
+        const stepRestore = document.getElementById('restore-step-restore');
+        if (stepRestore) {
+            stepRestore.classList.remove('opacity-50');
+            stepRestore.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <span class="text-gray-700">데이터 복구 중...</span>
+            `;
+        }
+    } else if (step === 'complete') {
+        const stepRestore = document.getElementById('restore-step-restore');
+        if (stepRestore) {
+            stepRestore.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                    <i class="fas fa-check"></i>
+                </div>
+                <span class="text-gray-700">데이터 복구 완료</span>
+            `;
+        }
+        const stepComplete = document.getElementById('restore-step-complete');
+        if (stepComplete) {
+            stepComplete.classList.remove('opacity-50');
+            stepComplete.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <span class="text-gray-700">완료!</span>
+            `;
+        }
+    }
+}
+
+function hideRestoreProgress() {
+    const modal = document.getElementById('restore-progress-modal');
+    if (modal) modal.remove();
 }
 
 // ==================== Web Speech API 음성 인식 ====================
@@ -20940,9 +21809,53 @@ function showExamBank() {
     loadExamList();
 }
 
-function showExamGenerateForm() {
+async function showExamGenerateForm() {
     const app = document.getElementById('app');
-    
+
+    // 로그인한 강사 정보 가져오기
+    const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+    const instructorName = instructor.name || '';
+    const instructorCode = instructor.code || '';
+
+    // 강사의 교과목 가져오기
+    let instructorSubjects = [];
+    try {
+        if (instructorCode) {
+            const subRes = await axios.get(`${API_BASE_URL}/api/instructors/${instructorCode}/subjects`);
+            instructorSubjects = subRes.data || [];
+        }
+    } catch (e) {
+        console.error('강사 교과목 로드 실패:', e);
+    }
+
+    // 과정 정보 가져오기 (시험 명칭 자동 생성용)
+    let courseName = '';
+    try {
+        if (instructor.course_code) {
+            const courseRes = await axios.get(`${API_BASE_URL}/api/courses/${instructor.course_code}`);
+            courseName = courseRes.data?.name || '';
+        }
+    } catch (e) {
+        console.error('과정 정보 로드 실패:', e);
+    }
+
+    // RAG 문서 목록 가져오기
+    let ragDocuments = [];
+    try {
+        const res = await axios.get(`${API_BASE_URL}/api/rag/documents`);
+        if (res.data.success) {
+            ragDocuments = res.data.documents || [];
+        }
+    } catch (e) {
+        console.error('RAG 문서 목록 로드 실패:', e);
+    }
+
+    // 시험 명칭 자동 생성 (년도-과정명-월시험)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const defaultExamName = courseName ? `${year}-${courseName}-${month}월시험` : '';
+
     app.innerHTML = `
         <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex justify-between items-center mb-6">
@@ -20954,28 +21867,65 @@ function showExamGenerateForm() {
                 </button>
             </div>
 
+            <!-- 강사 정보 표시 -->
+            <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                <div class="flex items-center gap-4">
+                    <div class="bg-blue-500 text-white rounded-full w-12 h-12 flex items-center justify-center">
+                        <i class="fas fa-user-tie text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800">${instructorName || '강사 정보 없음'}</p>
+                        <p class="text-sm text-gray-600">출제자: ${instructorCode || '-'}</p>
+                    </div>
+                </div>
+            </div>
+
             <form id="exam-generate-form" class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-gray-700 font-semibold mb-2">시험명칭 *</label>
-                        <input type="text" name="exam_name" required 
-                               class="w-full border rounded px-3 py-2"
-                               placeholder="예: 중간고사, 1차 평가">
+                        <input type="text" name="exam_name" required
+                               class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-300"
+                               placeholder="Tab 키로 자동 입력 → ${defaultExamName || '년도-과정명-월시험'}">
+                        <p class="text-xs text-gray-500 mt-1">
+                            <i class="fas fa-keyboard mr-1"></i>Tab 키: 자동 입력 | 직접 수정 가능
+                        </p>
                     </div>
                     <div>
                         <label class="block text-gray-700 font-semibold mb-2">교과목 *</label>
-                        <input type="text" name="subject" required 
-                               class="w-full border rounded px-3 py-2"
-                               placeholder="예: 임상간호, 기본간호학">
+                        ${instructorSubjects.length > 0 ? `
+                            <select name="subject" required class="w-full border rounded px-3 py-2">
+                                <option value="">-- 교과목 선택 --</option>
+                                ${instructorSubjects.map(sub => `
+                                    <option value="${sub.name || sub.subject_name}">${sub.name || sub.subject_name}</option>
+                                `).join('')}
+                            </select>
+                        ` : `
+                            <input type="text" name="subject" required
+                                   class="w-full border rounded px-3 py-2"
+                                   placeholder="교과목명을 입력하세요">
+                            <p class="text-xs text-orange-500 mt-1">담당 교과목이 없습니다. 직접 입력하세요.</p>
+                        `}
                     </div>
                     <div>
                         <label class="block text-gray-700 font-semibold mb-2">시험일자 *</label>
-                        <input type="date" name="exam_date" required 
+                        <input type="date" name="exam_date" required
                                class="w-full border rounded px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">시험시간 *</label>
+                        <input type="time" name="exam_time" required
+                               class="w-full border rounded px-3 py-2"
+                               value="09:00">
                     </div>
                     <div>
                         <label class="block text-gray-700 font-semibold mb-2">문항수 *</label>
                         <input type="number" name="num_questions" required min="1" max="50" value="10"
+                               class="w-full border rounded px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">시험시간(분) *</label>
+                        <input type="number" name="exam_duration" required min="10" max="180" value="60"
                                class="w-full border rounded px-3 py-2">
                     </div>
                     <div>
@@ -20998,9 +21948,48 @@ function showExamGenerateForm() {
 
                 <div>
                     <label class="block text-gray-700 font-semibold mb-2">설명 (선택)</label>
-                    <textarea name="description" rows="3" 
+                    <textarea name="description" rows="2"
                               class="w-full border rounded px-3 py-2"
                               placeholder="시험에 대한 추가 설명을 입력하세요"></textarea>
+                </div>
+
+                <!-- RAG 임베딩 문서 선택 -->
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        <i class="fas fa-book mr-2 text-blue-500"></i>참고 문서 선택 * (RAG 임베딩된 문서)
+                    </label>
+                    <div class="border rounded-lg p-4 bg-gray-50 max-h-64 overflow-y-auto">
+                        ${ragDocuments.length > 0 ? `
+                            <div class="mb-2 flex justify-between items-center">
+                                <span class="text-sm text-gray-500">총 ${ragDocuments.length}개 문서</span>
+                                <label class="flex items-center cursor-pointer text-sm text-blue-600 hover:text-blue-800">
+                                    <input type="checkbox" id="select-all-docs" onchange="toggleAllDocs(this.checked)" class="mr-1">
+                                    전체 선택
+                                </label>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                ${ragDocuments.map((doc, idx) => `
+                                    <label class="flex items-start gap-2 p-2 bg-white rounded border hover:bg-blue-50 cursor-pointer transition-colors">
+                                        <input type="checkbox" name="rag_documents" value="${doc.filename}"
+                                               class="mt-1 rag-doc-checkbox">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-800 truncate" title="${doc.filename}">${doc.filename}</p>
+                                            <p class="text-xs text-gray-500">${doc.chunks_count}개 청크</p>
+                                        </div>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        ` : `
+                            <div class="text-center py-8 text-gray-500">
+                                <i class="fas fa-exclamation-circle text-3xl mb-2"></i>
+                                <p>임베딩된 문서가 없습니다.</p>
+                                <p class="text-sm">문서관리에서 문서를 먼저 업로드해주세요.</p>
+                            </div>
+                        `}
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <i class="fas fa-info-circle mr-1"></i>선택한 문서를 기반으로 문제가 생성됩니다. 최소 1개 이상 선택해주세요.
+                    </p>
                 </div>
 
                 <div class="flex gap-3">
@@ -21038,18 +22027,62 @@ function showExamGenerateForm() {
 
     // 오늘 날짜로 기본값 설정
     document.querySelector('input[name="exam_date"]').valueAsDate = new Date();
+
+    // 시험 명칭 필드 - Tab 키로 자동 입력
+    const examNameInput = document.querySelector('input[name="exam_name"]');
+    const autoExamName = `${year}-${courseName || '과정명'}-${month}월시험`;
+
+    examNameInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab' && !this.value.trim()) {
+            e.preventDefault();
+            this.value = autoExamName;
+            // 커서를 끝으로 이동
+            this.setSelectionRange(this.value.length, this.value.length);
+        }
+    });
+
+    // 시험 명칭 필드에 포커스 시 힌트 표시
+    examNameInput.addEventListener('focus', function() {
+        if (!this.value.trim()) {
+            this.placeholder = `Tab 키를 눌러 자동 입력: ${autoExamName}`;
+        }
+    });
+
+    examNameInput.addEventListener('blur', function() {
+        this.placeholder = '예: 2026-바이오헬스AI-1월시험';
+    });
 }
+
+// 전체 선택/해제 함수
+window.toggleAllDocs = function(checked) {
+    const checkboxes = document.querySelectorAll('.rag-doc-checkbox');
+    checkboxes.forEach(cb => cb.checked = checked);
+};
 
 async function generateExamQuestions(form) {
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
-    
+
+    // 선택된 RAG 문서 수집
+    const selectedDocs = [];
+    document.querySelectorAll('.rag-doc-checkbox:checked').forEach(cb => {
+        selectedDocs.push(cb.value);
+    });
+
+    // 최소 1개 문서 선택 검증
+    if (selectedDocs.length === 0) {
+        await window.showCustomAlert('참고 문서를 최소 1개 이상 선택해주세요.', 'warning');
+        return;
+    }
+
+    data.rag_documents = selectedDocs;
+
     // 강사 코드 추가
     const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
     data.instructor_code = instructor.code || '';
 
     try {
-        window.showLoading('RAG 시스템으로 문제 생성 중...');
+        window.showLoading(`RAG 시스템으로 문제 생성 중... (${selectedDocs.length}개 문서 참고)`);
 
         const response = await axios.post(`${API_BASE_URL}/api/exam-bank/generate`, data);
 
@@ -21092,23 +22125,13 @@ function displayGeneratedQuestions(data) {
     // 해설 강조
     questionsHTML = questionsHTML.replace(/(해설:.*?)(<br>|$)/g, '<em style="color: #6b7280;">$1</em>$2');
 
+    // 참고 강조 (페이지 번호 포함)
+    questionsHTML = questionsHTML.replace(/(참고:.*?)(<br>|$)/g, '<span style="color: #8b5cf6; font-size: 0.9em;"><i class="fas fa-book-open" style="margin-right: 4px;"></i>$1</span>$2');
+
     contentDiv.innerHTML = `
         <div class="bg-white p-6 rounded border">
             ${questionsHTML}
         </div>
-        ${data.sources && data.sources.length > 0 ? `
-            <div class="mt-4">
-                <h4 class="font-semibold mb-2"><i class="fas fa-book mr-2"></i>참고 문서</h4>
-                <div class="space-y-2">
-                    ${data.sources.map((src, idx) => `
-                        <div class="bg-blue-50 p-3 rounded text-sm">
-                            ${idx + 1}. ${src.source} 
-                            <span class="text-blue-600">(유사도: ${(src.similarity * 100).toFixed(1)}%)</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        ` : ''}
     `;
 
     previewDiv.classList.remove('hidden');
@@ -21512,7 +22535,7 @@ async function viewExamDetail(examId) {
     } catch (error) {
         window.hideLoading();
         console.error('시험 상세 조회 실패:', error);
-        alert('시험 상세 조회 실패: ' + (error.response?.data?.detail || error.message));
+        showAlert('시험 상세 조회 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -21555,7 +22578,7 @@ async function showEditQuestionModal(questionId, examId) {
         window.hideLoading();
 
         if (!question) {
-            alert('문제를 찾을 수 없습니다');
+            showAlert('문제를 찾을 수 없습니다', 'warning');
             return;
         }
 
@@ -21588,7 +22611,7 @@ async function showEditQuestionModal(questionId, examId) {
     } catch (error) {
         window.hideLoading();
         console.error('문제 정보 로드 실패:', error);
-        alert('문제 정보 로드 실패: ' + (error.response?.data?.detail || error.message));
+        showAlert('문제 정보 로드 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -21630,7 +22653,7 @@ async function saveQuestion() {
     });
 
     if (!questionText || !correctAnswer) {
-        alert('문제 내용과 정답은 필수 입력 항목입니다.');
+        showAlert('문제 내용과 정답은 필수 입력 항목입니다.', 'warning');
         return;
     }
 
@@ -21651,12 +22674,12 @@ async function saveQuestion() {
             // 수정
             await axios.put(`${API_BASE_URL}/api/exam-bank/questions/${questionId}`, data);
             window.hideLoading();
-            alert('문제가 수정되었습니다');
+            showAlert('문제가 수정되었습니다', 'success');
         } else {
             // 추가
             await axios.post(`${API_BASE_URL}/api/exam-bank/${examId}/questions`, data);
             window.hideLoading();
-            alert('문제가 추가되었습니다');
+            showAlert('문제가 추가되었습니다', 'success');
         }
 
         closeQuestionModal();
@@ -21667,13 +22690,14 @@ async function saveQuestion() {
     } catch (error) {
         window.hideLoading();
         console.error('문제 저장 실패:', error);
-        alert('문제 저장 실패: ' + (error.response?.data?.detail || error.message));
+        showAlert('문제 저장 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
 // 개별 문제 삭제
 async function deleteQuestion(questionId, questionNumber, examId) {
-    if (!confirm(`문제 ${questionNumber}번을 삭제하시겠습니까?\n삭제된 문제는 복구할 수 없습니다.`)) {
+    const confirmed = await showConfirm(`문제 ${questionNumber}번을 삭제하시겠습니까?\n삭제된 문제는 복구할 수 없습니다.`, '문제 삭제');
+    if (!confirmed) {
         return;
     }
 
@@ -21681,7 +22705,7 @@ async function deleteQuestion(questionId, questionNumber, examId) {
         window.showLoading('문제 삭제 중...');
         await axios.delete(`${API_BASE_URL}/api/exam-bank/questions/${questionId}`);
         window.hideLoading();
-        alert('문제가 삭제되었습니다');
+        showAlert('문제가 삭제되었습니다', 'success');
 
         // 상세보기 새로고침
         viewExamDetail(examId);
@@ -21689,12 +22713,13 @@ async function deleteQuestion(questionId, questionNumber, examId) {
     } catch (error) {
         window.hideLoading();
         console.error('문제 삭제 실패:', error);
-        alert('문제 삭제 실패: ' + (error.response?.data?.detail || error.message));
+        showAlert('문제 삭제 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
 async function deleteExam(examId, examName) {
-    if (!confirm(`시험 "${examName}"을(를) 삭제하시겠습니까?\n삭제된 시험은 복구할 수 없습니다.`)) {
+    const confirmed = await showConfirm(`시험 "${examName}"을(를) 삭제하시겠습니까?\n삭제된 시험은 복구할 수 없습니다.`, '시험 삭제');
+    if (!confirmed) {
         return;
     }
 
@@ -21702,12 +22727,12 @@ async function deleteExam(examId, examName) {
         window.showLoading('시험 삭제 중...');
         await axios.delete(`${API_BASE_URL}/api/exam-bank/${examId}`);
         window.hideLoading();
-        alert('시험이 삭제되었습니다');
+        showAlert('시험이 삭제되었습니다', 'success');
         loadExamList();
     } catch (error) {
         window.hideLoading();
         console.error('시험 삭제 실패:', error);
-        alert('시험 삭제 실패: ' + (error.response?.data?.detail || error.message));
+        showAlert('시험 삭제 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -21801,7 +22826,7 @@ async function showExamEditForm(examId) {
     } catch (error) {
         window.hideLoading();
         console.error('시험 정보 로드 실패:', error);
-        alert('시험 정보 로드 실패: ' + (error.response?.data?.detail || error.message));
+        showAlert('시험 정보 로드 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 
@@ -21815,7 +22840,7 @@ async function updateExam() {
     const description = document.getElementById('edit-description').value.trim();
 
     if (!examName || !subject || !examDate || !difficulty) {
-        alert('필수 항목을 모두 입력해주세요.');
+        showAlert('필수 항목을 모두 입력해주세요.', 'warning');
         return;
     }
 
@@ -21833,7 +22858,7 @@ async function updateExam() {
         await axios.put(`${API_BASE_URL}/api/exam-bank/${examId}`, data);
 
         window.hideLoading();
-        alert('시험 정보가 수정되었습니다.');
+        showAlert('시험 정보가 수정되었습니다.', 'success');
 
         // 상세보기로 이동
         viewExamDetail(parseInt(examId));
@@ -21841,8 +22866,170 @@ async function updateExam() {
     } catch (error) {
         window.hideLoading();
         console.error('시험 수정 실패:', error);
-        alert('시험 수정 실패: ' + (error.response?.data?.detail || error.message));
+        showAlert('시험 수정 실패: ' + (error.response?.data?.detail || error.message), 'error');
     }
+}
+
+// ==================== 온라인시험 ====================
+function showOnlineExam() {
+    const app = document.getElementById('app');
+
+    app.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-laptop mr-2"></i>온라인시험
+                </h2>
+                <div class="space-x-2">
+                    <button onclick="createOnlineExam()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-plus mr-2"></i>시험 등록
+                    </button>
+                </div>
+            </div>
+
+            <!-- 안내 메시지 -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+                <i class="fas fa-laptop text-6xl text-blue-400 mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">온라인시험 관리</h3>
+                <p class="text-gray-600 mb-4">
+                    문제은행에서 생성한 문제를 활용하여 온라인 시험을 실시할 수 있습니다.<br>
+                    시험 일정 설정, 응시 시간 제한, 자동 채점 등의 기능을 제공합니다.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                    <div class="bg-white rounded-lg p-4 shadow">
+                        <i class="fas fa-calendar-alt text-3xl text-green-500 mb-2"></i>
+                        <h4 class="font-semibold">시험 일정</h4>
+                        <p class="text-sm text-gray-500">시험 시작/종료 시간 설정</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow">
+                        <i class="fas fa-clock text-3xl text-orange-500 mb-2"></i>
+                        <h4 class="font-semibold">시간 제한</h4>
+                        <p class="text-sm text-gray-500">응시 시간 제한 설정</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow">
+                        <i class="fas fa-check-circle text-3xl text-blue-500 mb-2"></i>
+                        <h4 class="font-semibold">자동 채점</h4>
+                        <p class="text-sm text-gray-500">객관식 자동 채점</p>
+                    </div>
+                </div>
+                <p class="text-gray-400 text-sm mt-6">
+                    <i class="fas fa-tools mr-1"></i>기능 개발 중...
+                </p>
+            </div>
+        </div>
+    `;
+}
+
+function createOnlineExam() {
+    showAlert('온라인시험 등록 기능은 준비 중입니다.', 'info', { title: '준비 중' });
+}
+
+// ==================== 선착순 퀴즈 ====================
+function showQuickQuiz() {
+    const app = document.getElementById('app');
+
+    app.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-bolt mr-2"></i>선착순 퀴즈
+                </h2>
+                <div class="space-x-2">
+                    <button onclick="createQuickQuiz()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-plus mr-2"></i>퀴즈 등록
+                    </button>
+                </div>
+            </div>
+
+            <!-- 안내 메시지 -->
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+                <i class="fas fa-bolt text-6xl text-yellow-400 mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">선착순 퀴즈</h3>
+                <p class="text-gray-600 mb-4">
+                    수업 중 실시간으로 퀴즈를 진행하고 가장 빠르게 정답을 맞힌 학생에게 포인트를 부여합니다.<br>
+                    학생들의 집중도와 참여도를 높일 수 있습니다.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                    <div class="bg-white rounded-lg p-4 shadow">
+                        <i class="fas fa-stopwatch text-3xl text-red-500 mb-2"></i>
+                        <h4 class="font-semibold">실시간 진행</h4>
+                        <p class="text-sm text-gray-500">즉석에서 퀴즈 진행</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow">
+                        <i class="fas fa-trophy text-3xl text-yellow-500 mb-2"></i>
+                        <h4 class="font-semibold">순위 기록</h4>
+                        <p class="text-sm text-gray-500">정답자 순위 자동 기록</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow">
+                        <i class="fas fa-star text-3xl text-purple-500 mb-2"></i>
+                        <h4 class="font-semibold">포인트 지급</h4>
+                        <p class="text-sm text-gray-500">선착순 포인트 지급</p>
+                    </div>
+                </div>
+                <p class="text-gray-400 text-sm mt-6">
+                    <i class="fas fa-tools mr-1"></i>기능 개발 중...
+                </p>
+            </div>
+        </div>
+    `;
+}
+
+function createQuickQuiz() {
+    showAlert('선착순 퀴즈 등록 기능은 준비 중입니다.', 'info', { title: '준비 중' });
+}
+
+// ==================== 과제관리 ====================
+function showAssignments() {
+    const app = document.getElementById('app');
+
+    app.innerHTML = `
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-tasks mr-2"></i>과제관리
+                </h2>
+                <div class="space-x-2">
+                    <button onclick="createAssignment()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-plus mr-2"></i>과제 등록
+                    </button>
+                </div>
+            </div>
+
+            <!-- 안내 메시지 -->
+            <div class="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+                <i class="fas fa-tasks text-6xl text-green-400 mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">과제관리</h3>
+                <p class="text-gray-600 mb-4">
+                    학생들에게 과제를 부여하고 제출 현황을 관리할 수 있습니다.<br>
+                    파일 제출, 텍스트 작성, 링크 제출 등 다양한 형태의 과제를 지원합니다.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                    <div class="bg-white rounded-lg p-4 shadow">
+                        <i class="fas fa-file-upload text-3xl text-blue-500 mb-2"></i>
+                        <h4 class="font-semibold">과제 제출</h4>
+                        <p class="text-sm text-gray-500">파일/텍스트/링크 제출</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow">
+                        <i class="fas fa-calendar-check text-3xl text-orange-500 mb-2"></i>
+                        <h4 class="font-semibold">마감일 관리</h4>
+                        <p class="text-sm text-gray-500">제출 기한 설정 및 알림</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow">
+                        <i class="fas fa-chart-bar text-3xl text-purple-500 mb-2"></i>
+                        <h4 class="font-semibold">제출 현황</h4>
+                        <p class="text-sm text-gray-500">실시간 제출 현황 확인</p>
+                    </div>
+                </div>
+                <p class="text-gray-400 text-sm mt-6">
+                    <i class="fas fa-tools mr-1"></i>기능 개발 중...
+                </p>
+            </div>
+        </div>
+    `;
+}
+
+function createAssignment() {
+    showAlert('과제 등록 기능은 준비 중입니다.', 'info', { title: '준비 중' });
 }
 
 console.log('✅ 문서관리 및 문제은행 함수 로드 완료');

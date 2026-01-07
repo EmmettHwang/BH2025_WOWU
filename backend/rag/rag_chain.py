@@ -100,12 +100,12 @@ class RAGChain:
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.3,  # 정확도 우선
-            "max_tokens": 1000,
+            "max_tokens": 8000,  # 문제 생성 등 긴 응답을 위해 증가
             "top_p": 0.9
         }
-        
+
         async with httpx.AsyncClient() as client:
-            response = await client.post(url, headers=headers, json=payload, timeout=30.0)
+            response = await client.post(url, headers=headers, json=payload, timeout=120.0)  # 타임아웃 증가
             response.raise_for_status()
             data = response.json()
             
@@ -143,20 +143,24 @@ class RAGChain:
             else:
                 return "응답을 생성할 수 없습니다."
     
-    async def query(self, 
-                    question: str, 
+    async def query(self,
+                    question: str,
                     k: int = 5,  # 3에서 5로 증가
                     system_message: Optional[str] = None,
-                    min_similarity: float = 0.3) -> Dict:  # 최소 유사도 임계값 추가
+                    min_similarity: float = 0.3,  # 최소 유사도 임계값 추가
+                    document_context: Optional[List[str]] = None,  # 특정 문서로 제한
+                    groq_api_key: Optional[str] = None) -> Dict:  # API 키 동적 전달
         """
         RAG 질문 처리 (개선된 버전)
-        
+
         Args:
             question: 사용자 질문
             k: 검색할 문서 수 (기본값 5로 증가)
             system_message: 커스텀 시스템 메시지
             min_similarity: 최소 유사도 임계값 (0.0~1.0, 기본값 0.3)
-            
+            document_context: 특정 문서명 목록으로 필터링 (선택)
+            groq_api_key: GROQ API 키 (선택, 동적 전달)
+
         Returns:
             {
                 'answer': AI 응답,
@@ -164,12 +168,29 @@ class RAGChain:
                 'context': 검색된 컨텍스트
             }
         """
+        # API 키가 전달되면 사용
+        if groq_api_key:
+            self.api_key = groq_api_key
+
         try:
             # 1. 관련 문서 검색
-            print(f"[DEBUG] 질문: {question}")
+            print(f"[DEBUG] 질문: {question[:100]}...")
             print(f"[DOC] {k}개 문서 검색 중...")
-            
-            documents = self.vector_store.search_with_score(question, k=k)
+
+            documents = self.vector_store.search_with_score(question, k=k * 2 if document_context else k)
+
+            # 문서 컨텍스트가 지정된 경우 필터링
+            if document_context and len(document_context) > 0:
+                print(f"[FILTER] {len(document_context)}개 문서로 필터링: {document_context}")
+                filtered_docs = []
+                for doc in documents:
+                    metadata = doc.get('metadata', {})
+                    filename = metadata.get('original_filename') or metadata.get('filename', '')
+                    # 파일명이 선택된 문서 목록에 포함되어 있는지 확인
+                    if any(ctx in filename or filename in ctx for ctx in document_context):
+                        filtered_docs.append(doc)
+                documents = filtered_docs[:k]
+                print(f"[FILTER] 필터링 후 {len(documents)}개 문서")
             
             if not documents:
                 return {

@@ -874,6 +874,23 @@ async def delete_subject(subject_code: str):
     finally:
         conn.close()
 
+@app.get("/api/instructors/{instructor_code}/subjects")
+async def get_instructor_subjects(instructor_code: str):
+    """강사의 담당 교과목 조회"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("""
+            SELECT code, name, description, hours
+            FROM subjects
+            WHERE main_instructor = %s
+            ORDER BY name
+        """, (instructor_code,))
+        subjects = cursor.fetchall()
+        return subjects
+    finally:
+        conn.close()
+
 @app.post("/api/courses/{course_code}/subjects")
 async def save_course_subjects(course_code: str, data: dict):
     """과정-교과목 관계 저장"""
@@ -5164,35 +5181,85 @@ async def login(credentials: dict):
         """, (user_name.strip(),))
         
         student = cursor.fetchone()
-        
+
         if not student:
-            raise HTTPException(status_code=401, detail="등록되지 않은 사용자입니다")
-        
-        # 비밀번호 확인
-        default_password = "kdt2025"
-        stored_password = student.get('password', default_password)
-        
-        if stored_password is None:
-            stored_password = default_password
-        
-        if password != stored_password:
-            raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다")
-        
-        # datetime 변환
-        for key, value in student.items():
-            if isinstance(value, (datetime, date)):
-                student[key] = value.isoformat()
-            elif isinstance(value, bytes):
-                student[key] = None
-        
-        print(f"[OK] 학생 로그인 성공: {student['name']}")
-        return {
-            "success": True,
-            "message": f"{student['name']}님, 환영합니다!",
-            "user_type": "student",
-            "student": student
-        }
-        
+            # 4️⃣ 학생도 아니면 신규가입 신청자 테이블에서 검색
+            ensure_student_registrations_table(cursor)
+            conn.commit()
+
+            cursor.execute("""
+                SELECT * FROM student_registrations
+                WHERE name = %s
+                ORDER BY created_at DESC
+                LIMIT 1
+            """, (user_name.strip(),))
+
+            registration = cursor.fetchone()
+
+            if registration:
+                # 생년월일로 비밀번호 확인
+                birth_date = registration.get('birth_date', '')
+                if password != birth_date:
+                    raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다 (생년월일 6자리)")
+
+                status = registration.get('status', 'pending')
+
+                if status == 'pending':
+                    raise HTTPException(status_code=403, detail="⏳ 처리중입니다. 승인 후 이용 가능합니다.")
+                elif status == 'rejected':
+                    raise HTTPException(status_code=403, detail="❌ 신청이 거부되었습니다. 관리자에게 문의하세요.")
+                elif status == 'approved':
+                    # 승인되었으면 학생 테이블에서 다시 검색해야 함
+                    cursor.execute("""
+                        SELECT s.*,
+                               c.name as course_name,
+                               c.start_date,
+                               c.final_end_date as end_date
+                        FROM students s
+                        LEFT JOIN courses c ON s.course_code = c.code
+                        WHERE s.name = %s
+                        LIMIT 1
+                    """, (user_name.strip(),))
+                    student = cursor.fetchone()
+
+                    if student:
+                        # 학생 비밀번호 확인 (생년월일)
+                        stored_password = student.get('password', 'kdt2025')
+                        if stored_password is None:
+                            stored_password = 'kdt2025'
+                        if password != stored_password:
+                            raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다")
+                    else:
+                        raise HTTPException(status_code=401, detail="✅ 승인되었습니다. 잠시 후 다시 시도해주세요.")
+            else:
+                raise HTTPException(status_code=401, detail="등록되지 않은 사용자입니다")
+
+        if student:
+            # 비밀번호 확인
+            default_password = "kdt2025"
+            stored_password = student.get('password', default_password)
+
+            if stored_password is None:
+                stored_password = default_password
+
+            if password != stored_password:
+                raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다")
+
+            # datetime 변환
+            for key, value in student.items():
+                if isinstance(value, (datetime, date)):
+                    student[key] = value.isoformat()
+                elif isinstance(value, bytes):
+                    student[key] = None
+
+            print(f"[OK] 학생 로그인 성공: {student['name']}")
+            return {
+                "success": True,
+                "message": f"{student['name']}님, 환영합니다!",
+                "user_type": "student",
+                "student": student
+            }
+
     except HTTPException:
         raise
     except Exception as e:
@@ -5666,7 +5733,9 @@ async def update_system_settings(
     gemini_api_key: Optional[str] = Form(None),
     bgm_genre: Optional[str] = Form(None),
     bgm_volume: Optional[str] = Form(None),
-    dashboard_refresh_interval: Optional[str] = Form(None)
+    dashboard_refresh_interval: Optional[str] = Form(None),
+    open_courses: Optional[str] = Form(None),
+    interest_keywords: Optional[str] = Form(None)
 ):
     """시스템 설정 업데이트"""
     print(f"📝 시스템 설정 업데이트 요청:")
@@ -5680,6 +5749,8 @@ async def update_system_settings(
     print(f"  - bgm_genre: {bgm_genre}")
     print(f"  - bgm_volume: {bgm_volume}")
     print(f"  - dashboard_refresh_interval: {dashboard_refresh_interval}")
+    print(f"  - open_courses: {open_courses}")
+    print(f"  - interest_keywords: {interest_keywords}")
     
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -5698,7 +5769,9 @@ async def update_system_settings(
             'gemini_api_key': gemini_api_key,
             'bgm_genre': bgm_genre,
             'bgm_volume': bgm_volume,
-            'dashboard_refresh_interval': dashboard_refresh_interval
+            'dashboard_refresh_interval': dashboard_refresh_interval,
+            'open_courses': open_courses,
+            'interest_keywords': interest_keywords
         }
         
         update_count = 0
@@ -5726,6 +5799,255 @@ async def update_system_settings(
     except Exception as e:
         conn.rollback()
         print(f"[ERROR] 시스템 설정 업데이트 실패: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+# ==================== 신규가입 (학생 등록 신청) API ====================
+
+def ensure_student_registrations_table(cursor):
+    """student_registrations 테이블이 없으면 생성"""
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS student_registrations (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                birth_date VARCHAR(20),
+                gender VARCHAR(10),
+                phone VARCHAR(50),
+                email VARCHAR(100),
+                address TEXT,
+                interests TEXT,
+                education TEXT,
+                introduction TEXT,
+                course_code VARCHAR(50),
+                profile_photo TEXT,
+                status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+                processed_at DATETIME,
+                processed_by VARCHAR(50),
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_status (status),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+        print("[OK] student_registrations 테이블 확인/생성 완료")
+    except Exception as e:
+        print(f"[WARN] student_registrations 테이블 생성 실패: {e}")
+
+@app.get("/api/student-registrations")
+async def get_student_registrations(status: Optional[str] = None):
+    """신규가입 신청 목록 조회"""
+    conn = get_db_connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    try:
+        ensure_student_registrations_table(cursor)
+        conn.commit()
+
+        query = "SELECT * FROM student_registrations WHERE 1=1"
+        params = []
+
+        if status:
+            query += " AND status = %s"
+            params.append(status)
+
+        query += " ORDER BY created_at DESC"
+
+        cursor.execute(query, params)
+        registrations = cursor.fetchall()
+
+        # datetime 변환
+        for reg in registrations:
+            for key, value in reg.items():
+                if isinstance(value, (datetime, date)):
+                    reg[key] = value.isoformat()
+
+        return registrations
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.post("/api/student-registrations")
+async def create_student_registration(data: dict):
+    """신규가입 신청 등록"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        ensure_student_registrations_table(cursor)
+
+        name = data.get('name')
+        if not name:
+            raise HTTPException(status_code=400, detail="이름은 필수입니다")
+
+        cursor.execute("""
+            INSERT INTO student_registrations
+            (name, birth_date, gender, phone, email, address, interests, education, introduction, course_code, profile_photo)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            name,
+            data.get('birth_date'),
+            data.get('gender'),
+            data.get('phone', ''),
+            data.get('email', ''),
+            data.get('address', ''),
+            data.get('interests', ''),
+            data.get('education', ''),
+            data.get('introduction', ''),
+            data.get('course_code', ''),
+            data.get('profile_photo', '')
+        ))
+
+        conn.commit()
+        registration_id = cursor.lastrowid
+
+        print(f"[OK] 신규가입 신청 등록 완료: ID={registration_id}, 이름={name}")
+
+        return {"message": "신규가입 신청이 완료되었습니다", "id": registration_id}
+    except Exception as e:
+        conn.rollback()
+        print(f"[ERROR] 신규가입 신청 실패: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.put("/api/student-registrations/{registration_id}/approve")
+async def approve_student_registration(registration_id: int, data: dict):
+    """신규가입 승인 - 학생 DB로 이동"""
+    conn = get_db_connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    try:
+        ensure_student_registrations_table(cursor)
+
+        # 신청 정보 조회
+        cursor.execute("SELECT * FROM student_registrations WHERE id = %s", (registration_id,))
+        registration = cursor.fetchone()
+
+        if not registration:
+            raise HTTPException(status_code=404, detail="신청 정보를 찾을 수 없습니다")
+
+        if registration['status'] != 'pending':
+            raise HTTPException(status_code=400, detail="이미 처리된 신청입니다")
+
+        # 학생 코드 생성
+        cursor.execute("SELECT MAX(CAST(SUBSTRING(code, 2) AS UNSIGNED)) as max_code FROM students WHERE code LIKE 'S%'")
+        result = cursor.fetchone()
+        next_num = (result['max_code'] or 0) + 1
+        student_code = f"S{next_num:03d}"
+
+        # 학생 테이블에 추가 (비밀번호는 생년월일 6자리)
+        birth_date = registration['birth_date'] or ''
+        # 숫자만 추출하여 6자리로
+        password = ''.join(filter(str.isdigit, birth_date))[:6] if birth_date else 'kdt2025'
+
+        cursor.execute("""
+            INSERT INTO students
+            (code, name, birth_date, gender, phone, email, address, interests, education, introduction, course_code, profile_photo, password)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            student_code,
+            registration['name'],
+            registration['birth_date'],
+            registration['gender'],
+            registration['phone'],
+            registration['email'],
+            registration['address'],
+            registration['interests'],
+            registration['education'],
+            registration['introduction'],
+            registration['course_code'],
+            registration['profile_photo'],
+            password
+        ))
+
+        student_id = cursor.lastrowid
+
+        # 신청 상태 업데이트
+        processed_by = data.get('processed_by', '')
+        cursor.execute("""
+            UPDATE student_registrations
+            SET status = 'approved', processed_at = NOW(), processed_by = %s
+            WHERE id = %s
+        """, (processed_by, registration_id))
+
+        conn.commit()
+
+        print(f"[OK] 신규가입 승인 완료: 신청ID={registration_id}, 학생ID={student_id}, 학생코드={student_code}")
+
+        return {
+            "message": "학생으로 등록되었습니다",
+            "student_id": student_id,
+            "student_code": student_code
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        print(f"[ERROR] 신규가입 승인 실패: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.put("/api/student-registrations/{registration_id}/reject")
+async def reject_student_registration(registration_id: int, data: dict):
+    """신규가입 거절"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        ensure_student_registrations_table(cursor)
+
+        # 신청 상태 확인
+        cursor.execute("SELECT status FROM student_registrations WHERE id = %s", (registration_id,))
+        result = cursor.fetchone()
+
+        if not result:
+            raise HTTPException(status_code=404, detail="신청 정보를 찾을 수 없습니다")
+
+        if result[0] != 'pending':
+            raise HTTPException(status_code=400, detail="이미 처리된 신청입니다")
+
+        processed_by = data.get('processed_by', '')
+        cursor.execute("""
+            UPDATE student_registrations
+            SET status = 'rejected', processed_at = NOW(), processed_by = %s
+            WHERE id = %s
+        """, (processed_by, registration_id))
+
+        conn.commit()
+
+        print(f"[OK] 신규가입 거절 완료: 신청ID={registration_id}")
+
+        return {"message": "신청이 거절되었습니다"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        print(f"[ERROR] 신규가입 거절 실패: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.delete("/api/student-registrations/{registration_id}")
+async def delete_student_registration(registration_id: int):
+    """신규가입 신청 삭제"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("DELETE FROM student_registrations WHERE id = %s", (registration_id,))
+        conn.commit()
+        return {"message": "신청이 삭제되었습니다"}
+    except Exception as e:
+        conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
@@ -7514,6 +7836,143 @@ async def reset_database(request: Request, data: dict):
         conn.close()
 
 
+@app.post("/api/db-management/restore")
+async def restore_database(request: Request, data: dict):
+    """백업 파일에서 DB 복구"""
+    import json
+    from datetime import datetime
+
+    operator_name = data.get('operator_name', '')
+    instructor_code = data.get('instructor_code', '')
+    backup_file = data.get('backup_file', '')
+
+    if not operator_name:
+        raise HTTPException(status_code=400, detail="작업자 정보가 필요합니다")
+    if not backup_file:
+        raise HTTPException(status_code=400, detail="복구할 백업 파일을 선택해주세요")
+
+    client_ip = request.client.host if request.client else 'unknown'
+    backup_dir = '/home/user/webapp/backend/backups'
+    backup_path = f'{backup_dir}/{backup_file}'
+
+    # 백업 파일 존재 확인
+    if not os.path.exists(backup_path):
+        raise HTTPException(status_code=404, detail="백업 파일을 찾을 수 없습니다")
+
+    # 복구 전 현재 상태 백업
+    pre_restore_backup = await create_backup_with_log(request, {
+        'operator_name': f"{operator_name} (복구 전 자동백업)",
+        'instructor_code': instructor_code
+    })
+
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+
+        # 백업 파일 읽기
+        with open(backup_path, 'r', encoding='utf-8') as f:
+            backup_data = json.load(f)
+
+        restored_counts = {}
+        errors = []
+
+        # 복구 순서 (외래키 제약조건 고려)
+        restore_order = [
+            'system_settings', 'holidays', 'courses', 'subjects', 'instructors',
+            'students', 'course_subjects', 'projects', 'timetables',
+            'training_logs', 'class_notes', 'consultations', 'notices',
+            'team_activity_logs'
+        ]
+
+        # 기존 데이터 삭제 (역순으로)
+        for table in reversed(restore_order):
+            if table in backup_data and table != 'db_management_logs':
+                try:
+                    cursor.execute(f"DELETE FROM {table}")
+                except Exception as e:
+                    print(f"[WARN] {table} 삭제 실패: {e}")
+
+        conn.commit()
+
+        # 데이터 복구
+        for table in restore_order:
+            if table not in backup_data or table == 'db_management_logs':
+                continue
+
+            rows = backup_data[table]
+            if not rows:
+                restored_counts[table] = 0
+                continue
+
+            try:
+                # 첫 번째 행에서 컬럼 이름 가져오기
+                columns = list(rows[0].keys())
+                placeholders = ', '.join(['%s'] * len(columns))
+                columns_str = ', '.join([f'`{col}`' for col in columns])
+
+                insert_sql = f"INSERT INTO `{table}` ({columns_str}) VALUES ({placeholders})"
+
+                success_count = 0
+                for row in rows:
+                    try:
+                        values = [row.get(col) for col in columns]
+                        cursor.execute(insert_sql, values)
+                        success_count += 1
+                    except Exception as row_error:
+                        # 개별 행 오류는 건너뛰고 계속 진행
+                        pass
+
+                restored_counts[table] = success_count
+            except Exception as e:
+                errors.append(f"{table}: {str(e)}")
+                restored_counts[table] = 0
+
+        conn.commit()
+
+        total_restored = sum(restored_counts.values())
+
+        # 로그 기록
+        cursor.execute("""
+            INSERT INTO db_management_logs
+            (action_type, operator_name, action_result, backup_file, details, ip_address)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
+            'restore',
+            f"{operator_name} ({instructor_code})",
+            'success',
+            backup_file,
+            f"총 {total_restored}개 레코드 복구. 복구 전 백업: {pre_restore_backup.get('backup_file', 'N/A')}",
+            client_ip
+        ))
+        conn.commit()
+
+        return {
+            "success": True,
+            "message": "DB 복구 완료",
+            "backup_file": backup_file,
+            "pre_restore_backup": pre_restore_backup.get('backup_file', ''),
+            "restored_counts": restored_counts,
+            "total_restored": total_restored,
+            "errors": errors if errors else None
+        }
+
+    except Exception as e:
+        conn.rollback()
+        # 실패 로그 기록
+        try:
+            cursor.execute("""
+                INSERT INTO db_management_logs
+                (action_type, operator_name, action_result, backup_file, details, ip_address)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, ('restore', f"{operator_name} ({instructor_code})", 'fail', backup_file, str(e), client_ip))
+            conn.commit()
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=f"DB 복구 실패: {str(e)}")
+    finally:
+        conn.close()
+
+
 @app.get("/api/db-management/logs")
 async def get_db_management_logs(limit: int = 50):
     """DB 관리 로그 조회"""
@@ -8180,9 +8639,10 @@ async def generate_exam_questions(request: Request):
         difficulty = data.get('difficulty', 'medium')
         instructor_code = data.get('instructor_code', '')
         description = data.get('description', '')
-        
-        # RAG 시스템 확인
-        if not vector_store_manager or not rag_chain:
+        rag_documents = data.get('rag_documents', [])  # 선택된 RAG 문서 목록
+
+        # RAG 시스템 확인 (vector_store_manager만 체크)
+        if not vector_store_manager:
             raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
         
         # GROQ API 키 가져오기
@@ -8208,39 +8668,85 @@ async def generate_exam_questions(request: Request):
         type_prompts = {
             'multiple_choice': f'''
 {num_questions}개의 {difficulty_text} 객관식 문제를 생성해주세요.
-각 문제는 다음 형식을 따라야 합니다:
 
+【중요 규칙】
+1. 선택지는 반드시 A) B) C) D) 4개로 고정
+2. 각 문제에 반드시 "참고:" 필드에 출처 문서명 기재
+3. 아래 형식을 정확히 따를 것
+
+【문제 형식】
 문제 1:
-[문제 내용]
+[문제 내용을 여기에 작성]
 
 A) [선택지 1]
 B) [선택지 2]
 C) [선택지 3]
 D) [선택지 4]
 
-정답: [A/B/C/D]
-해설: [정답에 대한 설명]
-참고: [출처 문서명]
+정답: [A 또는 B 또는 C 또는 D 중 하나]
+해설: [왜 이것이 정답인지 설명]
+참고: [출처 문서명, p.페이지번호] (예: 기본간호학.pdf, p.15)
 
-각 문제는 반드시 위 형식을 정확히 따라주세요.
+---
+
+(위 형식으로 {num_questions}개 문제 작성)
 ''',
-            'short_answer': f'{num_questions}개의 {difficulty_text} 단답형 문제를 생성해주세요. 각 문제는 "문제:", "정답:", "해설:", "참고:" 형식으로 작성해주세요.',
-            'essay': f'{num_questions}개의 {difficulty_text} 서술형 문제를 생성해주세요. 각 문제는 "문제:", "모범답안:", "채점기준:", "참고:" 형식으로 작성해주세요.'
+            'short_answer': f'''
+{num_questions}개의 {difficulty_text} 단답형 문제를 생성해주세요.
+
+【문제 형식】
+문제 1:
+[문제 내용]
+
+정답: [답]
+해설: [설명]
+참고: [출처 문서명, p.페이지번호]
+
+---
+''',
+            'essay': f'''
+{num_questions}개의 {difficulty_text} 서술형 문제를 생성해주세요.
+
+【문제 형식】
+문제 1:
+[문제 내용]
+
+모범답안: [상세 답안]
+채점기준: [평가 기준]
+참고: [출처 문서명, p.페이지번호]
+
+---
+'''
         }
-        
+
         prompt = f"""
-교과목: {subject}
+교과목: {subject if subject else '(미지정)'}
 시험명: {exam_name}
 
-다음 문서들을 참고하여 {type_prompts.get(question_type, type_prompts['multiple_choice'])}
-문제는 실제 수업 내용과 관련되어야 하며, 학생들의 이해도를 평가할 수 있어야 합니다.
+{type_prompts.get(question_type, type_prompts['multiple_choice'])}
+
+【필수 사항】
+- 문제는 제공된 문서 내용을 기반으로 출제
+- 각 문제의 "참고:" 필드에 출처 문서명과 페이지 번호를 반드시 명시 (예: 기본간호학.pdf, p.15)
+- 객관식의 경우 선택지는 A) B) C) D) 4개 고정
 """
-        
-        # RAG를 사용하여 문제 생성
-        result = rag_chain.query(
+
+        # 선택된 문서가 있으면 프롬프트에 추가
+        if rag_documents and len(rag_documents) > 0:
+            doc_names = ', '.join(rag_documents)
+            prompt = f"[참고 문서: {doc_names}]\n\n" + prompt
+            print(f"[RAG] 선택된 문서 ({len(rag_documents)}개): {doc_names}")
+
+        # RAGChain 인스턴스 생성
+        rag_chain = RAGChain(vector_store_manager, groq_api_key, "groq")
+
+        # RAG를 사용하여 문제 생성 (문제 생성은 유사도 임계값을 낮춤)
+        result = await rag_chain.query(
             prompt,
-            k=5,
-            groq_api_key=groq_api_key
+            k=min(10, len(rag_documents) * 3) if rag_documents else 8,
+            groq_api_key=groq_api_key,
+            document_context=rag_documents if rag_documents else None,
+            min_similarity=0.005  # 문제 생성 시에는 임계값을 매우 낮게 설정
         )
         
         return {

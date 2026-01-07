@@ -363,7 +363,29 @@
                             </button>
                         </div>
                     </div>
-                    
+
+                    <!-- 성적 메뉴 -->
+                    <div class="relative group">
+                        <button class="px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-t">
+                            <i class="fas fa-chart-line mr-1"></i>성적
+                            <i class="fas fa-chevron-down ml-1 text-xs"></i>
+                        </button>
+                        <div class="hidden group-hover:flex absolute left-0 top-full bg-white shadow-lg rounded-b z-50 w-[300px] flex-col">
+                            <button onclick="showTab('exam-bank')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="exam-bank" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-clipboard-question mr-2" style="width: 16px;"></i>문제은행
+                            </button>
+                            <button onclick="showTab('online-exam')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="online-exam" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-laptop mr-2" style="width: 16px;"></i>온라인시험
+                            </button>
+                            <button onclick="showTab('quick-quiz')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="quick-quiz" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-bolt mr-2" style="width: 16px;"></i>선착순 퀴즈
+                            </button>
+                            <button onclick="showTab('assignments')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="assignments" style="justify-content: flex-start !important; text-align: left !important;">
+                                <i class="fas fa-tasks mr-2" style="width: 16px;"></i>과제관리
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- AI 메뉴 -->
                     <div class="relative group">
                         <button class="px-4 py-3 text-sm font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-t">
@@ -385,9 +407,6 @@
                             </button>
                             <button onclick="showTab('ai-counseling')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="ai-counseling" style="justify-content: flex-start !important; text-align: left !important;">
                                 <i class="fas fa-comments mr-2" style="width: 16px;"></i>AI 상담일지
-                            </button>
-                            <button onclick="showTab('exam-bank')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="exam-bank" style="justify-content: flex-start !important; text-align: left !important;">
-                                <i class="fas fa-clipboard-question mr-2" style="width: 16px;"></i>문제은행
                             </button>
                             <button onclick="showTab('aesong-3d-chat')" class="tab-btn flex items-center w-full px-3 py-2 text-sm hover:bg-blue-50" data-tab="aesong-3d-chat" style="justify-content: flex-start !important; text-align: left !important;">
                                 <i class="fas fa-robot mr-2" style="width: 16px;"></i>🐶 예진이 만나기
