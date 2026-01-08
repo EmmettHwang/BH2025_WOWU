@@ -205,6 +205,11 @@ window.getCachedData = async function(key, fetchFunction) {
     return data;
 }
 
+// 캐시 무효화 함수 (clearCache와 동일, 호환성 유지)
+window.invalidateCache = function(key) {
+    return window.clearCache(key);
+};
+
 // 캐시 초기화 함수
 window.clearCache = function(key) {
     if (key) {
@@ -3226,7 +3231,7 @@ window.showTab = function(tab, addToHistory = true) {
     }
 }
 
-// ==================== 신규가입자 처리 ====================
+// ==================== 신규수강생 처리 ====================
 window.showStudentRegistrations = async function() {
     const app = document.getElementById('app');
 
@@ -3252,7 +3257,7 @@ window.showStudentRegistrations = async function() {
             <div class="bg-white rounded-lg shadow-md p-6">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold text-gray-800">
-                        <i class="fas fa-user-plus mr-2 text-orange-500"></i>신규가입자 처리
+                        <i class="fas fa-user-plus mr-2 text-orange-500"></i>신규수강생 처리
                     </h2>
                     <div class="space-x-2">
                         <button onclick="loadStudents()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
@@ -3477,7 +3482,18 @@ window.viewRegistrationDetail = function(regId) {
 };
 
 window.approveRegistration = async function(regId) {
-    if (!confirm('이 신청을 승인하시겠습니까? 학생으로 등록됩니다.')) return;
+    const confirmed = await window.showConfirm(
+        '이 수강생을 <strong class="text-green-600">승인</strong>하시겠습니까?<br><br>' +
+        '<div class="bg-green-50 border border-green-200 rounded-lg p-3 mt-2">' +
+        '<i class="fas fa-check-circle text-green-500 mr-2"></i>' +
+        '<span class="text-green-700">승인 시 자동으로 <strong>학생 코드</strong>가 생성되고,<br>생년월일 6자리가 <strong>초기 비밀번호</strong>로 설정됩니다.</span>' +
+        '</div>',
+        '✅ 수강생 승인',
+        '승인하기',
+        '취소'
+    );
+    
+    if (!confirmed) return;
 
     try {
         window.showLoading('승인 처리 중...');
@@ -3504,7 +3520,18 @@ window.approveRegistration = async function(regId) {
 };
 
 window.rejectRegistration = async function(regId) {
-    if (!confirm('이 신청을 거절하시겠습니까?')) return;
+    const confirmed = await window.showConfirm(
+        '이 수강생을 <strong class="text-red-600">거절</strong>하시겠습니까?<br><br>' +
+        '<div class="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">' +
+        '<i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>' +
+        '<span class="text-red-700">거절된 신청은 <strong>복구할 수 없습니다.</strong><br>신중하게 결정해주세요.</span>' +
+        '</div>',
+        '❌ 수강생 거절',
+        '거절하기',
+        '취소'
+    );
+    
+    if (!confirmed) return;
 
     try {
         window.showLoading('거절 처리 중...');
@@ -3563,7 +3590,7 @@ function renderStudents() {
                 </h2>
                 <div class="space-x-2">
                     <button onclick="window.showStudentRegistrations()" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg">
-                        <i class="fas fa-user-plus mr-2"></i>신규가입자 처리
+                        <i class="fas fa-user-plus mr-2"></i>신규수강생 처리
                     </button>
                     <button onclick="window.showStudentForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
                         <i class="fas fa-plus mr-2"></i>학생 추가

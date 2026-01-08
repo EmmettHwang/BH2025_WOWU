@@ -5559,6 +5559,30 @@ async def student_login(credentials: dict):
         
         if not student:
             print(f"[ERROR] 학생을 찾을 수 없음: '{student_name}' (길이: {len(student_name)}, bytes: {student_name.encode('utf-8')})")
+            
+            # 신규 가입 신청 내역 확인
+            cursor.execute("""
+                SELECT status, created_at 
+                FROM student_registrations 
+                WHERE name = %s 
+                ORDER BY created_at DESC 
+                LIMIT 1
+            """, (student_name.strip(),))
+            registration = cursor.fetchone()
+            
+            if registration:
+                if registration['status'] == 'pending':
+                    raise HTTPException(
+                        status_code=403, 
+                        detail="신청 대기 중|회원가입 신청이 접수되었습니다.\n관리자 승인 후 로그인이 가능합니다.\n\n신청일시: " + 
+                               (registration['created_at'].strftime('%Y년 %m월 %d일 %H시 %M분') if registration['created_at'] else '알 수 없음')
+                    )
+                elif registration['status'] == 'rejected':
+                    raise HTTPException(
+                        status_code=403,
+                        detail="신청 거절됨|회원가입 신청이 거절되었습니다.\n자세한 사항은 관리자에게 문의하세요."
+                    )
+            
             # 모든 학생 이름 목록 출력
             cursor.execute("SELECT id, name FROM students ORDER BY id")
             all_students = cursor.fetchall()

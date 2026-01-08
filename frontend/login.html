@@ -405,8 +405,35 @@
                 }
             } catch (error) {
                 console.error('로그인 오류:', error);
-                const message = error.response?.data?.detail || '로그인에 실패했습니다';
-                showAlert(message, 'error');
+                const detail = error.response?.data?.detail || '로그인에 실패했습니다';
+                
+                // 신청 상태 메시지 처리 ("|"로 구분)
+                if (detail.includes('|')) {
+                    const [title, message] = detail.split('|');
+                    
+                    // 예쁜 모달로 표시
+                    const statusModal = document.createElement('div');
+                    statusModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                    statusModal.innerHTML = `
+                        <div class="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full mx-4">
+                            <div class="flex items-center mb-4">
+                                <div class="w-12 h-12 rounded-full ${title.includes('대기') ? 'bg-yellow-100' : 'bg-red-100'} flex items-center justify-center mr-4">
+                                    <i class="fas ${title.includes('대기') ? 'fa-clock text-yellow-500' : 'fa-times-circle text-red-500'} text-2xl"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-gray-800">${title}</h3>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                                <p class="text-gray-700 whitespace-pre-wrap">${message}</p>
+                            </div>
+                            <button onclick="this.closest('.fixed').remove()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors">
+                                <i class="fas fa-check mr-2"></i>확인
+                            </button>
+                        </div>
+                    `;
+                    document.body.appendChild(statusModal);
+                } else {
+                    showAlert(detail, 'error');
+                }
                 
                 // 로그인 버튼 다시 활성화
                 loginButton.disabled = false;
