@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Form, Request
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Form, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -8658,9 +8658,9 @@ async def download_document(filename: str):
 
 
 @app.post("/api/rag/index-document")
-async def index_document_to_rag(request: Request):
+async def index_document_to_rag(request: Request, background_tasks: BackgroundTasks):
     """
-    문서를 RAG 시스템에 인덱싱
+    문서를 RAG 시스템에 인덱싱 (백그라운드 처리)
     - filename: rag_documents 또는 documents 폴더에 있는 파일명
     - original_filename: 원본 파일명 (선택)
     """
@@ -8684,6 +8684,43 @@ async def index_document_to_rag(request: Request):
         }
         save_indexing_progress(indexing_progress)
         
+        # 백그라운드에서 실행할 함수 정의
+        def do_indexing():
+            try:
+                _index_document_sync(filename, original_filename)
+            except Exception as e:
+                print(f"[ERROR] 백그라운드 인덱싱 실패: {str(e)}")
+                indexing_progress[filename] = {
+                    "status": "error",
+                    "progress": 0,
+                    "message": f"오류: {str(e)}"
+                }
+                save_indexing_progress(indexing_progress)
+        
+        # 백그라운드 태스크로 추가
+        background_tasks.add_task(do_indexing)
+        
+        # 즉시 응답 반환 (백그라운드에서 계속 실행)
+        return {
+            "success": True,
+            "message": "인덱싱이 백그라운드에서 시작되었습니다. 진행률을 조회하세요.",
+            "filename": filename,
+            "status": "processing"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] 인덱싱 요청 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"인덱싱 요청 실패: {str(e)}")
+
+
+def _index_document_sync(filename: str, original_filename: str):
+    """
+    실제 인덱싱 로직 (동기 함수, 백그라운드에서 실행됨)
+    """
+    try:
+        
         # rag_documents 폴더와 documents 폴더에서 파일 찾기
         file_path = None
         for folder in ["rag_documents", "documents"]:
@@ -8694,16 +8731,15 @@ async def index_document_to_rag(request: Request):
         
         if not file_path:
             indexing_progress[filename] = {"status": "error", "progress": 0, "message": "파일을 찾을 수 없습니다"}
-            raise HTTPException(status_code=404, detail=f"파일을 찾을 수 없습니다: {filename}")
+            save_indexing_progress(indexing_progress)
+            raise Exception(f"파일을 찾을 수 없습니다: {filename}")
         
         # 파일 확장자 확인
         file_ext = file_path.suffix.lower()
         if file_ext not in ['.pdf', '.docx', '.doc', '.txt']:
             indexing_progress[filename] = {"status": "error", "progress": 0, "message": "지원하지 않는 파일 형식"}
-            raise HTTPException(
-                status_code=400, 
-                detail="RAG 인덱싱은 PDF, DOCX, TXT 파일만 지원합니다"
-            )
+            save_indexing_progress(indexing_progress)
+            raise Exception("RAG 인덱싱은 PDF, DOCX, TXT 파일만 지원합니다")
         
         print(f"📚 RAG 인덱싱 시작: {filename}")
         indexing_progress[filename] = {"status": "parsing", "progress": 10, "message": "문서 파싱 중..."}
@@ -8724,7 +8760,8 @@ async def index_document_to_rag(request: Request):
         
         if not documents:
             indexing_progress[filename] = {"status": "error", "progress": 0, "message": "텍스트 추출 실패"}
-            raise HTTPException(status_code=400, detail="문서에서 텍스트를 추출할 수 없습니다")
+            save_indexing_progress(indexing_progress)
+            raise Exception("문서에서 텍스트를 추출할 수 없습니다")
         
         print(f"🧩 청킹 완료: {len(documents)}개 조각")
         indexing_progress[filename] = {"status": "chunking", "progress": 30, "message": f"청킹 완료: {len(documents)}개 조각"}
@@ -8786,26 +8823,14 @@ async def index_document_to_rag(request: Request):
                 print(f"[INFO] 완료된 진행률 정보 정리: {filename}")
         threading.Thread(target=cleanup, daemon=True).start()
         
-        return {
-            "success": True,
-            "message": "문서가 RAG 시스템에 성공적으로 인덱싱되었습니다",
-            "filename": filename,
-            "chunks_count": len(documents),
-            "vector_count": len(doc_ids),
-            "metadata": metadata
-        }
+        print(f"[OK] 인덱싱 완료: {filename}, {len(documents)}개 청크, {len(doc_ids)}개 벡터")
         
-    except HTTPException:
-        indexing_progress[filename] = {"status": "error", "progress": 0, "message": "인덱싱 실패"}
-        save_indexing_progress(indexing_progress)
-        raise
     except Exception as e:
         print(f"[ERROR] RAG 인덱싱 실패: {str(e)}")
         import traceback
         traceback.print_exc()
         indexing_progress[filename] = {"status": "error", "progress": 0, "message": f"오류: {str(e)}"}
         save_indexing_progress(indexing_progress)
-        raise HTTPException(status_code=500, detail=f"RAG 인덱싱 실패: {str(e)}")
 
 
 @app.get("/api/rag/indexing-progress/{filename}")
