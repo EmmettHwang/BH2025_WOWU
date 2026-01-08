@@ -5987,35 +5987,83 @@ window.showInstructorCodeForm = function(code = null) {
         autoCode = `IC-${String(maxCode + 1).padStart(3, '0')}`;
     }
     
-    // 메뉴 목록 정의
-    const menuList = [
-        { id: 'dashboard', name: '대시보드', icon: 'fa-tachometer-alt' },
-        { id: 'instructor-codes', name: '강사코드/권한', icon: 'fa-user-shield' },
-        { id: 'instructors', name: '강사관리', icon: 'fa-user-tie' },
-        { id: 'system-settings', name: '시스템 등록', icon: 'fa-cog' },
-        { id: 'backup-manager', name: 'DB 백업', icon: 'fa-database' },
-        { id: 'notices', name: '공지사항', icon: 'fa-bullhorn' },
-        { id: 'subjects', name: '교과목', icon: 'fa-book' },
-        { id: 'holidays', name: '공휴일', icon: 'fa-calendar-alt' },
-        { id: 'courses', name: '과정관리', icon: 'fa-school' },
-        { id: 'students', name: '학생관리', icon: 'fa-users' },
-        { id: 'class-notes', name: 'SSIRN메모장(수업,기억,정보,etc)', icon: 'fa-book-open' },
-        { id: 'counselings', name: '상담관리', icon: 'fa-comments' },
-        { id: 'timetables', name: '시간표', icon: 'fa-clock' },
-        { id: 'training-logs', name: '훈련일지 관리', icon: 'fa-clipboard-list' },
-        { id: 'rag-documents', name: '문서 관리 (RAG)', icon: 'fa-file-alt' },
-        { id: 'exam-bank', name: '문제은행', icon: 'fa-clipboard-question' },
-        { id: 'online-exam', name: '온라인 시험', icon: 'fa-file-signature', category: 'grades' },
-        { id: 'online-quiz', name: '온라인 퀴즈', icon: 'fa-gamepad', category: 'grades' },
-        { id: 'assignment-submit', name: '과제 제출', icon: 'fa-upload', category: 'grades' },
-        { id: 'ai-report', name: 'AI 생기부', icon: 'fa-file-alt' },
-        { id: 'ai-timetable', name: 'AI 시간표', icon: 'fa-calendar-alt' },
-        { id: 'ai-training-log', name: 'AI 훈련일지', icon: 'fa-brain' },
-        { id: 'ai-counseling', name: 'AI 상담일지', icon: 'fa-comments' },
-        { id: 'aesong-3d-chat', name: '🐶 예진이 만나기', icon: 'fa-robot' },
-        { id: 'projects', name: '팀 관리', icon: 'fa-users' },
-        { id: 'team-activity-logs', name: '팀 활동일지', icon: 'fa-clipboard-list' }
+    // ⭐ 메뉴 구조 정의 (카테고리별 그룹핑)
+    const menuStructure = [
+        { id: 'dashboard', name: '대시보드', icon: 'fa-tachometer-alt', children: [] },
+        {
+            id: 'system-menu', name: '시스템관리', icon: 'fa-cogs',
+            children: [
+                { id: 'instructor-codes', name: '강사코드/권한', icon: 'fa-user-shield' },
+                { id: 'instructors', name: '강사관리', icon: 'fa-user-tie' },
+                { id: 'system-settings', name: '시스템 등록', icon: 'fa-cog' },
+                { id: 'backup-manager', name: 'DB 관리', icon: 'fa-database' },
+                { id: 'notices', name: '공지사항', icon: 'fa-bullhorn' }
+            ]
+        },
+        {
+            id: 'course-menu', name: '과정', icon: 'fa-graduation-cap',
+            children: [
+                { id: 'subjects', name: '교과목', icon: 'fa-book' },
+                { id: 'holidays', name: '공휴일', icon: 'fa-calendar-alt' },
+                { id: 'courses', name: '과정관리', icon: 'fa-school' }
+            ]
+        },
+        {
+            id: 'student-menu', name: '학생', icon: 'fa-user-graduate',
+            children: [
+                { id: 'students', name: '학생관리', icon: 'fa-users' },
+                { id: 'counselings', name: '상담관리', icon: 'fa-comments' }
+            ]
+        },
+        {
+            id: 'lecture-menu', name: '강의', icon: 'fa-chalkboard',
+            children: [
+                { id: 'timetables', name: '시간표', icon: 'fa-clock' },
+                { id: 'training-logs', name: '훈련일지 관리', icon: 'fa-clipboard-list' },
+                { id: 'rag-documents', name: '문서 관리 (RAG)', icon: 'fa-file-alt' },
+                { id: 'exam-bank', name: '문제은행', icon: 'fa-clipboard-question' }
+            ]
+        },
+        {
+            id: 'grade-menu', name: '성적', icon: 'fa-chart-line',
+            children: [
+                { id: 'online-exam', name: '온라인시험', icon: 'fa-laptop' },
+                { id: 'online-quiz', name: '온라인 퀴즈', icon: 'fa-gamepad' },
+                { id: 'assignment-submit', name: '과제 제출', icon: 'fa-upload' }
+            ]
+        },
+        {
+            id: 'ai-menu', name: 'AI', icon: 'fa-robot',
+            children: [
+                { id: 'class-notes', name: 'SSIRN메모장', icon: 'fa-book-open' },
+                { id: 'ai-report', name: 'AI 생기부', icon: 'fa-file-alt' },
+                { id: 'ai-timetable', name: 'AI 시간표', icon: 'fa-calendar-alt' },
+                { id: 'ai-training-log', name: 'AI 훈련일지', icon: 'fa-brain' },
+                { id: 'ai-counseling', name: 'AI 상담일지', icon: 'fa-comments' },
+                { id: 'aesong-3d-chat', name: '예진이 만나기', icon: 'fa-dog' }
+            ]
+        },
+        {
+            id: 'team-menu', name: '팀', icon: 'fa-users',
+            children: [
+                { id: 'projects', name: '팀 관리', icon: 'fa-users' },
+                { id: 'team-activity-logs', name: '팀 활동일지', icon: 'fa-clipboard-list' }
+            ]
+        }
     ];
+
+    // 모든 메뉴 ID 추출 (저장용)
+    const getAllMenuIds = () => {
+        const ids = [];
+        menuStructure.forEach(menu => {
+            if (menu.children.length === 0) {
+                ids.push(menu.id);
+            } else {
+                menu.children.forEach(child => ids.push(child.id));
+            }
+        });
+        return ids;
+    };
     
     formDiv.innerHTML = `
         <h3 class="text-lg font-semibold mb-4">${code ? '강사코드/권한 수정' : '강사코드/권한 추가'}</h3>
@@ -6068,27 +6116,88 @@ window.showInstructorCodeForm = function(code = null) {
                     <i class="fas fa-home mr-2 text-green-500"></i>
                     <strong class="text-green-600">초기 화면</strong>을 선택하면 로그인 시 해당 메뉴로 자동 이동합니다.
                 </p>
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    ${menuList.map(menu => `
-                        <label class="flex items-center justify-between bg-white p-3 rounded border hover:bg-blue-50 transition-all">
-                            <div class="flex items-center space-x-2 cursor-pointer">
-                                <input type="checkbox" 
-                                       class="permission-checkbox w-4 h-4 text-blue-600 rounded focus:ring-blue-500" 
-                                       data-menu-id="${menu.id}"
-                                       ${existingMenuPermissions.includes(menu.id) || existingPermissions[menu.id] ? 'checked' : ''}>
-                                <span class="text-sm">
-                                    <i class="fas ${menu.icon} mr-1 text-gray-500"></i>
-                                    ${menu.name}
-                                </span>
-                            </div>
-                            <input type="radio" 
-                                   name="default-screen" 
-                                   class="default-screen-radio w-4 h-4 text-green-600 focus:ring-green-500 cursor-pointer" 
-                                   data-menu-id="${menu.id}"
-                                   title="초기 화면으로 설정"
-                                   ${existingCode?.default_screen === menu.id ? 'checked' : ''}>
-                        </label>
-                    `).join('')}
+                <div class="space-y-4">
+                    ${menuStructure.map(menu => {
+                        if (menu.children.length === 0) {
+                            // 단일 메뉴 (children이 없는 경우)
+                            return `
+                                <label class="flex items-center justify-between bg-white p-3 rounded border hover:bg-blue-50 transition-all">
+                                    <div class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" 
+                                               class="permission-checkbox w-4 h-4 text-blue-600 rounded focus:ring-blue-500" 
+                                               data-menu-id="${menu.id}"
+                                               ${existingMenuPermissions.includes(menu.id) || existingPermissions[menu.id] ? 'checked' : ''}>
+                                        <span class="text-sm font-medium">
+                                            <i class="fas ${menu.icon} mr-1 text-gray-600"></i>
+                                            ${menu.name}
+                                        </span>
+                                    </div>
+                                    <input type="radio" 
+                                           name="default-screen" 
+                                           class="default-screen-radio w-4 h-4 text-green-600 focus:ring-green-500 cursor-pointer" 
+                                           data-menu-id="${menu.id}"
+                                           title="초기 화면으로 설정"
+                                           ${existingCode?.default_screen === menu.id ? 'checked' : ''}>
+                                </label>
+                            `;
+                        } else {
+                            // 계층 구조 메뉴 (children이 있는 경우)
+                            const childIds = menu.children.map(c => c.id).join(',');
+                            const allChildrenChecked = menu.children.every(child => 
+                                existingMenuPermissions.includes(child.id) || existingPermissions[child.id]
+                            );
+                            const someChildrenChecked = menu.children.some(child => 
+                                existingMenuPermissions.includes(child.id) || existingPermissions[child.id]
+                            );
+                            
+                            return `
+                                <div class="border rounded-lg overflow-hidden">
+                                    <!-- 상위 메뉴 헤더 -->
+                                    <label class="flex items-center bg-gradient-to-r from-blue-50 to-blue-100 p-3 cursor-pointer hover:from-blue-100 hover:to-blue-200 transition-all">
+                                        <input type="checkbox" 
+                                               class="parent-checkbox w-5 h-5 text-blue-600 rounded focus:ring-blue-500 mr-3" 
+                                               data-parent-id="${menu.id}"
+                                               data-children="${childIds}"
+                                               onchange="window.toggleParentMenu(this)"
+                                               ${allChildrenChecked ? 'checked' : ''}
+                                               ${!allChildrenChecked && someChildrenChecked ? 'indeterminate' : ''}>
+                                        <span class="text-sm font-bold text-blue-900">
+                                            <i class="fas ${menu.icon} mr-2"></i>
+                                            ${menu.name}
+                                        </span>
+                                    </label>
+                                    
+                                    <!-- 하위 메뉴 목록 -->
+                                    <div class="children-container bg-white p-3 grid grid-cols-1 md:grid-cols-2 gap-2" 
+                                         data-parent="${menu.id}"
+                                         style="display: ${someChildrenChecked ? '' : 'none'}">
+                                        ${menu.children.map(child => `
+                                            <label class="flex items-center justify-between p-2 rounded hover:bg-gray-50 transition-all">
+                                                <div class="flex items-center space-x-2 cursor-pointer">
+                                                    <input type="checkbox" 
+                                                           class="child-checkbox permission-checkbox w-4 h-4 text-blue-600 rounded focus:ring-blue-500" 
+                                                           data-menu-id="${child.id}"
+                                                           data-parent="${menu.id}"
+                                                           onchange="window.updateParentCheckbox('${menu.id}')"
+                                                           ${existingMenuPermissions.includes(child.id) || existingPermissions[child.id] ? 'checked' : ''}>
+                                                    <span class="text-sm">
+                                                        <i class="fas ${child.icon} mr-1 text-gray-500"></i>
+                                                        ${child.name}
+                                                    </span>
+                                                </div>
+                                                <input type="radio" 
+                                                       name="default-screen" 
+                                                       class="default-screen-radio w-4 h-4 text-green-600 focus:ring-green-500 cursor-pointer" 
+                                                       data-menu-id="${child.id}"
+                                                       title="초기 화면으로 설정"
+                                                       ${existingCode?.default_screen === child.id ? 'checked' : ''}>
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }).join('')}
                 </div>
             </div>
         </div>
@@ -6106,10 +6215,61 @@ window.showInstructorCodeForm = function(code = null) {
 
 // 권한 전체 선택/해제
 window.selectAllPermissions = function(selectAll) {
+    // 모든 권한 체크박스 선택/해제
     const checkboxes = document.querySelectorAll('.permission-checkbox');
     checkboxes.forEach(cb => {
         cb.checked = selectAll;
     });
+    // 부모 체크박스도 업데이트
+    const parentCheckboxes = document.querySelectorAll('.parent-checkbox');
+    parentCheckboxes.forEach(cb => {
+        cb.checked = selectAll;
+        cb.indeterminate = false;
+    });
+    // 자식 체크박스도 업데이트
+    const childCheckboxes = document.querySelectorAll('.child-checkbox');
+    childCheckboxes.forEach(cb => {
+        cb.checked = selectAll;
+    });
+    // 하위 메뉴 영역 표시/숨김
+    const childrenContainers = document.querySelectorAll('.children-container');
+    childrenContainers.forEach(container => {
+        container.style.display = selectAll ? '' : 'none';
+    });
+};
+
+// 상위 메뉴 체크박스 토글 (자식들 일괄 처리 + UI 표시/숨김)
+window.toggleParentMenu = function(parentCheckbox) {
+    const isChecked = parentCheckbox.checked;
+    const parentId = parentCheckbox.getAttribute('data-parent-id');
+    const childIds = parentCheckbox.getAttribute('data-children').split(',');
+
+    // 자식 체크박스들 일괄 처리
+    childIds.forEach(childId => {
+        const childCheckbox = document.querySelector(`.child-checkbox[data-menu-id="${childId}"]`);
+        if (childCheckbox) {
+            childCheckbox.checked = isChecked;
+        }
+    });
+
+    // 하위 메뉴 영역 표시/숨김
+    const childrenContainer = document.querySelector(`.children-container[data-parent="${parentId}"]`);
+    if (childrenContainer) {
+        childrenContainer.style.display = isChecked ? '' : 'none';
+    }
+};
+
+// 하위 메뉴 변경 시 상위 메뉴 체크박스 상태 업데이트
+window.updateParentCheckbox = function(parentId) {
+    const parentCheckbox = document.querySelector(`.parent-checkbox[data-parent-id="${parentId}"]`);
+    if (!parentCheckbox) return;
+
+    const childCheckboxes = document.querySelectorAll(`.child-checkbox[data-parent="${parentId}"]`);
+    const allChecked = Array.from(childCheckboxes).every(cb => cb.checked);
+    const someChecked = Array.from(childCheckboxes).some(cb => cb.checked);
+
+    parentCheckbox.checked = allChecked;
+    parentCheckbox.indeterminate = !allChecked && someChecked;
 };
 
 window.hideInstructorCodeForm = function() {
@@ -14410,9 +14570,10 @@ async function applyMenuPermissions() {
     // 관리자 (타입 IC-999 또는 0)는 모든 메뉴 접근 가능
     if (instructor.instructor_type === 'IC-999' || instructor.instructor_type === '0') {
         console.log('✅ 관리자 계정 - 모든 메뉴 접근 가능');
-        // 모든 메뉴 버튼 활성화
+        // 모든 메뉴 버튼 표시 및 활성화
         const menuButtons = document.querySelectorAll('[data-tab]');
         menuButtons.forEach(button => {
+            button.style.display = '';
             button.disabled = false;
             button.style.opacity = '1';
             button.style.cursor = 'pointer';
@@ -14455,33 +14616,23 @@ async function applyMenuPermissions() {
             const hasPermission = allowedMenus.includes(menuId) || menuId === 'aesong-3d-chat';
             
             if (!hasPermission) {
-                // 권한 없음 - 비활성화 및 시각적 피드백
-                button.disabled = true;
-                button.style.opacity = '0.5';
-                button.style.cursor = 'not-allowed';
-                button.title = '접근 권한이 없습니다';
-                
-                // 클릭 이벤트 차단
-                button.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    window.showAlert('접근 권한이 없습니다.');
-                }, true);
-                
+                // 권한 없음 - 메뉴 완전히 숨기기
+                button.style.display = 'none';
                 disabledCount++;
-                console.log(`❌ 메뉴 비활성화: ${menuId}`);
+                console.log(`❌ 메뉴 숨김: ${menuId}`);
             } else {
-                // 권한 있음 - 활성화
+                // 권한 있음 - 메뉴 표시
+                button.style.display = '';
                 button.disabled = false;
                 button.style.opacity = '1';
                 button.style.cursor = 'pointer';
                 button.removeAttribute('title');
                 enabledCount++;
-                console.log(`✅ 메뉴 활성화: ${menuId}`);
+                console.log(`✅ 메뉴 표시: ${menuId}`);
             }
         });
         
-        console.log(`✅ 메뉴 권한 적용 완료 - 활성화: ${enabledCount}개, 비활성화: ${disabledCount}개`);
+        console.log(`✅ 메뉴 권한 적용 완료 - 표시: ${enabledCount}개, 숨김: ${disabledCount}개`);
     } catch (error) {
         console.error('❌ 메뉴 권한 조회 실패:', error);
     }
