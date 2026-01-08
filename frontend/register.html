@@ -308,29 +308,78 @@
     </div>
 
     <!-- 성공 모달 -->
-    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 text-center">
-            <div class="text-green-500 text-6xl mb-4">
-                <i class="fas fa-check-circle"></i>
+    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-gradient-to-br from-green-50 to-blue-50 rounded-3xl shadow-2xl max-w-lg mx-auto text-center transform transition-all duration-300 scale-95 hover:scale-100 overflow-hidden">
+            <!-- 상단 장식 -->
+            <div class="bg-gradient-to-r from-green-400 to-blue-500 h-2"></div>
+            
+            <div class="p-8 md:p-12">
+                <!-- 애니메이션 아이콘 -->
+                <div class="relative inline-block mb-6">
+                    <div class="absolute inset-0 bg-green-400 rounded-full opacity-25 animate-ping"></div>
+                    <div class="relative text-green-500 text-7xl">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                </div>
+
+                <!-- 환영 메시지 -->
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4 leading-tight">
+                    🎉 환영합니다!
+                </h2>
+                
+                <div class="bg-white rounded-xl p-6 mb-6 shadow-inner">
+                    <p class="text-lg text-gray-700 font-semibold mb-3">
+                        수강 신청이 안전하게<br>처리되었습니다.
+                    </p>
+                    <div class="flex items-center justify-center text-blue-600 mb-3">
+                        <i class="fas fa-phone-alt mr-2"></i>
+                        <p class="text-base">
+                            담당자가 정해지면<br>등록하신 번호로 연락 드리겠습니다.
+                        </p>
+                    </div>
+                    <div class="border-t border-gray-200 pt-3 mt-3">
+                        <p class="text-sm text-gray-500">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            신청 상태는 로그인 후 확인 가능합니다
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 버튼들 -->
+                <div class="space-y-3">
+                    <button
+                        onclick="window.location.href='/login.html'"
+                        id="modalLoginButton"
+                        class="w-full text-white font-bold py-4 px-6 rounded-xl transition-all hover:shadow-xl transform hover:-translate-y-1 duration-200"
+                        style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);"
+                    >
+                        <i class="fas fa-sign-in-alt mr-2"></i>로그인하러 가기
+                    </button>
+                    <button
+                        onclick="window.location.href='/'"
+                        class="w-full text-gray-700 font-semibold py-4 px-6 rounded-xl bg-white border-2 border-gray-200 transition-all hover:border-gray-300 hover:shadow-md transform hover:-translate-y-1 duration-200"
+                    >
+                        <i class="fas fa-home mr-2"></i>홈으로 돌아가기
+                    </button>
+                </div>
             </div>
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">신청이 완료되었습니다!</h2>
-            <p class="text-gray-600 mb-2">이제 <strong>이름</strong>과 <strong>생년월일 6자리</strong>로 로그인이 가능합니다.</p>
-            <p class="text-gray-500 text-sm mb-6">로그인 후 승인 과정을 확인하실 수 있습니다.</p>
-            <button
-                onclick="window.location.href='/login.html'"
-                id="modalCloseButton"
-                class="w-full text-white font-bold py-3 rounded-lg transition-all hover:opacity-90"
-                style="background: #2563eb;"
-            >
-                <i class="fas fa-sign-in-alt mr-2"></i>로그인하러 가기
-            </button>
-            <script>
-                if (__THEME_COLOR__) {
-                    document.getElementById('modalCloseButton').style.background = __THEME_COLOR__;
-                }
-            </script>
+
+            <!-- 하단 장식 -->
+            <div class="bg-gradient-to-r from-green-400 to-blue-500 h-2"></div>
         </div>
     </div>
+
+    <style>
+        @keyframes ping {
+            75%, 100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+        .animate-ping {
+            animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+    </style>
 
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     <script>
