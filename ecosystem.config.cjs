@@ -12,7 +12,8 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
-        PORT: 8000
+        PORT: 8000,
+        PYTHONPATH: '/root/BH2025_WOWU:/root/BH2025_WOWU/backend:$PYTHONPATH'
       },
       error_file: './logs/backend-error.log',
       out_file: './logs/backend-out.log',
