@@ -68,19 +68,37 @@ class SimpleVectorStore:
     def add_documents(
         self,
         texts: List[str],
-        metadatas: Optional[List[Dict[str, Any]]] = None
+        metadatas: Optional[List[Dict[str, Any]]] = None,
+        progress_callback = None
     ) -> List[str]:
-        """문서 추가"""
+        """문서 추가 (진행률 콜백 지원)"""
         if metadatas is None:
             metadatas = [{}] * len(texts)
         
         # 임베딩 생성
         print(f"[INFO] {len(texts)}개 문서 임베딩 생성 중...")
-        embeddings = self.embedding_model.encode(
-            texts,
-            show_progress_bar=True,
-            convert_to_numpy=True
-        )
+        
+        # 배치 단위로 처리하여 진행률 업데이트
+        batch_size = 8
+        total_batches = (len(texts) + batch_size - 1) // batch_size
+        all_embeddings = []
+        
+        for i in range(0, len(texts), batch_size):
+            batch_texts = texts[i:i+batch_size]
+            batch_embeddings = self.embedding_model.encode(
+                batch_texts,
+                show_progress_bar=False,
+                convert_to_numpy=True
+            )
+            all_embeddings.append(batch_embeddings)
+            
+            # 진행률 콜백 호출
+            if progress_callback:
+                batch_num = (i // batch_size) + 1
+                progress = 50 + int((batch_num / total_batches) * 40)  # 50%~90%
+                progress_callback(batch_num, total_batches, progress)
+        
+        embeddings = np.vstack(all_embeddings)
         
         # FAISS 인덱스에 추가
         self.index.add(embeddings.astype('float32'))

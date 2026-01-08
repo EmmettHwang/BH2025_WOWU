@@ -19886,13 +19886,19 @@ function showRAGProcessingModal() {
                     <div class="absolute inset-0" style="background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px); background-size: 50px 50px;"></div>
                 </div>
                 
+                <!-- 떠다니는 0과 1 애니메이션 -->
+                <div id="binary-animation" class="absolute inset-0 pointer-events-none overflow-hidden">
+                    <!-- JavaScript로 생성됨 -->
+                </div>
+                
                 <!-- 상단 타이틀 (맥동 애니메이션) -->
                 <div id="rag-modal-title" class="text-center mb-8 relative z-10">
                     <h2 class="text-3xl font-bold text-white mb-2" style="animation: pulse 2s ease-in-out infinite;">
                         <i class="fas fa-brain mr-3"></i>문서 처리 중...
                     </h2>
                     <p id="rag-filename-display" class="text-yellow-300 text-base font-semibold mb-2"></p>
-                    <p class="text-blue-200 text-sm">RAG 시스템이 AI 학습을 위해 문서를 분석하고 있습니다 (시간이 소요될 수 있습니다)</p>
+                    <p class="text-blue-200 text-sm">RAG 시스템이 AI 학습을 위해 문서를 분석하고 있습니다</p>
+                    <p class="text-orange-300 text-xs mt-2 font-semibold">⏱️ 최대 30분까지 소요될 수 있습니다</p>
                 </div>
                 
                 <!-- 중앙 그래픽 영역 -->
@@ -20013,10 +20019,46 @@ function showRAGProcessingModal() {
                         <i class="fas fa-circle-notch fa-spin mr-2"></i>문서 업로드 준비 중...
                     </p>
                 </div>
+                
+                <!-- 빠져나가기 버튼 -->
+                <div class="mt-6 text-center relative z-10">
+                    <button id="rag-close-btn" class="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors duration-300 text-sm">
+                        <i class="fas fa-times mr-2"></i>백그라운드에서 계속 (빠져나가기)
+                    </button>
+                    <p class="text-xs text-gray-400 mt-2">백그라운드에서 처리가 계속됩니다</p>
+                </div>
             </div>
         </div>
         
         <style>
+            /* 떠다니는 0과 1 애니메이션 */
+            .binary-digit {
+                position: absolute;
+                font-size: 24px;
+                font-weight: bold;
+                color: rgba(96, 165, 250, 0.6);
+                font-family: 'Courier New', monospace;
+                animation: binaryFloat 8s linear infinite;
+                text-shadow: 0 0 10px rgba(96, 165, 250, 0.8);
+            }
+            
+            @keyframes binaryFloat {
+                0% {
+                    transform: translateY(100vh) rotate(0deg);
+                    opacity: 0;
+                }
+                10% {
+                    opacity: 1;
+                }
+                90% {
+                    opacity: 1;
+                }
+                100% {
+                    transform: translateY(-100px) rotate(360deg);
+                    opacity: 0;
+                }
+            }
+            
             @keyframes pulse {
                 0%, 100% { opacity: 1; transform: scale(1); }
                 50% { opacity: 0.8; transform: scale(1.05); }
@@ -20125,6 +20167,30 @@ function showRAGProcessingModal() {
     `;
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // 떠다니는 0과 1 애니메이션 생성
+    const binaryContainer = document.getElementById('binary-animation');
+    if (binaryContainer) {
+        // 20개의 랜덤한 0과 1 생성
+        for (let i = 0; i < 20; i++) {
+            const digit = document.createElement('div');
+            digit.className = 'binary-digit';
+            digit.textContent = Math.random() > 0.5 ? '1' : '0';
+            digit.style.left = `${Math.random() * 100}%`;
+            digit.style.animationDelay = `${Math.random() * 5}s`;
+            digit.style.animationDuration = `${6 + Math.random() * 4}s`;
+            binaryContainer.appendChild(digit);
+        }
+    }
+    
+    // 빠져나가기 버튼 이벤트
+    const closeBtn = document.getElementById('rag-close-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            hideRAGProcessingModal();
+            window.showCustomAlert('📦 백그라운드에서 인덱싱이 계속 진행됩니다. 완료되면 알려드리겠습니다.', 'info');
+        });
+    }
 }
 
 function hideRAGProcessingModal() {

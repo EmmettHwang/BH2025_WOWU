@@ -8751,8 +8751,18 @@ async def index_document_to_rag(request: Request):
         }
         save_indexing_progress(indexing_progress)
         
-        # 실제 임베딩 생성 (내부적으로 배치 처리됨)
-        doc_ids = vector_store_manager.add_documents(texts, metadatas)
+        # 진행률 콜백 함수
+        def update_progress(batch_num, total_batches, progress):
+            indexing_progress[filename] = {
+                "status": "embedding",
+                "progress": progress,
+                "message": f"🧠 임베딩 생성 중... (배치 {batch_num}/{total_batches})"
+            }
+            save_indexing_progress(indexing_progress)
+            print(f"[INFO] 진행률: {progress}% (배치 {batch_num}/{total_batches})")
+        
+        # 실제 임베딩 생성 (콜백 전달)
+        doc_ids = vector_store_manager.add_documents(texts, metadatas, progress_callback=update_progress)
         
         # 완료 직전 상태
         indexing_progress[filename] = {
