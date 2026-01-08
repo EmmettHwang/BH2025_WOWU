@@ -19945,8 +19945,17 @@ function showRAGProcessingModal() {
                         </div>
                     </div>
                     
-                    <!-- Embedding Stage (40~90%) -->
-                    <div id="stage-embedding" class="stage-container hidden">
+                    <!-- Embedding Stage (40~90%) - Matrix Rain -->
+                    <div id="stage-embedding" class="stage-container">
+                        <canvas id="matrix-canvas" style="width: 100%; height: 400px; background: #000;"></canvas>
+                        <div class="text-center mt-6">
+                            <p class="text-xl text-green-400 font-semibold">🔢 Embedding: 벡터 변환</p>
+                            <p class="text-sm text-gray-400 mt-2">의미를 수치 벡터로 인코딩하고 있습니다...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Old Embedding Stage (HIDDEN) -->
+                    <div id="stage-embedding-old" class="stage-container hidden">
                         <div class="flex items-center justify-center h-full">
                             <div class="code-stream-container">
                                 <div class="code-stream">
@@ -20143,6 +20152,74 @@ function showRAGProcessingModal() {
             window.showCustomAlert('📦 백그라운드에서 인덱싱이 계속 진행됩니다. 완료되면 알려드리겠습니다.', 'info');
         });
     }
+    
+    // 매트릭스 애니메이션 초기화
+    initMatrixRain();
+}
+
+// 매트릭스 레인 애니메이션
+function initMatrixRain() {
+    const canvas = document.getElementById('matrix-canvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth;
+    canvas.height = 400;
+    
+    const fontSize = 16;
+    const columns = Math.floor(canvas.width / fontSize);
+    const drops = Array(columns).fill(1);
+    
+    // 매트릭스 문자들 (0, 1만 사용)
+    const chars = '01';
+    
+    function draw() {
+        // 반투명 검은색으로 페이드 효과
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // 초록색 텍스트
+        ctx.fillStyle = '#0F0';
+        ctx.font = fontSize + 'px monospace';
+        
+        for (let i = 0; i < drops.length; i++) {
+            // 랜덤 문자 선택
+            const text = chars.charAt(Math.floor(Math.random() * chars.length));
+            
+            // 문자 그리기
+            const x = i * fontSize;
+            const y = drops[i] * fontSize;
+            
+            // 밝은 초록색 (선두)
+            ctx.fillStyle = '#0F0';
+            ctx.fillText(text, x, y);
+            
+            // 그림자 효과
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#0F0';
+            
+            // 떨어지는 위치 업데이트
+            if (y > canvas.height && Math.random() > 0.975) {
+                drops[i] = 0;
+            }
+            drops[i]++;
+        }
+    }
+    
+    // 애니메이션 시작
+    const matrixInterval = setInterval(draw, 50);
+    
+    // 모달이 닫힐 때 애니메이션 정지
+    const modal = document.getElementById('rag-processing-modal');
+    if (modal) {
+        const observer = new MutationObserver((mutations) => {
+            if (!document.body.contains(modal)) {
+                clearInterval(matrixInterval);
+                observer.disconnect();
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
 }
 
 function hideRAGProcessingModal() {
@@ -20236,6 +20313,10 @@ async function processRAGDocument(file) {
                 if (stage) {
                     if (stageId === currentStageId) {
                         stage.classList.remove('hidden');
+                        // Embedding stage로 전환될 때 매트릭스 애니메이션 재시작
+                        if (stageId === 'stage-embedding') {
+                            initMatrixRain();
+                        }
                     } else {
                         stage.classList.add('hidden');
                     }
