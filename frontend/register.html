@@ -400,8 +400,9 @@
                     }
                 }
 
-                // 관심분야 키워드 로드 및 체크박스 생성
-                loadInterestKeywords(settings.interest_keywords || '');
+                // 관심분야 키워드 로드 및 체크박스 생성 (기본값 포함)
+                const defaultKeywords = 'AI, 로봇, 빅데이터, 프로그래밍, 헬스케어, 데이터엔지니어, 데이터과학자, 의과학자, ML엔지니어, AI보안엔지니어, AI APP개발, 임베디드&온디바이스AI, 전문도메인융합, 첨단산업AX, AI HW엔지니어';
+                loadInterestKeywords(settings.interest_keywords || defaultKeywords);
             } catch (error) {
                 console.error('시스템 설정 로드 실패:', error);
             }
