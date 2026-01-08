@@ -6001,7 +6001,7 @@ window.showInstructorCodeForm = function(code = null) {
         { id: 'timetables', name: '시간표', icon: 'fa-clock' },
         { id: 'training-logs', name: '훈련일지 관리', icon: 'fa-clipboard-list' },
         { id: 'rag-documents', name: '문서 관리 (RAG)', icon: 'fa-file-alt' },
-        { id: 'exam-bank', name: '문제은행', icon: 'fa-clipboard-question', category: 'grades' },
+        { id: 'exam-bank', name: '문제은행', icon: 'fa-clipboard-question' },
         { id: 'online-exam', name: '온라인 시험', icon: 'fa-file-signature', category: 'grades' },
         { id: 'online-quiz', name: '온라인 퀴즈', icon: 'fa-gamepad', category: 'grades' },
         { id: 'assignment-submit', name: '과제 제출', icon: 'fa-upload', category: 'grades' },
