@@ -5185,6 +5185,90 @@ async def upload_image(
         print(f"[ERROR] Traceback:\n{error_trace}")
         raise HTTPException(status_code=500, detail=f"이미지 업로드 실패: {str(e)}")
 
+@app.post("/api/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    directory: str = Form("uploads")
+):
+    """
+    범용 파일 업로드 API (신규가입 프로필 사진 등)
+    
+    Args:
+        file: 업로드할 파일
+        directory: FTP 저장 디렉토리 (기본값: uploads)
+    
+    Returns:
+        업로드된 파일의 URL
+    """
+    try:
+        # 파일 확장자 검증
+        allowed_extensions = [
+            '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp',  # 이미지
+            '.pdf', '.doc', '.docx', '.txt', '.hwp'  # 문서
+        ]
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        
+        if file_ext not in allowed_extensions:
+            raise HTTPException(
+                status_code=400,
+                detail=f"허용되지 않는 파일 형식입니다. 허용 형식: {', '.join(allowed_extensions)}"
+            )
+        
+        # 파일 크기 체크 (10MB 제한)
+        await file.seek(0, 2)
+        file_size = await file.tell()
+        await file.seek(0)
+        
+        if file_size > 10 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail=f"파일 크기는 10MB를 초과할 수 없습니다")
+        
+        # 파일명 생성 (타임스탬프 + UUID)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_id = str(uuid.uuid4())[:8]
+        original_name = os.path.splitext(file.filename)[0]
+        safe_filename = f"{timestamp}_{unique_id}{file_ext}"
+        
+        # 파일 데이터 읽기
+        file_data = await file.read()
+        
+        # FTP 업로드
+        ftp = ftplib.FTP()
+        ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
+        ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
+        
+        # 디렉토리로 이동 (없으면 생성)
+        try:
+            ftp.cwd(directory)
+        except:
+            ftp.mkd(directory)
+            ftp.cwd(directory)
+        
+        # 파일 업로드
+        ftp.storbinary(f'STOR {safe_filename}', io.BytesIO(file_data))
+        ftp.quit()
+        
+        # URL 생성
+        file_url = f"ftp://{FTP_CONFIG['host']}/{directory}/{safe_filename}"
+        
+        print(f"[OK] 파일 업로드 성공: {file_url}")
+        
+        return {
+            "success": True,
+            "file_url": file_url,
+            "filename": safe_filename,
+            "original_filename": file.filename,
+            "size": file_size
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[ERROR] 파일 업로드 실패: {e}")
+        print(f"[ERROR] Traceback:\n{error_trace}")
+        raise HTTPException(status_code=500, detail=f"파일 업로드 실패: {str(e)}")
+
 @app.post("/api/upload-image-base64")
 async def upload_image_base64(data: dict):
     """
