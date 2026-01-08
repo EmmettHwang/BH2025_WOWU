@@ -20,7 +20,7 @@ window.addEventListener('error', function(event) {
 }, true);
 
 // ==================== 로컬 캐싱 유틸리티 ====================
-const CACHE_VERSION = '3.8.0'; // 캐시 버전 (업데이트 시 증가)
+const CACHE_VERSION = '3.8.202601081106'; // 캐시 버전 (메이저.마이너.날짜시간)
 const CACHE_DURATION = 5 * 60 * 1000; // 5분 캐시
 
 // 캐시 버전 체크 및 초기화
