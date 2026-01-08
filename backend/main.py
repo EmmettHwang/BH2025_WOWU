@@ -658,6 +658,12 @@ async def approve_student_registration(registration_id: int, data: dict):
                     ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
                     ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
                     
+                    # /home 디렉토리로 이동 (권한이 있는 경로)
+                    try:
+                        ftp.cwd('/home')
+                    except:
+                        pass  # 이미 /home에 있을 수 있음
+                    
                     # student_profiles 디렉토리로 이동 (없으면 생성)
                     try:
                         ftp.cwd('student_profiles')
@@ -670,7 +676,7 @@ async def approve_student_registration(registration_id: int, data: dict):
                     ftp.quit()
                     
                     # FTP URL 생성
-                    profile_photo = f"ftp://{FTP_CONFIG['host']}/student_profiles/{filename}"
+                    profile_photo = f"ftp://{FTP_CONFIG['host']}/home/student_profiles/{filename}"
                     print(f"[OK] Base64 이미지를 FTP로 변환: {profile_photo}")
                 else:
                     # FTP 설정이 없으면 빈 문자열
@@ -5232,6 +5238,12 @@ async def upload_file(
         ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
         ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
         
+        # /home 디렉토리로 이동 (권한이 있는 경로)
+        try:
+            ftp.cwd('/home')
+        except:
+            pass  # 이미 /home에 있을 수 있음
+        
         # 디렉토리로 이동 (없으면 생성)
         try:
             ftp.cwd(directory)
@@ -5244,7 +5256,7 @@ async def upload_file(
         ftp.quit()
         
         # URL 생성
-        file_url = f"ftp://{FTP_CONFIG['host']}/{directory}/{safe_filename}"
+        file_url = f"ftp://{FTP_CONFIG['host']}/home/{directory}/{safe_filename}"
         
         print(f"[OK] 파일 업로드 성공: {file_url}")
         
