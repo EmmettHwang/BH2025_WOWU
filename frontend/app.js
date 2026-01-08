@@ -20260,12 +20260,25 @@ async function processRAGDocument(file) {
     let isProcessing = true;
     let uploadedFilename = null;
     let lastLoggedProgress = 0;  // 마지막 로그 출력 진행률
+    let lastProgress = 0;  // 이전 진행률
+    let noChangeCount = 0;  // 변화 없는 횟수
+    let currentPollInterval = 3000;  // 현재 폴링 간격 (초기값 3초)
     
     // 프로그레스바 초기화 (0%부터 시작)
     const progressBar = document.getElementById('rag-progress-bar');
     const progressPercent = document.getElementById('rag-progress-percentage');
     if (progressBar) progressBar.style.width = '0%';
     if (progressPercent) progressPercent.textContent = '0%';
+    
+    // 폴링 간격 재설정 함수
+    const resetPollingInterval = (newInterval) => {
+        if (progressInterval) {
+            clearInterval(progressInterval);
+        }
+        currentPollInterval = newInterval;
+        progressInterval = setInterval(checkProgress, newInterval);
+        console.log(`🔄 폴링 간격 변경: ${newInterval / 1000}초`);
+    };
     
     // 진행률 조회 함수
     const checkProgress = async () => {
@@ -20279,6 +20292,29 @@ async function processRAGDocument(file) {
             
             // 진행률이 변경되었을 때만 로그 출력 (5% 이상 차이)
             const currentProgress = data.progress || 0;
+            
+            // 🎯 적응형 폴링: 진행률 변화 감지
+            if (currentProgress !== lastProgress) {
+                // 진행률 변화 → 3초로 리셋
+                noChangeCount = 0;
+                if (currentPollInterval !== 3000) {
+                    resetPollingInterval(3000);
+                }
+                lastProgress = currentProgress;
+            } else {
+                // 진행률 변화 없음 → 카운트 증가
+                noChangeCount++;
+                
+                // 적응형 간격 조정 (3초 → 5초 → 10초 → 30초)
+                if (noChangeCount === 2 && currentPollInterval === 3000) {
+                    resetPollingInterval(5000);  // 2번 변화 없으면 5초
+                } else if (noChangeCount === 5 && currentPollInterval === 5000) {
+                    resetPollingInterval(10000);  // 5번 변화 없으면 10초
+                } else if (noChangeCount === 10 && currentPollInterval === 10000) {
+                    resetPollingInterval(30000);  // 10번 변화 없으면 30초 (최대)
+                }
+            }
+            
             if (Math.abs(currentProgress - lastLoggedProgress) >= 5 || data.status === 'completed' || data.status === 'error') {
                 console.log('📊 진행률 업데이트:', currentProgress + '%', data.status, data.message);
                 lastLoggedProgress = currentProgress;
