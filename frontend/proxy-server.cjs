@@ -53,7 +53,12 @@ const server = http.createServer((req, res) => {
     let filePath;
     if (urlPath.endsWith('.glb') || urlPath.endsWith('.gltf')) {
         filePath = path.join(__dirname, '..', 'dist', urlPath);
-    } else {
+    }
+    // README.md는 상위 폴더에서 찾기
+    else if (urlPath === '/README.md') {
+        filePath = path.join(__dirname, '..', 'README.md');
+    }
+    else {
         filePath = path.join(__dirname, urlPath);
     }
     
