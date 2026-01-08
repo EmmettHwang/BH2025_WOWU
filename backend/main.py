@@ -127,6 +127,24 @@ async def serve_glb_file_api(filename: str):
         raise HTTPException(status_code=404, detail=f"GLB file not found: {filename}.glb")
 
 
+# ==================== 버전 API ====================
+@app.get("/api/version")
+async def get_version():
+    """README.md에서 버전 정보 추출"""
+    import re
+    readme_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "README.md")
+    try:
+        with open(readme_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            # **현재 버전**: v3.8.202601081106 형식에서 버전 추출
+            match = re.search(r'\*\*현재 버전\*\*:\s*v?([\d.]+)', content)
+            if match:
+                return {"version": match.group(1)}
+            return {"version": "unknown"}
+    except Exception as e:
+        return {"version": "unknown", "error": str(e)}
+
+
 # 데이터베이스 연결 설정 (환경 변수에서 로드)
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'www.kdt2025.com'),
