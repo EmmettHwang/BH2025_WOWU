@@ -434,7 +434,7 @@ def ensure_student_registrations_table(cursor):
                 education TEXT,
                 introduction TEXT,
                 course_code VARCHAR(50),
-                profile_photo TEXT,
+                profile_photo VARCHAR(500),
                 status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
                 processed_at DATETIME,
                 processed_by VARCHAR(50),
@@ -445,6 +445,17 @@ def ensure_student_registrations_table(cursor):
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
         print("[OK] student_registrations 테이블 확인/생성 완료")
+        
+        # 기존 profile_photo 컬럼이 TEXT인 경우 VARCHAR(500)으로 변경
+        cursor.execute("SHOW COLUMNS FROM student_registrations LIKE 'profile_photo'")
+        col = cursor.fetchone()
+        if col and 'text' in col['Type'].lower():
+            try:
+                cursor.execute("ALTER TABLE student_registrations MODIFY COLUMN profile_photo VARCHAR(500)")
+                print("[OK] student_registrations.profile_photo 컬럼 타입 변경: TEXT → VARCHAR(500)")
+            except Exception as modify_err:
+                print(f"[WARN] profile_photo 컬럼 타입 변경 실패: {modify_err}")
+                
     except Exception as e:
         print(f"[WARN] student_registrations 테이블 생성 실패: {e}")
 
@@ -545,7 +556,7 @@ async def approve_student_registration(registration_id: int, data: dict):
         
         required_columns = {
             'password': "VARCHAR(100) DEFAULT 'kdt2025'",
-            'profile_photo': "TEXT",
+            'profile_photo': "VARCHAR(500)",  # URL만 저장 (FTP 경로)
             'education': "VARCHAR(255)",
             'introduction': "TEXT"
         }

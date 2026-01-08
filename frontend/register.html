@@ -475,7 +475,7 @@
         let cameraStream = null;
 
         // 프로필 사진 업로드 처리
-        function handlePhotoUpload(event) {
+        async function handlePhotoUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
 
@@ -493,11 +493,35 @@
                 return;
             }
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                setPhotoPreview(e.target.result);
-            };
-            reader.readAsDataURL(file);
+            try {
+                // FTP 업로드
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('directory', 'student_profiles');
+
+                const response = await fetch(`${API_BASE_URL}/api/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('사진 업로드 실패');
+                }
+
+                const result = await response.json();
+                const photoUrl = result.file_url;
+
+                // 미리보기용 dataUrl 생성
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    setPhotoPreview(e.target.result, photoUrl);
+                };
+                reader.readAsDataURL(file);
+            } catch (error) {
+                console.error('사진 업로드 오류:', error);
+                showAlert('사진 업로드에 실패했습니다', 'error');
+                event.target.value = '';
+            }
         }
 
         // 카메라 열기
@@ -542,19 +566,47 @@
             canvas.height = video.videoHeight;
             ctx.drawImage(video, 0, 0);
 
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            setPhotoPreview(dataUrl);
-            closeCamera();
+            // JPEG 파일로 변환
+            canvas.toBlob(async (blob) => {
+                try {
+                    // FTP 업로드
+                    const formData = new FormData();
+                    const filename = `profile_${Date.now()}.jpg`;
+                    formData.append('file', blob, filename);
+                    formData.append('directory', 'student_profiles');
+
+                    const response = await fetch(`${API_BASE_URL}/api/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('사진 업로드 실패');
+                    }
+
+                    const result = await response.json();
+                    const photoUrl = result.file_url;
+
+                    // 미리보기는 dataUrl, 실제 저장은 URL
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    setPhotoPreview(dataUrl, photoUrl);
+                    closeCamera();
+                } catch (error) {
+                    console.error('사진 업로드 오류:', error);
+                    showAlert('사진 업로드에 실패했습니다', 'error');
+                    closeCamera();
+                }
+            }, 'image/jpeg', 0.8);
         }
 
         // 미리보기 설정
-        function setPhotoPreview(dataUrl) {
+        function setPhotoPreview(dataUrl, photoUrl = null) {
             const preview = document.getElementById('photoPreview');
             const previewContainer = document.getElementById('photoPreviewContainer');
             const photoButtons = document.getElementById('photoButtons');
 
             preview.src = dataUrl;
-            document.getElementById('profilePhoto').value = dataUrl;
+            document.getElementById('profilePhoto').value = photoUrl || dataUrl;
 
             previewContainer.classList.remove('hidden');
             photoButtons.classList.add('hidden');
