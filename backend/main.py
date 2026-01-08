@@ -5173,9 +5173,6 @@ async def login(credentials: dict):
             if not permissions_dict:
                 permissions_dict = {}
             
-            # aesong-3d-chat 권한 자동 추가 (모든 강사에게)
-            permissions_dict['aesong-3d-chat'] = True
-            
             instructor['permissions'] = permissions_dict
             
             print(f"[OK] 강사 로그인 성공: {instructor['name']}")
