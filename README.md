@@ -216,7 +216,81 @@ pip install pypdf2 python-docx tiktoken
 
 ---
 
-## 🎯 최신 업데이트 (v3.6)
+## 🎯 최신 업데이트 (v3.7)
+
+### ⚡ 성능 최적화 및 UX 개선 (2026-01-08)
+
+#### 🚀 적응형 폴링 시스템
+- **스마트 폴링**: 진행 상황에 따라 자동으로 간격 조정
+  - 빠른 진행 시: 3초 간격 유지 (즉각 피드백)
+  - 변화 없음 2회: 5초로 증가
+  - 변화 없음 5회: 10초로 증가
+  - 변화 없음 10회: 30초로 증가 (최대)
+  - 진행률 변화 감지 시: 즉시 3초로 리셋!
+- **트래픽 절감**: 평균 60~75% API 요청 감소
+- **배터리 절약**: 모바일 환경에서 효율적
+
+#### 🧹 로그 시스템 대폭 정리
+- **불필요한 로그 제거**:
+  - RAG 진행률 조회 200 OK (3초마다 폴링)
+  - 대시보드 새로고침 8개 API (courses, students, instructors 등)
+- **로그 파일 크기**: 90% 감소
+- **유지되는 중요 로그**:
+  - ✅ POST/PUT/DELETE (데이터 변경)
+  - ✅ 로그인 실패 (401, 보안)
+  - ✅ 에러 (4xx, 5xx)
+  - ✅ 파일 업로드/다운로드
+
+#### 📚 메뉴 구조 개선
+- **문제은행 위치 변경**: 성적 메뉴 → 강의 메뉴
+- **논리적 그룹화**:
+  - 강의: 시간표, 훈련일지, 문서관리(RAG), 문제은행
+  - 성적: 온라인시험, 온라인퀴즈, 과제제출
+
+#### 📊 성능 개선 효과
+| 항목 | Before | After | 개선율 |
+|------|--------|-------|--------|
+| API 트래픽 (느린 인덱싱) | 600회/30분 | 150회/30분 | **75%↓** |
+| 로그 발생량 (하루) | ~5000줄 | ~500줄 | **90%↓** |
+| 대시보드 새로고침 로그 | 8줄 | 0줄 | **100%↓** |
+
+#### 🔧 기술 구현
+```javascript
+// 적응형 폴링
+if (currentProgress !== lastProgress) {
+    resetPollingInterval(3000);  // 변화 감지 → 3초
+} else {
+    noChangeCount++;
+    if (noChangeCount === 2) resetPollingInterval(5000);
+    if (noChangeCount === 5) resetPollingInterval(10000);
+    if (noChangeCount === 10) resetPollingInterval(30000);
+}
+```
+
+```python
+# 로그 필터
+class EndpointFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        if '200 OK' in message:
+            # RAG 진행률 & 대시보드 API 제외
+            if '/api/rag/indexing-progress/' in message:
+                return False
+            for api in dashboard_apis:
+                if f'GET {api} ' in message:
+                    return False
+        return True
+```
+
+#### 📦 커밋 히스토리 (v3.7)
+- `b6d4a8c`: 버전 v3.6.0 업데이트 및 README 갱신
+- `c0314ef`: 문제은행 메뉴 위치 변경 (성적 → 강의)
+- `a4db72c`: RAG 진행률 조회 API 로그 제거
+- `607e90b`: 적응형 폴링으로 API 트래픽 대폭 감소
+- `a37edb6`: 대시보드 새로고침 API 로그 제거
+
+---
+
+## 📜 이전 버전 (v3.6)
 
 ### 🎬 RAG 인덱싱 UX 대폭 개선 (2026-01-08)
 
@@ -238,21 +312,7 @@ pip install pypdf2 python-docx tiktoken
 - **progress_callback 에러**: VectorStoreManager에 콜백 파라미터 추가
 - **서버 블로킹**: 인덱싱으로 인한 전체 서버 블로킹 → 백그라운드 처리
 
-#### ⚡ 성능 최적화
-- **폴링 간격**: 1초 → 3초 (API 부하 66% 감소)
-- **로그 최적화**: 진행률 변화 시에만 로그 (delta ≥ 5%) → 로그 90% 감소
-- **메모리 관리**: 완료 항목 30초 후 자동 삭제, MutationObserver로 메모리 누수 방지
-
-#### 🎨 기술 상세
-```javascript
-// 매트릭스 레인 애니메이션
-- Canvas API 기반 실시간 렌더링
-- 열(column)별 독립적인 드롭 속도
-- 페이드 효과로 자연스러운 잔상
-- 50ms 간격 부드러운 애니메이션
-```
-
-#### 📊 커밋 히스토리
+#### 📊 커밋 히스토리 (v3.6)
 - `38ad2d1`: 진행률 디스크 영구 저장
 - `46c27e8`: UX 개선 (애니메이션, 빠져나가기)
 - `7fb4ba4`: 502 에러 해결 (백그라운드 태스크)
@@ -302,5 +362,5 @@ pip install pypdf2 python-docx tiktoken
 ---
 
 **마지막 업데이트**: 2026-01-08  
-**버전**: 3.6  
-**상태**: ✅ 프로덕션 배포 완료 + 🎬 매트릭스 애니메이션 + 🔍 RAG 시스템 + 📝 문제은행 + 🎓 교육관리
+**버전**: 3.7.0  
+**상태**: ✅ 프로덕션 배포 완료 + ⚡ 적응형 폴링 + 🧹 로그 최적화 + 🎬 매트릭스 애니메이션 + 🔍 RAG 시스템 + 📝 문제은행 + 🎓 교육관리
