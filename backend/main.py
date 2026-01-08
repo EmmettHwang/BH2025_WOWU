@@ -650,17 +650,13 @@ async def approve_student_registration(registration_id: int, data: dict):
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 filename = f"profile_{student_code}_{timestamp}.jpg"
                 
-                # FTP 연결 및 업로드
+                # FTP 연결 및 업로드 (FTP_CONFIG 사용)
                 import ftplib
-                ftp_host = os.getenv('FTP_HOST', '')
-                ftp_port = int(os.getenv('FTP_PORT', '21'))
-                ftp_user = os.getenv('FTP_USER', '')
-                ftp_password = os.getenv('FTP_PASSWORD', '')
                 
-                if ftp_host and ftp_user:
+                if FTP_CONFIG['host'] and FTP_CONFIG['user']:
                     ftp = ftplib.FTP()
-                    ftp.connect(ftp_host, ftp_port)
-                    ftp.login(ftp_user, ftp_password)
+                    ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
+                    ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
                     
                     # student_profiles 디렉토리로 이동 (없으면 생성)
                     try:
@@ -674,7 +670,7 @@ async def approve_student_registration(registration_id: int, data: dict):
                     ftp.quit()
                     
                     # FTP URL 생성
-                    profile_photo = f"ftp://{ftp_host}/student_profiles/{filename}"
+                    profile_photo = f"ftp://{FTP_CONFIG['host']}/student_profiles/{filename}"
                     print(f"[OK] Base64 이미지를 FTP로 변환: {profile_photo}")
                 else:
                     # FTP 설정이 없으면 빈 문자열
