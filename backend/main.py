@@ -8754,12 +8754,19 @@ async def get_indexing_progress(filename: str):
 async def get_document_rag_status(filename: str):
     """
     문서의 RAG 인덱싱 상태 확인
+    - indexed: 인덱싱 완료 여부
+    - indexing: 현재 인덱싱 진행 중인지 여부
+    - progress: 진행률 정보
     """
     if not vector_store_manager:
         raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
     
     try:
-        # 파일명으로 벡터 DB 검색
+        # 1. 진행 중인 인덱싱 확인
+        is_indexing = filename in indexing_progress
+        progress_info = indexing_progress.get(filename, {})
+        
+        # 2. 파일명으로 벡터 DB 검색
         documents = vector_store_manager.get_all_documents()
         
         # 해당 파일명을 가진 문서가 있는지 확인
@@ -8775,6 +8782,8 @@ async def get_document_rag_status(filename: str):
             "success": True,
             "filename": filename,
             "indexed": is_indexed,
+            "indexing": is_indexing and progress_info.get('status') not in ['completed', 'error'],
+            "progress": progress_info if is_indexing else None,
             "chunk_count": len(indexed_docs),
             "total_docs_in_rag": len(documents)
         }

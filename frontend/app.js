@@ -20294,9 +20294,20 @@ async function askDocument(filename) {
     // 문서가 RAG에 인덱싱되어 있는지 확인
     try {
         const response = await axios.get(`${API_BASE_URL}/api/rag/document-status/${encodeURIComponent(filename)}`);
-        const isIndexed = response.data.indexed;
+        const { indexed, indexing, progress } = response.data;
         
-        if (!isIndexed) {
+        // 현재 인덱싱 진행 중인 경우
+        if (indexing) {
+            const progressPercent = progress?.progress || 0;
+            const progressMessage = progress?.message || '인덱싱 진행 중';
+            await window.showCustomAlert(
+                `📝 이 문서는 현재 인덱싱 진행 중입니다.\n진행률: ${progressPercent}%\n상태: ${progressMessage}\n\n잠시 후 다시 시도해주세요.`,
+                'info'
+            );
+            return;
+        }
+        
+        if (!indexed) {
             // 아직 인덱싱 안됨 - 지금 인덱싱할지 물어보기
             const shouldIndex = await window.showCustomConfirm(
                 '이 문서는 아직 RAG 시스템에 인덱싱되지 않았습니다. 지금 인덱싱하시겠습니까?',
