@@ -2865,6 +2865,34 @@ window.sendChatMessage = async function() {
                 requestBody.document_context = documentContext;
             }
             
+            // RAG 시스템 상태 체크 (최초 1회만 로딩 모달 표시)
+            try {
+                const statusRes = await axios.get(`${API_BASE_URL}/api/rag/status`);
+                if (!statusRes.data.initialized && statusRes.data.loading) {
+                    // 한국어 임베딩 모델 로딩 중
+                    window.showLoading('🔄 한국어 임베딩 모델 로딩 중...\n최초 1회만 약 10-20초 소요됩니다.\n잠시만 기다려주세요! ☕');
+                    
+                    // 초기화 대기 (최대 60초)
+                    let retries = 60;
+                    while (retries > 0) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        const statusCheck = await axios.get(`${API_BASE_URL}/api/rag/status`);
+                        if (statusCheck.data.initialized) {
+                            window.hideLoading();
+                            break;
+                        }
+                        retries--;
+                    }
+                    
+                    if (retries === 0) {
+                        window.hideLoading();
+                        throw new Error('RAG 시스템 초기화 시간 초과');
+                    }
+                }
+            } catch (statusError) {
+                console.warn('RAG 상태 체크 실패 (무시하고 계속):', statusError);
+            }
+            
             const response = await axios.post(`${API_BASE_URL}/api/rag/chat`, requestBody, {
                 headers: {
                     'X-GROQ-API-Key': groqApiKey

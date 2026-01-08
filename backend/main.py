@@ -7589,9 +7589,10 @@ from rag.rag_chain import RAGChain
 import shutil
 from typing import Optional
 
-# RAG 전역 인스턴스 (앱 시작 시 초기화)
+# RAG 전역 인스턴스 (지연 로딩)
 vector_store_manager = None
 document_loader = None
+rag_initialized = False  # RAG 초기화 상태
 
 # RAG 인덱싱 진행률 추적 (디스크에 영구 저장)
 PROGRESS_FILE = Path("./backend/indexing_progress.json")
@@ -7634,10 +7635,14 @@ def save_indexing_progress(progress_dict):
 indexing_progress = load_indexing_progress()
 
 def init_rag():
-    """RAG 시스템 초기화"""
-    global vector_store_manager, document_loader
+    """RAG 시스템 초기화 (지연 로딩)"""
+    global vector_store_manager, document_loader, rag_initialized
     
-    print("[INFO] RAG 시스템 초기화 중...")
+    if rag_initialized:
+        print("[INFO] RAG 시스템 이미 초기화됨")
+        return True
+    
+    print("[INFO] 🔄 RAG 시스템 초기화 중... (한국어 임베딩 모델 로딩)")
     
     try:
         # 문서 로더 초기화
@@ -7650,21 +7655,23 @@ def init_rag():
         vector_db_path.mkdir(exist_ok=True, parents=True)
         
         # 벡터 스토어 초기화
+        print("[INFO] 📥 임베딩 모델 다운로드 중 (최초 1회만, 약 10-20초 소요)")
         vector_store_manager = VectorStoreManager(
             persist_directory=str(vector_db_path),
             collection_name="biohealth_docs"
         )
         
-        print("[OK] RAG 시스템 초기화 완료")
+        rag_initialized = True
+        print("[OK] ✅ RAG 시스템 초기화 완료")
         print(f"[DOC] 저장된 문서 수: {vector_store_manager.count_documents()}")
         
-        # 기본 문서 자동 로드 (비활성화 - 수동 업로드 사용)
-        # load_default_documents()
+        return True
         
     except Exception as e:
-        print(f"[ERROR] RAG 시스템 초기화 실패: {e}")
+        print(f"[ERROR] ❌ RAG 시스템 초기화 실패: {e}")
         print("[WARN] RAG 기능을 사용하려면 필요한 패키지를 설치하세요:")
         print("   pip install -r requirements_rag.txt")
+        return False
 
 
 def load_default_documents():
@@ -7943,7 +7950,10 @@ async def rag_chat(request: Request):
         - 문서 특정 컨텍스트 지원
     """
     if not vector_store_manager:
-        raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
+        # RAG 시스템 지연 초기화
+        print("[INFO] 첫 RAG 요청 - 시스템 초기화 중...")
+        if not init_rag():
+            raise HTTPException(status_code=503, detail="RAG 시스템 초기화에 실패했습니다. 서버 로그를 확인하세요.")
     
     try:
         data = await request.json()
@@ -8168,7 +8178,10 @@ async def rag_search(
     - 메타데이터 필터링 지원
     """
     if not vector_store_manager:
-        raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
+        # RAG 시스템 지연 초기화
+        print("[INFO] 첫 RAG 요청 - 시스템 초기화 중...")
+        if not init_rag():
+            raise HTTPException(status_code=503, detail="RAG 시스템 초기화에 실패했습니다. 서버 로그를 확인하세요.")
     
     try:
         # 검색 (필터 없이)
@@ -8217,10 +8230,20 @@ async def clear_rag_database():
 @app.get("/api/rag/status")
 async def rag_status():
     """RAG 시스템 상태 확인"""
+    global rag_initialized
+    
+    if not rag_initialized:
+        return {
+            "initialized": False,
+            "loading": False,
+            "message": "RAG 시스템이 아직 초기화되지 않았습니다. 첫 RAG 기능 사용 시 자동으로 초기화됩니다."
+        }
+    
     if not vector_store_manager:
         return {
             "initialized": False,
-            "message": "RAG 시스템이 초기화되지 않았습니다"
+            "loading": True,
+            "message": "한국어 임베딩 모델 로딩 중... (최초 1회만, 약 10-20초 소요)"
         }
     
     try:
@@ -8228,8 +8251,9 @@ async def rag_status():
         
         return {
             "initialized": True,
+            "loading": False,
             "document_count": count,
-            "embedding_model": vector_store_manager.embedding_model,
+            "embedding_model": "jhgan/ko-sroberta-multitask",
             "collection_name": vector_store_manager.collection_name,
             "vector_db": "FAISS",
             "status": "정상"
@@ -8238,6 +8262,7 @@ async def rag_status():
     except Exception as e:
         return {
             "initialized": False,
+            "loading": False,
             "error": str(e)
         }
 
@@ -9159,7 +9184,10 @@ async def get_document_rag_status(filename: str):
     - progress: 진행률 정보
     """
     if not vector_store_manager:
-        raise HTTPException(status_code=503, detail="RAG 시스템이 초기화되지 않았습니다")
+        # RAG 시스템 지연 초기화
+        print("[INFO] 첫 RAG 요청 - 시스템 초기화 중...")
+        if not init_rag():
+            raise HTTPException(status_code=503, detail="RAG 시스템 초기화에 실패했습니다. 서버 로그를 확인하세요.")
     
     try:
         # 1. 진행 중인 인덱싱 확인
