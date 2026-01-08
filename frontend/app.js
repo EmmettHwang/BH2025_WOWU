@@ -3340,9 +3340,16 @@ window.filterRegistrations = function() {
         const courseName = courseMap[reg.course_code] || reg.course_code || '-';
 
         // 프로필 사진 표시 (FTP URL을 프록시를 통해 표시)
-        const profilePhoto = reg.profile_photo
-            ? `<img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(reg.profile_photo)}" alt="프로필" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200">`
-            : `<div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400"><i class="fas fa-user"></i></div>`;
+        let profilePhoto;
+        if (reg.profile_photo) {
+            profilePhoto = `<img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(reg.profile_photo)}" alt="프로필" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200">`;
+        } else {
+            // 성별에 따라 기본 아바타 이미지 표시
+            const avatarUrl = reg.gender === '여' || reg.gender === '여자' || reg.gender === 'female'
+                ? 'https://api.dicebear.com/7.x/avataaars/svg?seed=female&backgroundColor=ffd5dc,ffdfbf&style=circle'
+                : 'https://api.dicebear.com/7.x/avataaars/svg?seed=male&backgroundColor=b6e3f4,c0aede&style=circle';
+            profilePhoto = `<img src="${avatarUrl}" alt="프로필" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200">`;
+        }
 
         const actionButtons = reg.status === 'pending' ? `
             <button onclick="window.viewRegistrationDetail(${reg.id})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-sm mr-1" title="상세보기">
@@ -3402,7 +3409,12 @@ window.viewRegistrationDetail = function(regId) {
                 <div class="flex justify-center mb-4">
                     ${reg.profile_photo
                         ? `<img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(reg.profile_photo)}" alt="프로필" class="w-24 h-24 rounded-full object-cover border-4 border-orange-200 shadow-lg">`
-                        : `<div class="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-3xl border-4 border-gray-300"><i class="fas fa-user"></i></div>`
+                        : (() => {
+                            const avatarUrl = reg.gender === '여' || reg.gender === '여자' || reg.gender === 'female'
+                                ? 'https://api.dicebear.com/7.x/avataaars/svg?seed=female&backgroundColor=ffd5dc,ffdfbf&style=circle'
+                                : 'https://api.dicebear.com/7.x/avataaars/svg?seed=male&backgroundColor=b6e3f4,c0aede&style=circle';
+                            return `<img src="${avatarUrl}" alt="프로필" class="w-24 h-24 rounded-full object-cover border-4 border-orange-200 shadow-lg">`;
+                        })()
                     }
                 </div>
 
@@ -3720,9 +3732,12 @@ function renderStudents() {
                                              alt="${student.name}" 
                                              class="w-10 h-10 rounded-full object-cover mx-auto border border-gray-300"
                                              onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23e5e7eb%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%239ca3af%27 font-family=%27Arial%27 font-size=%2714%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dominant-baseline=%27middle%27%3ENo Photo%3C/text%3E%3C/svg%3E'">
-                                    ` : `
-                                        <i class="fas fa-user-circle text-gray-300 text-2xl" title="프로필 사진 없음"></i>
-                                    `}
+                                    ` : (() => {
+                                        const avatarUrl = student.gender === '여' || student.gender === '여자' || student.gender === 'female'
+                                            ? 'https://api.dicebear.com/7.x/avataaars/svg?seed=female&backgroundColor=ffd5dc,ffdfbf&style=circle'
+                                            : 'https://api.dicebear.com/7.x/avataaars/svg?seed=male&backgroundColor=b6e3f4,c0aede&style=circle';
+                                        return `<img src="${avatarUrl}" alt="${student.name}" class="w-10 h-10 rounded-full mx-auto border border-gray-300">`;
+                                    })()}
                                 </td>
                                 <td class="px-4 py-2 font-mono">${student.code}</td>
                                 <td class="px-4 py-2 font-semibold">${student.name}</td>
@@ -3948,7 +3963,12 @@ window.showStudentForm = async function(studentId = null) {
                     </label>
                     <div class="flex items-center gap-4">
                         <img id="student-profile-photo" 
-                             src="${student && student.profile_photo ? API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(student.profile_photo) : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23e5e7eb%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%239ca3af%27 font-family=%27Arial%27 font-size=%2714%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dominant-baseline=%27middle%27%3ENo Photo%3C/text%3E%3C/svg%3E'}" 
+                             src="${student && student.profile_photo ? API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(student.profile_photo) : (() => {
+                                const gender = student ? student.gender : '';
+                                return (gender === '여' || gender === '여자' || gender === 'female')
+                                    ? 'https://api.dicebear.com/7.x/avataaars/svg?seed=female&backgroundColor=ffd5dc,ffdfbf&style=circle'
+                                    : 'https://api.dicebear.com/7.x/avataaars/svg?seed=male&backgroundColor=b6e3f4,c0aede&style=circle';
+                             })()}" 
                              alt="프로필 사진" 
                              class="w-24 h-24 rounded-full object-cover border-2 border-gray-300">
                         <input type="hidden" id="student-profile-photo-url" value="${student && student.profile_photo ? student.profile_photo : ''}">
@@ -5459,14 +5479,15 @@ window.showStudentDetail = async function(studentId) {
             }
         }
         
-        // 성별에 따른 기본 프로필 이미지
+        // 성별에 따른 기본 프로필 이미지 (DiceBear Avataaars 스타일)
         const getDefaultProfileImage = (gender) => {
             if (gender === '남' || gender === '남자' || gender === 'M' || gender === 'male') {
-                return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Cdefs%3E%3ClinearGradient id="grad1" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" style="stop-color:%234A90E2;stop-opacity:1" /%3E%3Cstop offset="100%25" style="stop-color:%2367B8E3;stop-opacity:1" /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width="200" height="200" fill="url(%23grad1)"/%3E%3Ccircle cx="100" cy="70" r="35" fill="white" opacity="0.9"/%3E%3Cpath d="M 100 110 Q 70 110 60 140 L 60 200 L 140 200 L 140 140 Q 130 110 100 110 Z" fill="white" opacity="0.9"/%3E%3C/svg%3E';
+                return 'https://api.dicebear.com/7.x/avataaars/svg?seed=male&backgroundColor=b6e3f4,c0aede&style=circle';
             } else if (gender === '여' || gender === '여자' || gender === 'F' || gender === 'female') {
-                return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Cdefs%3E%3ClinearGradient id="grad2" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" style="stop-color:%23EC4899;stop-opacity:1" /%3E%3Cstop offset="100%25" style="stop-color:%23F472B6;stop-opacity:1" /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width="200" height="200" fill="url(%23grad2)"/%3E%3Ccircle cx="100" cy="70" r="35" fill="white" opacity="0.9"/%3E%3Cpath d="M 100 110 Q 70 110 60 140 L 60 200 L 140 200 L 140 140 Q 130 110 100 110 Z" fill="white" opacity="0.9"/%3E%3C/svg%3E';
+                return 'https://api.dicebear.com/7.x/avataaars/svg?seed=female&backgroundColor=ffd5dc,ffdfbf&style=circle';
             }
-            return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Cdefs%3E%3ClinearGradient id="grad3" x1="0%25" y1="0%25" x2="100%25" y2="100%25"%3E%3Cstop offset="0%25" style="stop-color:%236B7280;stop-opacity:1" /%3E%3Cstop offset="100%25" style="stop-color:%239CA3AF;stop-opacity:1" /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width="200" height="200" fill="url(%23grad3)"/%3E%3Ccircle cx="100" cy="70" r="35" fill="white" opacity="0.9"/%3E%3Cpath d="M 100 110 Q 70 110 60 140 L 60 200 L 140 200 L 140 140 Q 130 110 100 110 Z" fill="white" opacity="0.9"/%3E%3C/svg%3E';
+            // 성별 미지정
+            return 'https://api.dicebear.com/7.x/avataaars/svg?seed=default&backgroundColor=e5e7eb&style=circle';
         };
         
         // detailDiv는 함수 시작 부분에서 이미 선언됨
@@ -7216,7 +7237,7 @@ window.showInstructorForm = function(code = null) {
             </label>
             <div class="flex items-center gap-4">
                 <img id="instructor-profile-photo" 
-                     src="${existingInst && existingInst.profile_photo ? API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(existingInst.profile_photo) : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27200%27%3E%3Crect fill=%27%23e5e7eb%27 width=%27200%27 height=%27200%27/%3E%3Ctext fill=%27%239ca3af%27 font-family=%27Arial%27 font-size=%2714%27 x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dominant-baseline=%27middle%27%3ENo Photo%3C/text%3E%3C/svg%3E'}" 
+                     src="${existingInst && existingInst.profile_photo ? API_BASE_URL + '/api/thumbnail?url=' + encodeURIComponent(existingInst.profile_photo) : 'https://api.dicebear.com/7.x/avataaars/svg?seed=instructor&backgroundColor=e5e7eb&style=circle'}" 
                      alt="프로필 사진" 
                      class="w-24 h-24 rounded-full object-cover border-2 border-gray-300">
                 <input type="hidden" id="instructor-profile-photo-url" value="${existingInst && existingInst.profile_photo ? existingInst.profile_photo : ''}">
