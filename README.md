@@ -35,6 +35,28 @@ mysql -h [DB_HOST] -u [DB_USER] -p[DB_PASSWORD] [DB_NAME] < migrations/0003_add_
 pm2 restart wowu-backend
 ```
 
+### 긴급조치 (Cafe24 서버가 응답 없을 때)
+# 1) 강제 재시작
+pm2 delete bh2025-backend
+pm2 start ecosystem.config.cjs
+pm2 save
+
+# 2) 메모리 부족 시
+pm2 restart all
+
+# 3) 여전히 안 되면
+sudo systemctl restart pm2-root
+# 1) 강제 재시작
+pm2 delete bh2025-backend
+pm2 start ecosystem.config.cjs
+pm2 save
+
+# 2) 메모리 부족 시
+pm2 restart all
+
+# 3) 여전히 안 되면
+sudo systemctl restart pm2-root
+
 ---
 
 ## 📂 프로젝트 구조

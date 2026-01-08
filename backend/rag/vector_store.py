@@ -34,13 +34,14 @@ class VectorStoreManager:
         
         print(f"[OK] 벡터 스토어 초기화 완료 (문서 수: {self.vectorstore.count()})")
     
-    def add_documents(self, texts: List[str], metadatas: List[Dict] = None) -> List[str]:
+    def add_documents(self, texts: List[str], metadatas: List[Dict] = None, progress_callback=None) -> List[str]:
         """
         문서 추가
         
         Args:
             texts: 문서 텍스트 리스트
             metadatas: 메타데이터 리스트
+            progress_callback: 진행률 콜백 함수 (선택)
             
         Returns:
             추가된 문서 ID 리스트
@@ -52,7 +53,7 @@ class VectorStoreManager:
         print(f"📝 {len(texts)}개 문서 추가 중...")
         
         try:
-            ids = self.vectorstore.add_documents(texts, metadatas)
+            ids = self.vectorstore.add_documents(texts, metadatas, progress_callback=progress_callback)
             print(f"[OK] {len(ids)}개 문서 추가 완료")
             return ids
             
