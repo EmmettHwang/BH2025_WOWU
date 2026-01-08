@@ -491,6 +491,7 @@ async def create_student_registration(data: dict):
 
     try:
         ensure_student_registrations_table(cursor)
+        conn.commit()
 
         name = data.get('name')
         if not name:
@@ -536,6 +537,7 @@ async def approve_student_registration(registration_id: int, data: dict):
 
     try:
         ensure_student_registrations_table(cursor)
+        conn.commit()
 
         # 신청 정보 조회
         cursor.execute("SELECT * FROM student_registrations WHERE id = %s", (registration_id,))
@@ -615,6 +617,7 @@ async def reject_student_registration(registration_id: int, data: dict):
 
     try:
         ensure_student_registrations_table(cursor)
+        conn.commit()
 
         # 신청 상태 확인
         cursor.execute("SELECT status FROM student_registrations WHERE id = %s", (registration_id,))
