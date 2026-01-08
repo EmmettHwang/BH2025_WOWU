@@ -41,6 +41,23 @@ class EndpointFilter(logging.Filter):
             # 진행률 조회 API는 로그 제외
             if '/api/rag/indexing-progress/' in message:
                 return False
+            
+            # 대시보드 새로고침 시 호출되는 일반적인 GET 요청들 제외
+            dashboard_apis = [
+                '/api/courses',
+                '/api/students',
+                '/api/instructors',
+                '/api/counselings',
+                '/api/timetables',
+                '/api/projects',
+                '/api/training-logs',
+                '/api/team-activity-logs'
+            ]
+            
+            for api in dashboard_apis:
+                if f'GET {api} ' in message and '200 OK' in message:
+                    return False
+            
             # 로그인 401은 포함 (보안상 중요)
         return True
 
