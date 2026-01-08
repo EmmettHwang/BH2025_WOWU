@@ -102,6 +102,11 @@ function closeReadmeModal() {
 
 // 간단한 마크다운 -> HTML 변환
 function convertMarkdownToHtml(md) {
+    // HTML 태그 이스케이프 (보안 및 렌더링 문제 방지)
+    md = md
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    
     return md
         // 코드 블록 (```로 감싼 부분)
         .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto text-sm"><code>$2</code></pre>')
@@ -132,7 +137,7 @@ function convertMarkdownToHtml(md) {
         .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc">$1</li>')
         .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
         // 인용문
-        .replace(/^> (.*$)/gim, '<blockquote class="border-l-4 border-blue-500 pl-4 py-1 my-2 text-gray-600 bg-blue-50">$1</blockquote>')
+        .replace(/^&gt; (.*$)/gim, '<blockquote class="border-l-4 border-blue-500 pl-4 py-1 my-2 text-gray-600 bg-blue-50">$1</blockquote>')
         // 줄바꿈
         .replace(/\n\n/g, '</p><p class="my-3">')
         .replace(/\n/g, '<br>');
