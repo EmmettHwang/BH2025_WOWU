@@ -3198,6 +3198,307 @@ window.showTab = function(tab, addToHistory = true) {
     }
 }
 
+// ==================== 신규가입자 처리 ====================
+window.showStudentRegistrations = async function() {
+    const app = document.getElementById('app');
+
+    try {
+        window.showLoading('신규가입 신청 목록을 불러오는 중...');
+
+        const [registrationsRes, coursesRes] = await Promise.all([
+            axios.get(`${API_BASE_URL}/api/student-registrations`),
+            axios.get(`${API_BASE_URL}/api/courses`)
+        ]);
+
+        const registrations = registrationsRes.data;
+        const coursesData = coursesRes.data;
+        courses = coursesData;
+
+        // 과정 코드 -> 이름 매핑
+        const courseMap = {};
+        coursesData.forEach(c => courseMap[c.code] = c.name);
+
+        window.hideLoading();
+
+        app.innerHTML = `
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-user-plus mr-2 text-orange-500"></i>신규가입자 처리
+                    </h2>
+                    <div class="space-x-2">
+                        <button onclick="loadStudents()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                            <i class="fas fa-arrow-left mr-2"></i>학생 목록으로
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 필터 -->
+                <div class="mb-4">
+                    <select id="reg-status-filter" onchange="window.filterRegistrations()" class="border rounded px-3 py-2">
+                        <option value="">전체 상태</option>
+                        <option value="pending" selected>대기중</option>
+                        <option value="approved">승인됨</option>
+                        <option value="rejected">거절됨</option>
+                    </select>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white" id="registrations-table">
+                        <thead class="bg-orange-50">
+                            <tr>
+                                <th class="px-4 py-2 text-center">사진</th>
+                                <th class="px-4 py-2 text-left">신청일시</th>
+                                <th class="px-4 py-2 text-left">이름</th>
+                                <th class="px-4 py-2 text-left">신청 과정</th>
+                                <th class="px-4 py-2 text-left">연락처</th>
+                                <th class="px-4 py-2 text-left">이메일</th>
+                                <th class="px-4 py-2 text-left">상태</th>
+                                <th class="px-4 py-2 text-center">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody id="registrations-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        // 전역에 저장
+        window._registrations = registrations;
+        window._courseMap = courseMap;
+
+        // 테이블 렌더링
+        window.filterRegistrations();
+
+    } catch (error) {
+        window.hideLoading();
+        console.error('신규가입 신청 로드 실패:', error);
+        app.innerHTML = `<div class="text-red-600 p-4">신규가입 신청 목록을 불러오는데 실패했습니다: ${error.message}</div>`;
+    }
+};
+
+window.filterRegistrations = function() {
+    const statusFilter = document.getElementById('reg-status-filter')?.value || 'pending';
+    const registrations = window._registrations || [];
+    const courseMap = window._courseMap || {};
+
+    let filtered = registrations;
+    if (statusFilter) {
+        filtered = registrations.filter(r => r.status === statusFilter);
+    }
+
+    const tbody = document.getElementById('registrations-tbody');
+    if (!tbody) return;
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-gray-500">신청 내역이 없습니다.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(reg => {
+        const statusBadge = {
+            'pending': '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">대기중</span>',
+            'approved': '<span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">승인됨</span>',
+            'rejected': '<span class="bg-red-100 text-red-800 px-2 py-1 rounded text-sm">거절됨</span>'
+        };
+
+        const createdAt = reg.created_at ? new Date(reg.created_at).toLocaleString('ko-KR') : '-';
+        const courseName = courseMap[reg.course_code] || reg.course_code || '-';
+
+        // 프로필 사진 표시
+        const profilePhoto = reg.profile_photo
+            ? `<img src="${reg.profile_photo}" alt="프로필" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200">`
+            : `<div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400"><i class="fas fa-user"></i></div>`;
+
+        const actionButtons = reg.status === 'pending' ? `
+            <button onclick="window.viewRegistrationDetail(${reg.id})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-sm mr-1" title="상세보기">
+                <i class="fas fa-eye"></i>
+            </button>
+            <button onclick="window.approveRegistration(${reg.id})" class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-sm mr-1" title="승인">
+                <i class="fas fa-check"></i>
+            </button>
+            <button onclick="window.rejectRegistration(${reg.id})" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm" title="거절">
+                <i class="fas fa-times"></i>
+            </button>
+        ` : `
+            <button onclick="window.viewRegistrationDetail(${reg.id})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-sm" title="상세보기">
+                <i class="fas fa-eye"></i>
+            </button>
+        `;
+
+        return `
+            <tr class="border-b hover:bg-gray-50">
+                <td class="px-4 py-2 text-center">${profilePhoto}</td>
+                <td class="px-4 py-2 text-sm">${createdAt}</td>
+                <td class="px-4 py-2 font-medium">${reg.name || '-'}</td>
+                <td class="px-4 py-2">${courseName}</td>
+                <td class="px-4 py-2">${reg.phone || '-'}</td>
+                <td class="px-4 py-2">${reg.email || '-'}</td>
+                <td class="px-4 py-2">${statusBadge[reg.status] || reg.status}</td>
+                <td class="px-4 py-2 text-center">${actionButtons}</td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.viewRegistrationDetail = function(regId) {
+    const registrations = window._registrations || [];
+    const reg = registrations.find(r => r.id === regId);
+    if (!reg) return;
+
+    const courseMap = window._courseMap || {};
+    const courseName = courseMap[reg.course_code] || reg.course_code || '-';
+
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.id = 'reg-detail-modal';
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-2xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">
+                    <i class="fas fa-user-plus mr-2 text-orange-500"></i>신규가입 상세정보
+                </h3>
+                <button onclick="document.getElementById('reg-detail-modal').remove()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3">
+                <!-- 프로필 사진 -->
+                <div class="flex justify-center mb-4">
+                    ${reg.profile_photo
+                        ? `<img src="${reg.profile_photo}" alt="프로필" class="w-24 h-24 rounded-full object-cover border-4 border-orange-200 shadow-lg">`
+                        : `<div class="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-3xl border-4 border-gray-300"><i class="fas fa-user"></i></div>`
+                    }
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-500">이름</label>
+                        <p class="font-medium">${reg.name || '-'}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500">신청 과정</label>
+                        <p class="font-medium">${courseName}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500">생년월일</label>
+                        <p class="font-medium">${reg.birth_date || '-'}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500">성별</label>
+                        <p class="font-medium">${reg.gender || '-'}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500">연락처</label>
+                        <p class="font-medium">${reg.phone || '-'}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500">이메일</label>
+                        <p class="font-medium">${reg.email || '-'}</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-500">주소</label>
+                    <p class="font-medium">${reg.address || '-'}</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-500">학력</label>
+                    <p class="font-medium">${reg.education || '-'}</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-500">관심분야</label>
+                    <p class="font-medium">${reg.interests || '-'}</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-500">자기소개</label>
+                    <p class="font-medium whitespace-pre-wrap">${reg.introduction || '-'}</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 pt-3 border-t">
+                    <div>
+                        <label class="block text-sm text-gray-500">신청일시</label>
+                        <p class="font-medium text-sm">${reg.created_at ? new Date(reg.created_at).toLocaleString('ko-KR') : '-'}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500">상태</label>
+                        <p class="font-medium">${reg.status === 'pending' ? '대기중' : reg.status === 'approved' ? '승인됨' : '거절됨'}</p>
+                    </div>
+                </div>
+            </div>
+
+            ${reg.status === 'pending' ? `
+                <div class="flex gap-2 mt-6 pt-4 border-t">
+                    <button onclick="document.getElementById('reg-detail-modal').remove(); window.approveRegistration(${reg.id})" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg font-medium">
+                        <i class="fas fa-check mr-2"></i>승인
+                    </button>
+                    <button onclick="document.getElementById('reg-detail-modal').remove(); window.rejectRegistration(${reg.id})" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-medium">
+                        <i class="fas fa-times mr-2"></i>거절
+                    </button>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+};
+
+window.approveRegistration = async function(regId) {
+    if (!confirm('이 신청을 승인하시겠습니까? 학생으로 등록됩니다.')) return;
+
+    try {
+        window.showLoading('승인 처리 중...');
+
+        const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+
+        const response = await axios.put(`${API_BASE_URL}/api/student-registrations/${regId}/approve`, {
+            processed_by: instructor.name || ''
+        });
+
+        window.hideLoading();
+        window.showAlert(`✅ ${response.data.message} (학생코드: ${response.data.student_code})`, 'success');
+
+        // 캐시 무효화
+        window.invalidateCache('students');
+
+        // 목록 새로고침
+        window.showStudentRegistrations();
+    } catch (error) {
+        window.hideLoading();
+        console.error('승인 처리 실패:', error);
+        window.showAlert('❌ 승인 처리에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
+    }
+};
+
+window.rejectRegistration = async function(regId) {
+    if (!confirm('이 신청을 거절하시겠습니까?')) return;
+
+    try {
+        window.showLoading('거절 처리 중...');
+
+        const instructor = JSON.parse(sessionStorage.getItem('instructor') || '{}');
+
+        await axios.put(`${API_BASE_URL}/api/student-registrations/${regId}/reject`, {
+            processed_by: instructor.name || ''
+        });
+
+        window.hideLoading();
+        window.showAlert('✅ 신청이 거절되었습니다.', 'success');
+
+        // 목록 새로고침
+        window.showStudentRegistrations();
+    } catch (error) {
+        window.hideLoading();
+        console.error('거절 처리 실패:', error);
+        window.showAlert('❌ 거절 처리에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
+    }
+};
+
 // ==================== 학생 관리 ====================
 async function loadStudents() {
     try {
@@ -3233,6 +3534,9 @@ function renderStudents() {
                     <i class="fas fa-user-graduate mr-2"></i>학생 목록 (총 ${students.length}명)
                 </h2>
                 <div class="space-x-2">
+                    <button onclick="window.showStudentRegistrations()" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-user-plus mr-2"></i>신규가입자 처리
+                    </button>
                     <button onclick="window.showStudentForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
                         <i class="fas fa-plus mr-2"></i>학생 추가
                     </button>

@@ -416,6 +416,255 @@ async def upload_stream_to_ftp(file: UploadFile, filename: str, category: str) -
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"FTP 스트리밍 업로드 실패: {str(e)}")
 
+# ==================== 신규가입 (학생 등록 신청) API ====================
+
+def ensure_student_registrations_table(cursor):
+    """student_registrations 테이블이 없으면 생성"""
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS student_registrations (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                birth_date VARCHAR(20),
+                gender VARCHAR(10),
+                phone VARCHAR(50),
+                email VARCHAR(100),
+                address TEXT,
+                interests TEXT,
+                education TEXT,
+                introduction TEXT,
+                course_code VARCHAR(50),
+                profile_photo TEXT,
+                status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+                processed_at DATETIME,
+                processed_by VARCHAR(50),
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_status (status),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+        print("[OK] student_registrations 테이블 확인/생성 완료")
+    except Exception as e:
+        print(f"[WARN] student_registrations 테이블 생성 실패: {e}")
+
+@app.get("/api/student-registrations")
+async def get_student_registrations(status: Optional[str] = None):
+    """신규가입 신청 목록 조회"""
+    conn = get_db_connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    try:
+        ensure_student_registrations_table(cursor)
+        conn.commit()
+
+        query = "SELECT * FROM student_registrations WHERE 1=1"
+        params = []
+
+        if status:
+            query += " AND status = %s"
+            params.append(status)
+
+        query += " ORDER BY created_at DESC"
+
+        cursor.execute(query, params)
+        registrations = cursor.fetchall()
+
+        # datetime 변환
+        for reg in registrations:
+            for key, value in reg.items():
+                if isinstance(value, (datetime, date)):
+                    reg[key] = value.isoformat()
+
+        return registrations
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.post("/api/student-registrations")
+async def create_student_registration(data: dict):
+    """신규가입 신청 등록"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        ensure_student_registrations_table(cursor)
+
+        name = data.get('name')
+        if not name:
+            raise HTTPException(status_code=400, detail="이름은 필수입니다")
+
+        cursor.execute("""
+            INSERT INTO student_registrations
+            (name, birth_date, gender, phone, email, address, interests, education, introduction, course_code, profile_photo)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            name,
+            data.get('birth_date'),
+            data.get('gender'),
+            data.get('phone', ''),
+            data.get('email', ''),
+            data.get('address', ''),
+            data.get('interests', ''),
+            data.get('education', ''),
+            data.get('introduction', ''),
+            data.get('course_code', ''),
+            data.get('profile_photo', '')
+        ))
+
+        conn.commit()
+        registration_id = cursor.lastrowid
+
+        print(f"[OK] 신규가입 신청 등록 완료: ID={registration_id}, 이름={name}")
+
+        return {"message": "신규가입 신청이 완료되었습니다", "id": registration_id}
+    except Exception as e:
+        conn.rollback()
+        print(f"[ERROR] 신규가입 신청 실패: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.put("/api/student-registrations/{registration_id}/approve")
+async def approve_student_registration(registration_id: int, data: dict):
+    """신규가입 승인 - 학생 DB로 이동"""
+    conn = get_db_connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    try:
+        ensure_student_registrations_table(cursor)
+
+        # 신청 정보 조회
+        cursor.execute("SELECT * FROM student_registrations WHERE id = %s", (registration_id,))
+        registration = cursor.fetchone()
+
+        if not registration:
+            raise HTTPException(status_code=404, detail="신청 정보를 찾을 수 없습니다")
+
+        if registration['status'] != 'pending':
+            raise HTTPException(status_code=400, detail="이미 처리된 신청입니다")
+
+        # 학생 코드 생성
+        cursor.execute("SELECT MAX(CAST(SUBSTRING(code, 2) AS UNSIGNED)) as max_code FROM students WHERE code LIKE 'S%'")
+        result = cursor.fetchone()
+        next_num = (result['max_code'] or 0) + 1
+        student_code = f"S{next_num:03d}"
+
+        # 학생 테이블에 추가 (비밀번호는 생년월일 6자리)
+        birth_date = registration['birth_date'] or ''
+        # 숫자만 추출하여 6자리로
+        password = ''.join(filter(str.isdigit, birth_date))[:6] if birth_date else 'kdt2025'
+
+        cursor.execute("""
+            INSERT INTO students
+            (code, name, birth_date, gender, phone, email, address, interests, education, introduction, course_code, profile_photo, password)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            student_code,
+            registration['name'],
+            registration['birth_date'],
+            registration['gender'],
+            registration['phone'],
+            registration['email'],
+            registration['address'],
+            registration['interests'],
+            registration['education'],
+            registration['introduction'],
+            registration['course_code'],
+            registration['profile_photo'],
+            password
+        ))
+
+        student_id = cursor.lastrowid
+
+        # 신청 상태 업데이트
+        processed_by = data.get('processed_by', '')
+        cursor.execute("""
+            UPDATE student_registrations
+            SET status = 'approved', processed_at = NOW(), processed_by = %s
+            WHERE id = %s
+        """, (processed_by, registration_id))
+
+        conn.commit()
+
+        print(f"[OK] 신규가입 승인 완료: 신청ID={registration_id}, 학생ID={student_id}, 학생코드={student_code}")
+
+        return {
+            "message": "학생으로 등록되었습니다",
+            "student_id": student_id,
+            "student_code": student_code
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        print(f"[ERROR] 신규가입 승인 실패: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.put("/api/student-registrations/{registration_id}/reject")
+async def reject_student_registration(registration_id: int, data: dict):
+    """신규가입 거절"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        ensure_student_registrations_table(cursor)
+
+        # 신청 상태 확인
+        cursor.execute("SELECT status FROM student_registrations WHERE id = %s", (registration_id,))
+        result = cursor.fetchone()
+
+        if not result:
+            raise HTTPException(status_code=404, detail="신청 정보를 찾을 수 없습니다")
+
+        if result[0] != 'pending':
+            raise HTTPException(status_code=400, detail="이미 처리된 신청입니다")
+
+        processed_by = data.get('processed_by', '')
+        cursor.execute("""
+            UPDATE student_registrations
+            SET status = 'rejected', processed_at = NOW(), processed_by = %s
+            WHERE id = %s
+        """, (processed_by, registration_id))
+
+        conn.commit()
+
+        print(f"[OK] 신규가입 거절 완료: 신청ID={registration_id}")
+
+        return {"message": "신청이 거절되었습니다"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        print(f"[ERROR] 신규가입 거절 실패: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.delete("/api/student-registrations/{registration_id}")
+async def delete_student_registration(registration_id: int):
+    """신규가입 신청 삭제"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("DELETE FROM student_registrations WHERE id = %s", (registration_id,))
+        conn.commit()
+        return {"message": "신청이 삭제되었습니다"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
 # ==================== 학생 관리 API ====================
 
 @app.get("/api/students")
