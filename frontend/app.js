@@ -13669,7 +13669,7 @@ function renderSystemSettings(settings) {
                             <i class="fas fa-heart mr-2 text-red-500"></i>관심분야 키워드
                         </label>
                         <input type="text" id="interest-keywords"
-                               placeholder="예: AI, 로봇, 빅데이터, 프로그래밍, 헬스케어 (쉼표로 구분)"
+                               placeholder="예: AI, 데이터엔지니어, ML엔지니어 (쉼표로 구분)"
                                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-white">
                         <p class="text-sm text-gray-600 mt-2">
                             <i class="fas fa-info-circle mr-1"></i>
@@ -14043,11 +14043,12 @@ function renderSystemSettings(settings) {
         // 모집중인 과정 체크박스 로드
         loadOpenCoursesCheckboxes(settings.open_courses || '');
 
-        // 관심분야 키워드 로드
+        // 관심분야 키워드 로드 (기본값 포함)
         const interestKeywordsInput = document.getElementById('interest-keywords');
+        const defaultKeywords = 'AI, 로봇, 빅데이터, 프로그래밍, 헬스케어, 데이터엔지니어, 데이터과학자, 의과학자, ML엔지니어, AI보안엔지니어, AI APP개발, 임베디드&온디바이스AI, 전문도메인융합, 첨단산업AX, AI HW엔지니어';
         if (interestKeywordsInput) {
-            interestKeywordsInput.value = settings.interest_keywords || '';
-            console.log('✅ 관심분야 키워드 로드:', settings.interest_keywords || '미설정');
+            interestKeywordsInput.value = settings.interest_keywords || defaultKeywords;
+            console.log('✅ 관심분야 키워드 로드:', settings.interest_keywords || '기본값');
         }
 
         // 테마 설정 로드
