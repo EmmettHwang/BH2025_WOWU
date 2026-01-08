@@ -7292,6 +7292,9 @@ from typing import Optional
 vector_store_manager = None
 document_loader = None
 
+# RAG 인덱싱 진행률 추적
+indexing_progress = {}
+
 def init_rag():
     """RAG 시스템 초기화"""
     global vector_store_manager, document_loader
@@ -8635,6 +8638,14 @@ async def index_document_to_rag(request: Request):
         if not filename:
             raise HTTPException(status_code=400, detail="filename이 필요합니다")
         
+        # 진행률 초기화
+        indexing_progress[filename] = {
+            "status": "started",
+            "progress": 0,
+            "message": "인덱싱 시작 중...",
+            "started_at": datetime.now().isoformat()
+        }
+        
         # rag_documents 폴더와 documents 폴더에서 파일 찾기
         file_path = None
         for folder in ["rag_documents", "documents"]:
@@ -8644,17 +8655,20 @@ async def index_document_to_rag(request: Request):
                 break
         
         if not file_path:
+            indexing_progress[filename] = {"status": "error", "progress": 0, "message": "파일을 찾을 수 없습니다"}
             raise HTTPException(status_code=404, detail=f"파일을 찾을 수 없습니다: {filename}")
         
         # 파일 확장자 확인
         file_ext = file_path.suffix.lower()
         if file_ext not in ['.pdf', '.docx', '.doc', '.txt']:
+            indexing_progress[filename] = {"status": "error", "progress": 0, "message": "지원하지 않는 파일 형식"}
             raise HTTPException(
                 status_code=400, 
                 detail="RAG 인덱싱은 PDF, DOCX, TXT 파일만 지원합니다"
             )
         
         print(f"📚 RAG 인덱싱 시작: {filename}")
+        indexing_progress[filename] = {"status": "parsing", "progress": 10, "message": "문서 파싱 중..."}
         
         # 메타데이터 구성
         metadata = {
@@ -8670,18 +8684,23 @@ async def index_document_to_rag(request: Request):
         documents = document_loader.load_document(str(file_path), metadata)
         
         if not documents:
+            indexing_progress[filename] = {"status": "error", "progress": 0, "message": "텍스트 추출 실패"}
             raise HTTPException(status_code=400, detail="문서에서 텍스트를 추출할 수 없습니다")
         
         print(f"🧩 청킹 완료: {len(documents)}개 조각")
+        indexing_progress[filename] = {"status": "chunking", "progress": 30, "message": f"청킹 완료: {len(documents)}개 조각"}
         
         # 벡터 DB에 저장
         print(f"🔢 임베딩 및 인덱싱 중...")
+        indexing_progress[filename] = {"status": "embedding", "progress": 50, "message": f"임베딩 생성 중... (0/{len(documents)})"}
+        
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
         
         doc_ids = vector_store_manager.add_documents(texts, metadatas)
         
         print(f"✅ RAG 인덱싱 완료: {len(doc_ids)}개 벡터 저장됨")
+        indexing_progress[filename] = {"status": "completed", "progress": 100, "message": "인덱싱 완료"}
         
         return {
             "success": True,
@@ -8693,12 +8712,22 @@ async def index_document_to_rag(request: Request):
         }
         
     except HTTPException:
+        indexing_progress[filename] = {"status": "error", "progress": 0, "message": "인덱싱 실패"}
         raise
     except Exception as e:
         print(f"[ERROR] RAG 인덱싱 실패: {str(e)}")
         import traceback
         traceback.print_exc()
+        indexing_progress[filename] = {"status": "error", "progress": 0, "message": f"오류: {str(e)}"}
         raise HTTPException(status_code=500, detail=f"RAG 인덱싱 실패: {str(e)}")
+
+
+@app.get("/api/rag/indexing-progress/{filename}")
+async def get_indexing_progress(filename: str):
+    """RAG 인덱싱 진행률 조회"""
+    if filename not in indexing_progress:
+        return {"status": "not_found", "progress": 0, "message": "진행 정보 없음"}
+    return indexing_progress[filename]
 
 
 @app.get("/api/rag/document-status/{filename}")
