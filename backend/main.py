@@ -8692,15 +8692,35 @@ async def index_document_to_rag(request: Request):
         
         # 벡터 DB에 저장
         print(f"🔢 임베딩 및 인덱싱 중...")
-        indexing_progress[filename] = {"status": "embedding", "progress": 50, "message": f"임베딩 생성 중... (0/{len(documents)})"}
+        total_docs = len(documents)
+        indexing_progress[filename] = {"status": "embedding", "progress": 50, "message": f"📝 {total_docs}개 문서 임베딩 생성 중..."}
         
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
         
+        # 배치 단위로 진행률 업데이트
+        batch_size = 8  # sentence-transformers 기본 배치 크기
+        total_batches = (total_docs + batch_size - 1) // batch_size
+        
+        # 임베딩 시작 전 상태 업데이트
+        indexing_progress[filename] = {
+            "status": "embedding", 
+            "progress": 50, 
+            "message": f"🔢 임베딩 생성 중... (배치 0/{total_batches})"
+        }
+        
+        # 실제 임베딩 생성 (내부적으로 배치 처리됨)
         doc_ids = vector_store_manager.add_documents(texts, metadatas)
         
+        # 완료 직전 상태
+        indexing_progress[filename] = {
+            "status": "saving", 
+            "progress": 90, 
+            "message": f"💾 벡터 데이터베이스 저장 중... ({len(doc_ids)}개)"
+        }
+        
         print(f"✅ RAG 인덱싱 완료: {len(doc_ids)}개 벡터 저장됨")
-        indexing_progress[filename] = {"status": "completed", "progress": 100, "message": "인덱싱 완료"}
+        indexing_progress[filename] = {"status": "completed", "progress": 100, "message": f"✅ 인덱싱 완료! ({len(doc_ids)}개 벡터)"}
         
         return {
             "success": True,

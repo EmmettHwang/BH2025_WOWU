@@ -20179,20 +20179,33 @@ async function processRAGDocument(file) {
             const response = await axios.get(`${API_BASE_URL}/api/rag/indexing-progress/${encodeURIComponent(uploadedFilename)}`);
             const data = response.data;
             
+            console.log('📊 진행률 업데이트:', data);
+            
             // 진행률 업데이트
             const progress = data.progress || 0;
             if (progressBar) progressBar.style.width = `${progress}%`;
             if (progressPercent) progressPercent.textContent = `${progress}%`;
             
-            // 상태 메시지 업데이트
+            // 상태 메시지 업데이트 (더 자세한 아이콘)
             const statusText = document.getElementById('rag-status-text');
             if (statusText && data.message) {
                 let icon = '<i class="fas fa-circle-notch fa-spin mr-2"></i>';
+                
+                // 상태별 아이콘
                 if (data.status === 'completed') {
                     icon = '<i class="fas fa-check-circle mr-2 text-green-400"></i>';
                 } else if (data.status === 'error') {
                     icon = '<i class="fas fa-times-circle mr-2 text-red-400"></i>';
+                } else if (data.status === 'parsing') {
+                    icon = '<i class="fas fa-file-pdf fa-spin mr-2 text-blue-400"></i>';
+                } else if (data.status === 'chunking') {
+                    icon = '<i class="fas fa-cut fa-pulse mr-2 text-yellow-400"></i>';
+                } else if (data.status === 'embedding') {
+                    icon = '<i class="fas fa-brain fa-spin mr-2 text-purple-400"></i>';
+                } else if (data.status === 'saving') {
+                    icon = '<i class="fas fa-save fa-pulse mr-2 text-green-400"></i>';
                 }
+                
                 statusText.innerHTML = `${icon}${data.message}`;
             }
             
@@ -20221,6 +20234,7 @@ async function processRAGDocument(file) {
             }
         } catch (error) {
             console.error('진행률 조회 실패:', error);
+            // 에러가 발생해도 계속 진행 (백엔드가 작업 중일 수 있음)
         }
     };
     
