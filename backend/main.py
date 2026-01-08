@@ -539,6 +539,27 @@ async def approve_student_registration(registration_id: int, data: dict):
         ensure_student_registrations_table(cursor)
         conn.commit()
 
+        # students 테이블에 필요한 컬럼 확인 및 추가
+        cursor.execute("SHOW COLUMNS FROM students")
+        existing_columns = {col['Field'] for col in cursor.fetchall()}
+        
+        required_columns = {
+            'password': "VARCHAR(100) DEFAULT 'kdt2025'",
+            'profile_photo': "TEXT",
+            'education': "VARCHAR(255)",
+            'introduction': "TEXT"
+        }
+        
+        for col_name, col_def in required_columns.items():
+            if col_name not in existing_columns:
+                try:
+                    cursor.execute(f"ALTER TABLE students ADD COLUMN {col_name} {col_def}")
+                    print(f"[OK] students 테이블에 {col_name} 컬럼 추가")
+                except Exception as col_err:
+                    print(f"[WARN] {col_name} 컬럼 추가 실패: {col_err}")
+        
+        conn.commit()
+
         # 신청 정보 조회
         cursor.execute("SELECT * FROM student_registrations WHERE id = %s", (registration_id,))
         registration = cursor.fetchone()
