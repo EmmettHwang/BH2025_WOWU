@@ -493,35 +493,41 @@
                 return;
             }
 
-            try {
-                // FTP 업로드
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('directory', 'student_profiles');
+            // 미리보기용 dataUrl 먼저 생성
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const dataUrl = e.target.result;
+                
+                try {
+                    // FTP 업로드 시도
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('directory', 'student_profiles');
 
-                const response = await fetch(`${API_BASE_URL}/api/upload`, {
-                    method: 'POST',
-                    body: formData
-                });
+                    const response = await fetch(`${API_BASE_URL}/api/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
 
-                if (!response.ok) {
-                    throw new Error('사진 업로드 실패');
+                    if (response.ok) {
+                        const result = await response.json();
+                        const photoUrl = result.file_url;
+                        // FTP 업로드 성공 - URL 저장
+                        setPhotoPreview(dataUrl, photoUrl);
+                        console.log('✅ FTP 업로드 성공:', photoUrl);
+                    } else {
+                        // FTP 업로드 실패 - base64로 폴백
+                        console.warn('⚠️ FTP 업로드 실패, base64로 저장');
+                        setPhotoPreview(dataUrl, dataUrl);
+                    }
+                } catch (error) {
+                    // FTP 업로드 에러 - base64로 폴백
+                    console.error('사진 업로드 오류:', error);
+                    console.warn('⚠️ FTP 업로드 실패, base64로 저장');
+                    setPhotoPreview(dataUrl, dataUrl);
                 }
-
-                const result = await response.json();
-                const photoUrl = result.file_url;
-
-                // 미리보기용 dataUrl 생성
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    setPhotoPreview(e.target.result, photoUrl);
-                };
-                reader.readAsDataURL(file);
-            } catch (error) {
-                console.error('사진 업로드 오류:', error);
-                showAlert('사진 업로드에 실패했습니다', 'error');
-                event.target.value = '';
-            }
+            };
+            reader.readAsDataURL(file);
         }
 
         // 카메라 열기
@@ -568,8 +574,10 @@
 
             // JPEG 파일로 변환
             canvas.toBlob(async (blob) => {
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                
                 try {
-                    // FTP 업로드
+                    // FTP 업로드 시도
                     const formData = new FormData();
                     const filename = `profile_${Date.now()}.jpg`;
                     formData.append('file', blob, filename);
@@ -580,20 +588,23 @@
                         body: formData
                     });
 
-                    if (!response.ok) {
-                        throw new Error('사진 업로드 실패');
+                    if (response.ok) {
+                        const result = await response.json();
+                        const photoUrl = result.file_url;
+                        // FTP 업로드 성공 - URL 저장
+                        setPhotoPreview(dataUrl, photoUrl);
+                        console.log('✅ FTP 업로드 성공:', photoUrl);
+                    } else {
+                        // FTP 업로드 실패 - base64로 폴백
+                        console.warn('⚠️ FTP 업로드 실패, base64로 저장');
+                        setPhotoPreview(dataUrl, dataUrl);
                     }
-
-                    const result = await response.json();
-                    const photoUrl = result.file_url;
-
-                    // 미리보기는 dataUrl, 실제 저장은 URL
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                    setPhotoPreview(dataUrl, photoUrl);
                     closeCamera();
                 } catch (error) {
+                    // FTP 업로드 에러 - base64로 폴백
                     console.error('사진 업로드 오류:', error);
-                    showAlert('사진 업로드에 실패했습니다', 'error');
+                    console.warn('⚠️ FTP 업로드 실패, base64로 저장');
+                    setPhotoPreview(dataUrl, dataUrl);
                     closeCamera();
                 }
             }, 'image/jpeg', 0.8);

@@ -508,6 +508,13 @@ async def create_student_registration(data: dict):
         if not name:
             raise HTTPException(status_code=400, detail="이름은 필수입니다")
 
+        # profile_photo 처리: base64인 경우 특수 플래그로 저장
+        profile_photo = data.get('profile_photo', '')
+        if profile_photo and profile_photo.startswith('data:image'):
+            # base64 데이터는 너무 커서 DB에 저장 불가 - 플래그만 저장
+            profile_photo = '[BASE64_PENDING]'
+            print(f"[INFO] Base64 이미지 감지 - 승인 시 처리 예정")
+
         cursor.execute("""
             INSERT INTO student_registrations
             (name, birth_date, gender, phone, email, address, interests, education, introduction, course_code, profile_photo)
@@ -523,7 +530,7 @@ async def create_student_registration(data: dict):
             data.get('education', ''),
             data.get('introduction', ''),
             data.get('course_code', ''),
-            data.get('profile_photo', '')
+            profile_photo
         ))
 
         conn.commit()
@@ -535,6 +542,8 @@ async def create_student_registration(data: dict):
     except Exception as e:
         conn.rollback()
         print(f"[ERROR] 신규가입 신청 실패: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
@@ -609,9 +618,15 @@ async def approve_student_registration(registration_id: int, data: dict):
         # 숫자만 추출하여 6자리로
         password = ''.join(filter(str.isdigit, birth_date))[:6] if birth_date else 'kdt2025'
 
-        # profile_photo 처리: base64면 FTP에 업로드하고 URL로 변환
+        # profile_photo 처리
         profile_photo = registration['profile_photo'] or ''
-        if profile_photo and profile_photo.startswith('data:image'):
+        
+        # [BASE64_PENDING] 플래그인 경우 사진 없음으로 처리
+        if profile_photo == '[BASE64_PENDING]':
+            profile_photo = ''
+            print(f"[INFO] Base64 플래그 감지 - 사진 없이 진행")
+        # base64 이미지면 FTP에 업로드하고 URL로 변환
+        elif profile_photo and profile_photo.startswith('data:image'):
             try:
                 # base64 이미지를 FTP에 업로드
                 import base64
