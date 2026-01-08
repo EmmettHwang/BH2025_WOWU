@@ -69,7 +69,7 @@ async function showReadmeModal() {
 
         const modalHtml = `
             <div id="readme-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]" onclick="if(event.target.id==='readme-modal')closeReadmeModal()">
-                <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
                     <div class="p-4 bg-gradient-to-r from-gray-800 to-gray-900 flex justify-between items-center">
                         <div class="flex items-center gap-3">
                             <i class="fab fa-github text-2xl text-white"></i>
@@ -82,13 +82,24 @@ async function showReadmeModal() {
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    <div class="p-6 overflow-y-auto flex-1 prose prose-sm max-w-none">
+                    <div class="p-6 overflow-y-auto flex-1 readme-content" style="user-select: text;">
                         ${html}
                     </div>
                 </div>
             </div>
         `;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // 모달 내부의 모든 링크 클릭 방지
+        const modal = document.getElementById('readme-modal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target.tagName === 'A') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, true);
+        }
     } catch (error) {
         console.error('README 로드 실패:', error);
         showAlert('README를 불러올 수 없습니다');
@@ -115,8 +126,8 @@ function convertMarkdownToHtml(md) {
         .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
         .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        // 링크
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-600 hover:underline">$1</a>')
+        // 링크 (클릭 방지 - 텍스트만 표시)
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<span class="text-blue-600 font-medium">$1</span> <span class="text-gray-400 text-xs">($2)</span>')
         // 이미지
         .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full rounded-lg my-2">')
         // 테이블
