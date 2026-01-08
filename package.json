@@ -1,5 +1,7 @@
 {
-  "name": "webapp",
+  "name": "bh2025-wowu",
+  "version": "3.6.0",
+  "description": "바이오헬스 교육관리 플랫폼 + RAG 시스템",
   "type": "module",
   "scripts": {
     "dev": "vite",
