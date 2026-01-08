@@ -17,7 +17,8 @@ const mimeTypes = {
     '.svg': 'image/svg+xml',
     '.ico': 'image/x-icon',
     '.glb': 'model/gltf-binary',
-    '.gltf': 'model/gltf+json'
+    '.gltf': 'model/gltf+json',
+    '.md': 'text/markdown; charset=utf-8'
 };
 
 const server = http.createServer((req, res) => {
