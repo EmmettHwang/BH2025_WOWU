@@ -128,8 +128,8 @@ function convertMarkdownToHtml(md) {
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         // 링크 (클릭 방지 - 텍스트만 표시)
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<span class="text-blue-600 font-medium">$1</span> <span class="text-gray-400 text-xs">($2)</span>')
-        // 이미지
-        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full rounded-lg my-2">')
+        // 이미지 (비활성화 - 경로만 텍스트로 표시)
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<div class="bg-gray-100 p-3 rounded my-2"><i class="fas fa-image mr-2 text-gray-500"></i><span class="text-gray-600 text-sm">이미지: $2</span></div>')
         // 테이블
         .replace(/\|(.+)\|/g, (match) => {
             const cells = match.split('|').filter(c => c.trim());
