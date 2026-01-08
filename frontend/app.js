@@ -19898,8 +19898,8 @@ function showRAGProcessingModal() {
                 
                 <!-- 중앙 그래픽 영역 -->
                 <div class="bg-black bg-opacity-30 rounded-2xl p-8 mb-6 relative" style="min-height: 400px;">
-                    <!-- Parsing Stage -->
-                    <div id="stage-parsing" class="stage-container hidden">
+                    <!-- Parsing Stage (0~20%) -->
+                    <div id="stage-parsing" class="stage-container">
                         <div class="flex items-center justify-center space-x-8 h-full">
                             <div class="document-icon" style="animation: float 3s ease-in-out infinite;">
                                 <i class="fas fa-file-pdf text-8xl text-red-400"></i>
@@ -19927,7 +19927,7 @@ function showRAGProcessingModal() {
                         </div>
                     </div>
                     
-                    <!-- Chunking Stage -->
+                    <!-- Chunking Stage (20~40%) -->
                     <div id="stage-chunking" class="stage-container hidden">
                         <div class="flex items-center justify-center h-full">
                             <div class="chunks-container">
@@ -19945,8 +19945,8 @@ function showRAGProcessingModal() {
                         </div>
                     </div>
                     
-                    <!-- Embedding Stage (기본 표시) -->
-                    <div id="stage-embedding" class="stage-container">
+                    <!-- Embedding Stage (40~90%) -->
+                    <div id="stage-embedding" class="stage-container hidden">
                         <div class="flex items-center justify-center h-full">
                             <div class="code-stream-container">
                                 <div class="code-stream">
@@ -19978,7 +19978,7 @@ function showRAGProcessingModal() {
                         </div>
                     </div>
                     
-                    <!-- Indexing Stage -->
+                    <!-- Indexing Stage (90~100%) -->
                     <div id="stage-indexing" class="stage-container hidden">
                         <div class="flex items-center justify-center h-full">
                             <div class="vector-space">
@@ -20212,6 +20212,32 @@ async function processRAGDocument(file) {
             const progress = data.progress || 0;
             if (progressBar) progressBar.style.width = `${progress}%`;
             if (progressPercent) progressPercent.textContent = `${progress}%`;
+            
+            // 진행률에 따라 stage 전환
+            const allStages = ['stage-parsing', 'stage-chunking', 'stage-embedding', 'stage-indexing'];
+            let currentStageId = null;
+            
+            if (progress < 20) {
+                currentStageId = 'stage-parsing';  // 0~20%: 파싱
+            } else if (progress < 40) {
+                currentStageId = 'stage-chunking';  // 20~40%: 청킹
+            } else if (progress < 90) {
+                currentStageId = 'stage-embedding';  // 40~90%: 임베딩
+            } else {
+                currentStageId = 'stage-indexing';  // 90~100%: 인덱싱
+            }
+            
+            // 모든 stage 숨기고 현재 stage만 표시
+            allStages.forEach(stageId => {
+                const stage = document.getElementById(stageId);
+                if (stage) {
+                    if (stageId === currentStageId) {
+                        stage.classList.remove('hidden');
+                    } else {
+                        stage.classList.add('hidden');
+                    }
+                }
+            });
             
             // 상태 메시지 업데이트 (더 자세한 아이콘)
             const statusText = document.getElementById('rag-status-text');
