@@ -19886,11 +19886,6 @@ function showRAGProcessingModal() {
                     <div class="absolute inset-0" style="background-image: linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px); background-size: 50px 50px;"></div>
                 </div>
                 
-                <!-- 떠다니는 0과 1 애니메이션 -->
-                <div id="binary-animation" class="absolute inset-0 pointer-events-none overflow-hidden">
-                    <!-- JavaScript로 생성됨 -->
-                </div>
-                
                 <!-- 상단 타이틀 (맥동 애니메이션) -->
                 <div id="rag-modal-title" class="text-center mb-8 relative z-10">
                     <h2 class="text-3xl font-bold text-white mb-2" style="animation: pulse 2s ease-in-out infinite;">
@@ -20031,34 +20026,6 @@ function showRAGProcessingModal() {
         </div>
         
         <style>
-            /* 떠다니는 0과 1 애니메이션 */
-            .binary-digit {
-                position: absolute;
-                font-size: 24px;
-                font-weight: bold;
-                color: rgba(96, 165, 250, 0.6);
-                font-family: 'Courier New', monospace;
-                animation: binaryFloat 8s linear infinite;
-                text-shadow: 0 0 10px rgba(96, 165, 250, 0.8);
-            }
-            
-            @keyframes binaryFloat {
-                0% {
-                    transform: translateY(100vh) rotate(0deg);
-                    opacity: 0;
-                }
-                10% {
-                    opacity: 1;
-                }
-                90% {
-                    opacity: 1;
-                }
-                100% {
-                    transform: translateY(-100px) rotate(360deg);
-                    opacity: 0;
-                }
-            }
-            
             @keyframes pulse {
                 0%, 100% { opacity: 1; transform: scale(1); }
                 50% { opacity: 0.8; transform: scale(1.05); }
@@ -20167,21 +20134,6 @@ function showRAGProcessingModal() {
     `;
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    
-    // 떠다니는 0과 1 애니메이션 생성
-    const binaryContainer = document.getElementById('binary-animation');
-    if (binaryContainer) {
-        // 20개의 랜덤한 0과 1 생성
-        for (let i = 0; i < 20; i++) {
-            const digit = document.createElement('div');
-            digit.className = 'binary-digit';
-            digit.textContent = Math.random() > 0.5 ? '1' : '0';
-            digit.style.left = `${Math.random() * 100}%`;
-            digit.style.animationDelay = `${Math.random() * 5}s`;
-            digit.style.animationDuration = `${6 + Math.random() * 4}s`;
-            binaryContainer.appendChild(digit);
-        }
-    }
     
     // 빠져나가기 버튼 이벤트
     const closeBtn = document.getElementById('rag-close-btn');
