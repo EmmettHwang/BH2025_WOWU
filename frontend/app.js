@@ -13563,7 +13563,7 @@ function renderSystemSettings(settings) {
                         </label>
                         <input type="text" id="system-title" 
                                class="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500 bg-white"
-                               placeholder="예: 바이오헬스교육관리시스템">
+                               placeholder="예: ${DEFAULT_SYSTEM_TITLE}">
                         <p class="text-sm text-gray-600 mt-1">헤더 상단에 표시되는 메인 제목입니다</p>
                     </div>
                     
@@ -13598,8 +13598,8 @@ function renderSystemSettings(settings) {
                         <!-- 현재 로고 미리보기 -->
                         <div class="mb-4 p-4 bg-white rounded-lg border-2 border-dashed border-gray-300">
                             <p class="text-sm text-gray-600 mb-2">현재 로고:</p>
-                            <img id="current-logo" 
-                                 alt="현재 로고" class="h-20 object-contain bg-white p-2 rounded shadow-sm"
+                            <img id="current-logo"
+                                 alt="현재 로고" class="max-h-40 max-w-full object-contain bg-white p-2 rounded shadow-sm"
                                  onerror="this.style.display='none'">
                         </div>
                         
@@ -13637,7 +13637,181 @@ function renderSystemSettings(settings) {
                         </p>
                     </div>
                 </div>
-                
+
+                <!-- 신규가입 설정 섹션 -->
+                <div class="p-6 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border-2 border-orange-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-user-plus mr-2 text-orange-600"></i>
+                        신규가입 설정
+                    </h3>
+
+                    <!-- 모집중인 과정 -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-book-open mr-2 text-orange-500"></i>모집중인 과정
+                        </label>
+                        <div id="open-courses-checkboxes" class="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-white rounded-lg border border-gray-200">
+                            <!-- 과정 체크박스가 동적으로 추가됩니다 -->
+                        </div>
+                        <input type="hidden" id="open-courses">
+                        <p class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            선택한 과정만 신규가입 페이지에서 선택 가능합니다. 선택하지 않으면 전체 과정이 표시됩니다.
+                        </p>
+                    </div>
+
+                    <!-- 관심분야 키워드 -->
+                    <div class="mt-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-heart mr-2 text-red-500"></i>관심분야 키워드
+                        </label>
+                        <input type="text" id="interest-keywords"
+                               placeholder="예: AI, 로봇, 빅데이터, 프로그래밍, 헬스케어 (쉼표로 구분)"
+                               class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-500 bg-white">
+                        <p class="text-sm text-gray-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            쉼표(,)로 구분하여 입력하세요. 신규가입 페이지에서 체크박스로 표시됩니다.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 테마 설정 섹션 -->
+                <div class="p-6 bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl border-2 border-pink-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-palette mr-2 text-pink-600"></i>
+                        테마 색상 설정
+                    </h3>
+
+                    <!-- 프리셋 테마 선택 -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-swatchbook mr-2 text-purple-500"></i>프리셋 테마
+                        </label>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="theme-presets">
+                            <button type="button" onclick="window.applyPresetTheme('default')"
+                                class="theme-preset-btn p-3 rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-all">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="w-4 h-4 rounded-full bg-blue-600"></span>
+                                    <span class="w-4 h-4 rounded-full bg-blue-800"></span>
+                                    <span class="w-4 h-4 rounded-full bg-gray-700"></span>
+                                </div>
+                                <span class="text-sm font-medium">기본 (블루)</span>
+                            </button>
+                            <button type="button" onclick="window.applyPresetTheme('green')"
+                                class="theme-preset-btn p-3 rounded-lg border-2 border-gray-200 hover:border-green-400 transition-all">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="w-4 h-4 rounded-full bg-green-600"></span>
+                                    <span class="w-4 h-4 rounded-full bg-green-800"></span>
+                                    <span class="w-4 h-4 rounded-full bg-gray-700"></span>
+                                </div>
+                                <span class="text-sm font-medium">자연 (그린)</span>
+                            </button>
+                            <button type="button" onclick="window.applyPresetTheme('purple')"
+                                class="theme-preset-btn p-3 rounded-lg border-2 border-gray-200 hover:border-purple-400 transition-all">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="w-4 h-4 rounded-full bg-purple-600"></span>
+                                    <span class="w-4 h-4 rounded-full bg-purple-800"></span>
+                                    <span class="w-4 h-4 rounded-full bg-gray-700"></span>
+                                </div>
+                                <span class="text-sm font-medium">우아함 (퍼플)</span>
+                            </button>
+                            <button type="button" onclick="window.applyPresetTheme('orange')"
+                                class="theme-preset-btn p-3 rounded-lg border-2 border-gray-200 hover:border-orange-400 transition-all">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="w-4 h-4 rounded-full bg-orange-500"></span>
+                                    <span class="w-4 h-4 rounded-full bg-orange-700"></span>
+                                    <span class="w-4 h-4 rounded-full bg-gray-700"></span>
+                                </div>
+                                <span class="text-sm font-medium">활력 (오렌지)</span>
+                            </button>
+                            <button type="button" onclick="window.applyPresetTheme('teal')"
+                                class="theme-preset-btn p-3 rounded-lg border-2 border-gray-200 hover:border-teal-400 transition-all">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="w-4 h-4 rounded-full bg-teal-600"></span>
+                                    <span class="w-4 h-4 rounded-full bg-teal-800"></span>
+                                    <span class="w-4 h-4 rounded-full bg-gray-700"></span>
+                                </div>
+                                <span class="text-sm font-medium">청량 (틸)</span>
+                            </button>
+                            <button type="button" onclick="window.applyPresetTheme('rose')"
+                                class="theme-preset-btn p-3 rounded-lg border-2 border-gray-200 hover:border-rose-400 transition-all">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="w-4 h-4 rounded-full bg-rose-500"></span>
+                                    <span class="w-4 h-4 rounded-full bg-rose-700"></span>
+                                    <span class="w-4 h-4 rounded-full bg-gray-700"></span>
+                                </div>
+                                <span class="text-sm font-medium">로맨틱 (로즈)</span>
+                            </button>
+                            <button type="button" onclick="window.applyPresetTheme('slate')"
+                                class="theme-preset-btn p-3 rounded-lg border-2 border-gray-200 hover:border-slate-400 transition-all">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="w-4 h-4 rounded-full bg-slate-600"></span>
+                                    <span class="w-4 h-4 rounded-full bg-slate-800"></span>
+                                    <span class="w-4 h-4 rounded-full bg-slate-900"></span>
+                                </div>
+                                <span class="text-sm font-medium">모던 (슬레이트)</span>
+                            </button>
+                            <button type="button" onclick="window.applyPresetTheme('dark')"
+                                class="theme-preset-btn p-3 rounded-lg border-2 border-gray-200 hover:border-gray-600 transition-all bg-gray-800">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="w-4 h-4 rounded-full bg-gray-700"></span>
+                                    <span class="w-4 h-4 rounded-full bg-gray-900"></span>
+                                    <span class="w-4 h-4 rounded-full bg-blue-500"></span>
+                                </div>
+                                <span class="text-sm font-medium text-white">다크 모드</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 커스텀 색상 설정 -->
+                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                        <h4 class="font-semibold text-gray-700 mb-4">
+                            <i class="fas fa-sliders-h mr-2"></i>커스텀 색상 설정
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-bars mr-1"></i>헤더 배경색
+                                </label>
+                                <div class="flex items-center gap-2">
+                                    <input type="color" id="theme-menubar" value="#1e40af"
+                                        class="w-12 h-10 rounded cursor-pointer border-0">
+                                    <input type="text" id="theme-menubar-text" value="#1e40af"
+                                        class="flex-1 px-3 py-2 border rounded-lg text-sm font-mono"
+                                        onchange="document.getElementById('theme-menubar').value = this.value">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-mouse-pointer mr-1"></i>메뉴 활성 색상
+                                </label>
+                                <div class="flex items-center gap-2">
+                                    <input type="color" id="theme-menu-active" value="#3b82f6"
+                                        class="w-12 h-10 rounded cursor-pointer border-0">
+                                    <input type="text" id="theme-menu-active-text" value="#3b82f6"
+                                        class="flex-1 px-3 py-2 border rounded-lg text-sm font-mono"
+                                        onchange="document.getElementById('theme-menu-active').value = this.value">
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="theme-title" value="#1e3a8a">
+                        <input type="hidden" id="theme-title-text" value="#1e3a8a">
+                        <input type="hidden" id="theme-subtitle" value="#374151">
+                        <input type="hidden" id="theme-subtitle-text" value="#374151">
+
+                        <div class="mt-4 flex gap-2">
+                            <button type="button" onclick="window.previewTheme()"
+                                class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm">
+                                <i class="fas fa-eye mr-1"></i>미리보기
+                            </button>
+                            <button type="button" onclick="window.resetThemeColors()"
+                                class="px-4 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded-lg text-sm">
+                                <i class="fas fa-undo mr-1"></i>기본값
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- AI 챗봇 & TTS API 키 섹션 -->
                 <div class="p-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border-2 border-purple-200 shadow-sm">
                     <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
@@ -13712,142 +13886,17 @@ function renderSystemSettings(settings) {
                             💡 <a href="https://aistudio.google.com/app/apikey" target="_blank" class="hover:underline font-medium">Google AI Studio</a>에서 무료 발급 (분당 15개 요청)
                         </p>
                     </div>
-                </div>
-                
-                <!-- RAG 지식 검색 설정 섹션 -->
-                <div class="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 shadow-sm">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-book-reader mr-2 text-green-600"></i>
-                        RAG (Retrieval-Augmented Generation) - 검색 증강 생성 지식 검색 설정
-                    </h3>
-                    
-                    <!-- RAG 검색 문서 개수 -->
-                    <div class="mb-6">
-                        <label class="block text-gray-700 font-semibold mb-2">
-                            <i class="fas fa-search mr-2 text-green-500"></i>검색 문서 개수 (Top-K)
-                        </label>
-                        <div class="flex items-center gap-3">
-                            <input type="number" id="rag-top-k" min="1" max="10" step="1"
-                                   class="w-32 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 bg-white"
-                                   placeholder="3">
-                            <span class="text-gray-700">개의 관련 문서 검색</span>
-                        </div>
-                        <p class="text-sm text-gray-600 mt-2">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            질문에 대해 검색할 유사 문서의 개수입니다 (1~10개, 기본값: 3개)
-                        </p>
-                        <p class="text-sm text-gray-500 mt-1">
-                            💡 개수가 많을수록 더 많은 정보를 참고하지만 응답 시간이 늘어날 수 있습니다
-                        </p>
-                    </div>
-                    
-                    <!-- 임베딩 모델 정보 (읽기 전용) -->
-                    <div class="mb-6">
-                        <label class="block text-gray-700 font-semibold mb-2">
-                            <i class="fas fa-brain mr-2 text-blue-500"></i>임베딩 모델
-                        </label>
-                        <div class="px-4 py-3 bg-gray-100 rounded-lg border text-gray-700">
-                            jhgan/ko-sroberta-multitask
-                        </div>
-                        <p class="text-sm text-gray-600 mt-2">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            한국어 문서 검색에 최적화된 임베딩 모델입니다
-                        </p>
-                    </div>
-                    
-                    <!-- 벡터 DB 정보 (읽기 전용) -->
-                    <div class="mb-6">
-                        <label class="block text-gray-700 font-semibold mb-2">
-                            <i class="fas fa-database mr-2 text-purple-500"></i>벡터 데이터베이스
-                        </label>
-                        <div class="px-4 py-3 bg-gray-100 rounded-lg border text-gray-700">
-                            FAISS (Facebook AI Similarity Search)
-                        </div>
-                        <p class="text-sm text-gray-600 mt-2">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            고속 유사도 검색을 위한 벡터 DB입니다
-                        </p>
-                    </div>
-                    
-                    <!-- RAG 상태 표시 -->
-                    <div>
-                        <label class="block text-gray-700 font-semibold mb-2">
-                            <i class="fas fa-chart-bar mr-2 text-orange-500"></i>RAG 시스템 상태
-                        </label>
-                        <div id="rag-status-display" class="px-4 py-3 bg-white rounded-lg border">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-gray-700">초기화 상태:</span>
-                                <span id="rag-init-status" class="font-semibold">확인 중...</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-700">저장된 문서 수:</span>
-                                <span id="rag-doc-count" class="font-semibold text-blue-600">0개</span>
-                            </div>
-                        </div>
-                        <button type="button" onclick="window.refreshRAGStatus()" 
-                                class="mt-3 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                            <i class="fas fa-sync-alt mr-2"></i>상태 새로고침
-                        </button>
-                        <p class="text-sm text-gray-600 mt-2">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            RAG 시스템 초기화 및 문서 업로드 상태를 확인합니다
-                        </p>
-                    </div>
-                </div>
-                
-                <!-- 백그라운드 뮤직 설정 섹션 -->
-                <div class="p-6 bg-gradient-to-r from-pink-50 to-red-50 rounded-xl border-2 border-pink-200 shadow-sm">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-music mr-2 text-pink-600"></i>
-                        백그라운드 뮤직 설정
-                    </h3>
-                    
-                    <!-- 백그라운드 뮤직 장르 선택 -->
-                    <div class="mb-6">
-                        <label class="block text-gray-700 font-semibold mb-2">
-                            <i class="fas fa-compact-disc mr-2 text-pink-500"></i>BGM 장르 선택
-                        </label>
-                        <select id="bgm-genre" 
-                                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-pink-500 bg-white"
-                                onchange="window.searchYouTubeBGM()">
-                            <option value="">BGM 끄기</option>
-                            <option value="classical">클래식 (Classical Music)</option>
-                            <option value="piano">피아노 연주 (Piano Instrumental)</option>
-                            <option value="meditation">명상 음악 (Meditation Music)</option>
-                            <option value="oldpop">고전 팝송 (Classic Pop)</option>
-                        </select>
-                        <p class="text-sm text-gray-600 mt-2">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            대시보드에서 재생될 BGM 장르를 선택합니다
-                        </p>
-                    </div>
-                    
-                    <!-- BGM 볼륨 조절 -->
-                    <div class="mb-6">
-                        <label class="block text-gray-700 font-semibold mb-2">
-                            <i class="fas fa-volume-up mr-2 text-green-500"></i>BGM 볼륨
-                        </label>
-                        <div class="flex items-center gap-4">
-                            <input type="range" id="bgm-volume" min="0" max="100" value="30" 
-                                   class="flex-1" oninput="document.getElementById('volume-value').textContent = this.value + '%'">
-                            <span id="volume-value" class="text-gray-700 font-semibold w-12">30%</span>
-                        </div>
-                        <p class="text-sm text-gray-600 mt-2">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            BGM 재생 볼륨을 조절합니다 (0-100%)
-                        </p>
-                    </div>
-                    
+
                     <!-- YouTube API 키 -->
-                    <div>
+                    <div class="mt-6 pt-6 border-t border-purple-200">
                         <label class="block text-gray-700 font-semibold mb-2">
                             <i class="fab fa-youtube mr-2 text-red-500"></i>YouTube API 키
                         </label>
                         <div class="flex gap-2">
-                            <input type="text" id="youtube-api-key" 
+                            <input type="text" id="youtube-api-key"
                                    class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 bg-white"
                                    placeholder="YouTube Data API v3 키를 입력하세요">
-                            <button type="button" onclick="window.testYouTubeApiKey()" 
+                            <button type="button" onclick="window.testYouTubeApiKey()"
                                     class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors whitespace-nowrap">
                                 <i class="fas fa-check-circle mr-2"></i>테스트
                             </button>
@@ -13862,7 +13911,7 @@ function renderSystemSettings(settings) {
                         </p>
                     </div>
                 </div>
-                
+
                 <!-- 저장 버튼 -->
                 <div class="flex gap-3 pt-4 border-t">
                     <button type="button" onclick="window.saveSystemSettings()" 
@@ -13887,7 +13936,7 @@ function renderSystemSettings(settings) {
         const logoImg = document.getElementById('current-logo');
         const refreshIntervalInput = document.getElementById('refresh-interval');
         
-        if (titleInput) titleInput.value = settings.system_title || '바이오헬스교육관리시스템';
+        if (titleInput) titleInput.value = settings.system_title || DEFAULT_SYSTEM_TITLE;
         if (subtitle1Input) subtitle1Input.value = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
         if (subtitle2Input) subtitle2Input.value = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
         if (logoUrlInput) logoUrlInput.value = settings.logo_url || '/woosong-logo.png';
@@ -13957,17 +14006,6 @@ function renderSystemSettings(settings) {
             console.log('✅ Gemini/Google Cloud API 키 로드:', geminiKey ? '설정됨 (****' + geminiKey.slice(-4) + ')' : '미설정');
         }
         
-        // RAG 설정 로드
-        const ragTopKInput = document.getElementById('rag-top-k');
-        const ragTopK = localStorage.getItem('rag_top_k') || '3';
-        if (ragTopKInput) {
-            ragTopKInput.value = ragTopK;
-            console.log('✅ RAG Top-K 로드:', ragTopK + '개');
-        }
-        
-        // RAG 상태 로드
-        window.refreshRAGStatus();
-        
         // 대시보드 자동 새로고침 시간 설정 로드 (서버 우선)
         const refreshInterval = settings.dashboard_refresh_interval || localStorage.getItem('dashboard_refresh_interval') || '5';
         if (refreshIntervalInput) {
@@ -13998,7 +14036,66 @@ function renderSystemSettings(settings) {
             logo: logoUrlInput?.value,
             refreshInterval: refreshIntervalInput?.value + '분'
         });
+
+        // 모집중인 과정 체크박스 로드
+        loadOpenCoursesCheckboxes(settings.open_courses || '');
+
+        // 관심분야 키워드 로드
+        const interestKeywordsInput = document.getElementById('interest-keywords');
+        if (interestKeywordsInput) {
+            interestKeywordsInput.value = settings.interest_keywords || '';
+            console.log('✅ 관심분야 키워드 로드:', settings.interest_keywords || '미설정');
+        }
+
+        // 테마 설정 로드
+        window.loadThemeSettings();
+        console.log('🎨 테마 설정 로드 완료');
     }, 0);
+}
+
+// 모집중인 과정 체크박스 로드
+async function loadOpenCoursesCheckboxes(savedOpenCourses) {
+    try {
+        const coursesRes = await axios.get(`${API_BASE_URL}/api/courses`);
+        const allCourses = coursesRes.data;
+
+        const container = document.getElementById('open-courses-checkboxes');
+        if (!container) return;
+
+        const openCodesArray = savedOpenCourses ? savedOpenCourses.split(',').map(c => c.trim()) : [];
+
+        if (allCourses.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 col-span-3">등록된 과정이 없습니다.</p>';
+            return;
+        }
+
+        container.innerHTML = allCourses.map(course => {
+            const isChecked = openCodesArray.includes(course.code);
+            return `
+                <label class="flex items-center gap-2 p-2 rounded hover:bg-orange-50 cursor-pointer">
+                    <input type="checkbox" class="open-course-checkbox w-4 h-4 text-orange-500"
+                           value="${course.code}" ${isChecked ? 'checked' : ''}
+                           onchange="window.updateOpenCoursesValue()">
+                    <span class="text-sm">${course.name || course.code}</span>
+                </label>
+            `;
+        }).join('');
+
+        // hidden input에 현재 값 설정
+        document.getElementById('open-courses').value = savedOpenCourses || '';
+
+        console.log('✅ 모집중인 과정 체크박스 로드:', allCourses.length + '개 과정');
+    } catch (error) {
+        console.error('과정 로드 실패:', error);
+    }
+}
+
+// 체크박스 변경 시 hidden input 업데이트
+window.updateOpenCoursesValue = function() {
+    const checkboxes = document.querySelectorAll('.open-course-checkbox:checked');
+    const values = Array.from(checkboxes).map(cb => cb.value);
+    document.getElementById('open-courses').value = values.join(',');
+    console.log('모집중인 과정 업데이트:', values);
 }
 
 // 로고 업로드 처리
@@ -14123,7 +14220,13 @@ window.saveSystemSettings = async function() {
     const systemSubtitle1 = subtitle1Element.value;
     const systemSubtitle2 = subtitle2Element.value;
     const logoUrl = logoElement.value;
-    
+
+    // 시스템 설정을 localStorage에 저장 (즉시 로딩용)
+    localStorage.setItem('system_title', systemTitle);
+    localStorage.setItem('logo_url', logoUrl);
+    console.log('💾 시스템 타이틀 저장:', systemTitle);
+    console.log('💾 로고 URL 저장:', logoUrl);
+
     // YouTube API 키 저장
     const youtubeApiKey = document.getElementById('youtube-api-key')?.value || '';
     localStorage.setItem('youtube_api_key', youtubeApiKey);
@@ -14153,17 +14256,6 @@ window.saveSystemSettings = async function() {
     const geminiApiKey = document.getElementById('gemini-api-key')?.value || '';
     localStorage.setItem('gemini_api_key', geminiApiKey);
     console.log('💾 Gemini/Google Cloud API 키 저장:', geminiApiKey ? '설정됨 (****' + geminiApiKey.slice(-4) + ')' : '미설정');
-    
-    // RAG 설정 저장
-    const ragTopK = document.getElementById('rag-top-k')?.value || '3';
-    const topKValue = parseInt(ragTopK);
-    if (topKValue >= 1 && topKValue <= 10) {
-        localStorage.setItem('rag_top_k', ragTopK);
-        console.log('💾 RAG Top-K 저장:', ragTopK + '개');
-    } else {
-        localStorage.setItem('rag_top_k', '3');
-        console.log('⚠️ RAG Top-K 범위 초과, 기본값 3으로 설정');
-    }
     
     // 대시보드 자동 새로고침 시간 저장
     let refreshInterval = 5; // 기본값
@@ -14197,6 +14289,16 @@ window.saveSystemSettings = async function() {
     formData.append('bgm_genre', bgmGenre);
     formData.append('bgm_volume', bgmVolume);
     formData.append('dashboard_refresh_interval', refreshInterval.toString());
+
+    // 모집중인 과정 저장
+    const openCourses = document.getElementById('open-courses')?.value || '';
+    formData.append('open_courses', openCourses);
+    console.log('💾 모집중인 과정 저장:', openCourses || '전체');
+
+    // 관심분야 키워드 저장
+    const interestKeywords = document.getElementById('interest-keywords')?.value || '';
+    formData.append('interest_keywords', interestKeywords);
+    console.log('💾 관심분야 키워드 저장:', interestKeywords || '미설정');
     
     try {
         // 프로그레스바 표시
@@ -14226,10 +14328,14 @@ window.saveSystemSettings = async function() {
         // 헤더 즉시 업데이트
         console.log('🔄 헤더 업데이트 시작...');
         await updateHeader();
-        
+
+        // 테마 설정 저장
+        console.log('🎨 테마 설정 저장...');
+        window.saveThemeSettings();
+
         // 프로그레스바 숨기기
         window.hideLoading();
-        
+
         window.showAlert(`✅ 시스템 설정이 저장되었습니다!\n\n대시보드 자동 새로고침: ${refreshInterval}분마다\n(10초간 화면보호기 표시)`);
     } catch (error) {
         // 프로그레스바 숨기기
@@ -14240,6 +14346,8 @@ window.saveSystemSettings = async function() {
         window.showAlert('시스템 설정 저장에 실패했습니다: ' + (error.response?.data?.detail || error.message));
     }
 }
+
+// 헤더 업데이트
 
 // 헤더 업데이트
 async function updateHeader() {
