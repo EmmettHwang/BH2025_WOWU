@@ -9,6 +9,7 @@ import pandas as pd
 import io
 import os
 import json
+import logging
 from datetime import datetime, timedelta, date
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -30,6 +31,21 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 # .env 파일을 상위 디렉토리에서 로드
 env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
+
+# 로깅 필터 설정 (불필요한 200 OK 로그 제거)
+class EndpointFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        # 특정 엔드포인트의 200 OK 로그는 제외
+        message = record.getMessage()
+        if '200 OK' in message:
+            # 진행률 조회 API는 로그 제외
+            if '/api/rag/indexing-progress/' in message:
+                return False
+            # 로그인 401은 포함 (보안상 중요)
+        return True
+
+# uvicorn 로거에 필터 적용
+logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 
 app = FastAPI(
     title="학급 관리 시스템 API",
