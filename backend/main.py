@@ -609,6 +609,67 @@ async def approve_student_registration(registration_id: int, data: dict):
         # 숫자만 추출하여 6자리로
         password = ''.join(filter(str.isdigit, birth_date))[:6] if birth_date else 'kdt2025'
 
+        # profile_photo 처리: base64면 FTP에 업로드하고 URL로 변환
+        profile_photo = registration['profile_photo'] or ''
+        if profile_photo and profile_photo.startswith('data:image'):
+            try:
+                # base64 이미지를 FTP에 업로드
+                import base64
+                import io
+                from PIL import Image
+                
+                # data:image/jpeg;base64,... 형식에서 base64 부분만 추출
+                header, encoded = profile_photo.split(',', 1)
+                image_data = base64.b64decode(encoded)
+                
+                # 이미지 파일로 변환
+                image = Image.open(io.BytesIO(image_data))
+                
+                # JPEG로 저장
+                output = io.BytesIO()
+                image.save(output, format='JPEG', quality=85)
+                output.seek(0)
+                
+                # FTP 업로드 (파일명: profile_학생코드_타임스탬프.jpg)
+                from datetime import datetime
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"profile_{student_code}_{timestamp}.jpg"
+                
+                # FTP 연결 및 업로드
+                import ftplib
+                ftp_host = os.getenv('FTP_HOST', '')
+                ftp_port = int(os.getenv('FTP_PORT', '21'))
+                ftp_user = os.getenv('FTP_USER', '')
+                ftp_password = os.getenv('FTP_PASSWORD', '')
+                
+                if ftp_host and ftp_user:
+                    ftp = ftplib.FTP()
+                    ftp.connect(ftp_host, ftp_port)
+                    ftp.login(ftp_user, ftp_password)
+                    
+                    # student_profiles 디렉토리로 이동 (없으면 생성)
+                    try:
+                        ftp.cwd('student_profiles')
+                    except:
+                        ftp.mkd('student_profiles')
+                        ftp.cwd('student_profiles')
+                    
+                    # 파일 업로드
+                    ftp.storbinary(f'STOR {filename}', output)
+                    ftp.quit()
+                    
+                    # FTP URL 생성
+                    profile_photo = f"ftp://{ftp_host}/student_profiles/{filename}"
+                    print(f"[OK] Base64 이미지를 FTP로 변환: {profile_photo}")
+                else:
+                    # FTP 설정이 없으면 빈 문자열
+                    profile_photo = ''
+                    print(f"[WARN] FTP 설정 없음 - profile_photo를 빈 값으로 저장")
+                    
+            except Exception as img_err:
+                print(f"[ERROR] Base64 → FTP 변환 실패: {img_err}")
+                profile_photo = ''  # 에러 시 빈 값
+
         cursor.execute("""
             INSERT INTO students
             (code, name, birth_date, gender, phone, email, address, interests, education, introduction, course_code, profile_photo, password)
@@ -625,7 +686,7 @@ async def approve_student_registration(registration_id: int, data: dict):
             registration['education'],
             registration['introduction'],
             registration['course_code'],
-            registration['profile_photo'],
+            profile_photo,  # 변환된 URL 또는 원본 URL
             password
         ))
 
