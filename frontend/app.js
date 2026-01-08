@@ -20182,6 +20182,7 @@ async function processRAGDocument(file) {
     let progressInterval = null;
     let isProcessing = true;
     let uploadedFilename = null;
+    let lastLoggedProgress = 0;  // 마지막 로그 출력 진행률
     
     // 프로그레스바 초기화 (0%부터 시작)
     const progressBar = document.getElementById('rag-progress-bar');
@@ -20195,29 +20196,31 @@ async function processRAGDocument(file) {
         
         try {
             const url = `${API_BASE_URL}/api/rag/indexing-progress/${encodeURIComponent(uploadedFilename)}`;
-            console.log('📊 진행률 조회 시도:', url);
             
             const response = await axios.get(url);
             const data = response.data;
             
-            console.log('📊 진행률 업데이트:', data);
+            // 진행률이 변경되었을 때만 로그 출력 (5% 이상 차이)
+            const currentProgress = data.progress || 0;
+            if (Math.abs(currentProgress - lastLoggedProgress) >= 5 || data.status === 'completed' || data.status === 'error') {
+                console.log('📊 진행률 업데이트:', currentProgress + '%', data.status, data.message);
+                lastLoggedProgress = currentProgress;
+            }
             
             // not_found 상태면 아직 인덱싱 시작 안 됨
             if (data.status === 'not_found') {
-                console.log('⏳ 인덱싱 시작 대기 중...');
-                return; // 계속 폴링
+                return; // 계속 폴링 (로그 없음)
             }
             
             // 진행률 업데이트
-            const progress = data.progress || 0;
-            if (progressBar) progressBar.style.width = `${progress}%`;
-            if (progressPercent) progressPercent.textContent = `${progress}%`;
+            if (progressBar) progressBar.style.width = `${currentProgress}%`;
+            if (progressPercent) progressPercent.textContent = `${currentProgress}%`;
             
             // 진행률에 따라 stage 전환
             const allStages = ['stage-parsing', 'stage-chunking', 'stage-embedding', 'stage-indexing'];
             let currentStageId = null;
             
-            if (progress < 20) {
+            if (currentProgress < 20) {
                 currentStageId = 'stage-parsing';  // 0~20%: 파싱
             } else if (progress < 40) {
                 currentStageId = 'stage-chunking';  // 20~40%: 청킹
@@ -20286,9 +20289,11 @@ async function processRAGDocument(file) {
                 }
             }
         } catch (error) {
-            console.error('❌ 진행률 조회 실패:', error);
-            console.error('에러 상세:', error.response?.status, error.response?.data);
-            // 에러가 발생해도 계속 진행 (백엔드가 작업 중일 수 있음)
+            // 네트워크 에러는 로그 생략 (계속 폴링)
+            // 심각한 에러만 로그 출력
+            if (error.response?.status === 500 || error.response?.status === 503) {
+                console.error('❌ 진행률 조회 실패:', error.response?.status);
+            }
         }
     };
     
@@ -20305,9 +20310,7 @@ async function processRAGDocument(file) {
         // RAG 인덱싱 트리거 (백엔드에 별도 엔드포인트 필요)
         if (response.data.success) {
             uploadedFilename = response.data.filename;
-            
-            console.log('✅ 파일 업로드 완료:', uploadedFilename);
-            console.log('🔄 진행률 폴링 시작...');
+            console.log('✅ 파일 업로드 완료, 인덱싱 시작:', uploadedFilename);
             
             // 초기 상태 업데이트
             const statusText = document.getElementById('rag-status-text');
@@ -20317,8 +20320,8 @@ async function processRAGDocument(file) {
             if (progressBar) progressBar.style.width = '5%';
             if (progressPercent) progressPercent.textContent = '5%';
             
-            // 진행률 폴링 시작 (1초마다)
-            progressInterval = setInterval(checkProgress, 1000);
+            // 진행률 폴링 시작 (3초마다)
+            progressInterval = setInterval(checkProgress, 3000);
             
             // 즉시 한 번 체크
             setTimeout(checkProgress, 100);
@@ -20330,12 +20333,8 @@ async function processRAGDocument(file) {
             }, {
                 timeout: 1800000 // 30분 (1800초)
             }).catch(error => {
-                if (error.code === 'ECONNABORTED') {
-                    // 타임아웃 에러는 무시 (진행률로 상태 확인)
-                    console.log('⏰ 인덱싱 요청 타임아웃 (진행률로 상태 확인 중)');
-                } else {
-                    console.error('❌ 인덱싱 요청 실패:', error);
-                    throw error;
+                if (error.code !== 'ECONNABORTED') {
+                    console.error('❌ 인덱싱 요청 실패:', error.message);
                 }
             });
         }

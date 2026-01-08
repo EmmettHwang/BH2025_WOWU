@@ -8,6 +8,7 @@ import pymysql
 import pandas as pd
 import io
 import os
+import json
 from datetime import datetime, timedelta, date
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -8789,14 +8790,22 @@ def _index_document_sync(filename: str, original_filename: str):
         save_indexing_progress(indexing_progress)
         
         # 진행률 콜백 함수
+        last_logged_progress = [0]  # 마지막 로그 출력 진행률
+        
         def update_progress(batch_num, total_batches, progress):
+            old_progress = indexing_progress.get(filename, {}).get('progress', 0)
+            
             indexing_progress[filename] = {
                 "status": "embedding",
                 "progress": progress,
                 "message": f"🧠 임베딩 생성 중... (배치 {batch_num}/{total_batches})"
             }
             save_indexing_progress(indexing_progress)
-            print(f"[INFO] 진행률: {progress}% (배치 {batch_num}/{total_batches})")
+            
+            # 진행률이 변경되었을 때만 로그 출력
+            if progress != old_progress and progress - last_logged_progress[0] >= 5:
+                print(f"[INFO] 진행률: {progress}% (배치 {batch_num}/{total_batches})")
+                last_logged_progress[0] = progress
         
         # 실제 임베딩 생성 (콜백 전달)
         doc_ids = vector_store_manager.add_documents(texts, metadatas, progress_callback=update_progress)
