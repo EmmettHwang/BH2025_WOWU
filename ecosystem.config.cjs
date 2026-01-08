@@ -2,10 +2,10 @@ module.exports = {
   apps: [
     {
       name: 'backend-server',
-      script: 'D:/miniconda3/envs/bh2025_WOWU/python.exe',
-      args: '-m uvicorn backend.main:app --host 0.0.0.0 --port 8000',
+      script: 'uvicorn',
+      args: 'backend.main:app --host 0.0.0.0 --port 8000',
       cwd: './',
-      interpreter: 'none',
+      interpreter: 'python3',
       instances: 1,
       autorestart: true,
       watch: false,
