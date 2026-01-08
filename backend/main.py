@@ -7292,8 +7292,45 @@ from typing import Optional
 vector_store_manager = None
 document_loader = None
 
-# RAG 인덱싱 진행률 추적
-indexing_progress = {}
+# RAG 인덱싱 진행률 추적 (디스크에 영구 저장)
+PROGRESS_FILE = Path("./backend/indexing_progress.json")
+
+def load_indexing_progress():
+    """디스크에서 진행률 복원"""
+    if PROGRESS_FILE.exists():
+        try:
+            with open(PROGRESS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                print(f"[INFO] 복원된 진행률 정보: {len(data)}개 항목")
+                # 오래된 완료 항목은 자동 정리 (1시간 이상)
+                cleaned = {}
+                for k, v in data.items():
+                    if v.get('status') == 'completed':
+                        started = v.get('started_at', '')
+                        if started:
+                            from datetime import datetime, timedelta
+                            started_time = datetime.fromisoformat(started)
+                            if datetime.now() - started_time < timedelta(hours=1):
+                                cleaned[k] = v
+                    else:
+                        cleaned[k] = v
+                return cleaned
+        except Exception as e:
+            print(f"[WARN] 진행률 로드 실패: {e}")
+            return {}
+    return {}
+
+def save_indexing_progress(progress_dict):
+    """디스크에 진행률 저장"""
+    try:
+        PROGRESS_FILE.parent.mkdir(exist_ok=True)
+        with open(PROGRESS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(progress_dict, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[WARN] 진행률 저장 실패: {e}")
+
+# 서버 시작 시 진행률 복원
+indexing_progress = load_indexing_progress()
 
 def init_rag():
     """RAG 시스템 초기화"""
@@ -8645,6 +8682,7 @@ async def index_document_to_rag(request: Request):
             "message": "인덱싱 시작 중...",
             "started_at": datetime.now().isoformat()
         }
+        save_indexing_progress(indexing_progress)
         
         # rag_documents 폴더와 documents 폴더에서 파일 찾기
         file_path = None
@@ -8669,6 +8707,7 @@ async def index_document_to_rag(request: Request):
         
         print(f"📚 RAG 인덱싱 시작: {filename}")
         indexing_progress[filename] = {"status": "parsing", "progress": 10, "message": "문서 파싱 중..."}
+        save_indexing_progress(indexing_progress)
         
         # 메타데이터 구성
         metadata = {
@@ -8689,11 +8728,13 @@ async def index_document_to_rag(request: Request):
         
         print(f"🧩 청킹 완료: {len(documents)}개 조각")
         indexing_progress[filename] = {"status": "chunking", "progress": 30, "message": f"청킹 완료: {len(documents)}개 조각"}
+        save_indexing_progress(indexing_progress)
         
         # 벡터 DB에 저장
         print(f"🔢 임베딩 및 인덱싱 중...")
         total_docs = len(documents)
         indexing_progress[filename] = {"status": "embedding", "progress": 50, "message": f"📝 {total_docs}개 문서 임베딩 생성 중..."}
+        save_indexing_progress(indexing_progress)
         
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
@@ -8708,6 +8749,7 @@ async def index_document_to_rag(request: Request):
             "progress": 50, 
             "message": f"🔢 임베딩 생성 중... (배치 0/{total_batches})"
         }
+        save_indexing_progress(indexing_progress)
         
         # 실제 임베딩 생성 (내부적으로 배치 처리됨)
         doc_ids = vector_store_manager.add_documents(texts, metadatas)
@@ -8718,9 +8760,21 @@ async def index_document_to_rag(request: Request):
             "progress": 90, 
             "message": f"💾 벡터 데이터베이스 저장 중... ({len(doc_ids)}개)"
         }
+        save_indexing_progress(indexing_progress)
         
         print(f"✅ RAG 인덱싱 완료: {len(doc_ids)}개 벡터 저장됨")
         indexing_progress[filename] = {"status": "completed", "progress": 100, "message": f"✅ 인덱싱 완료! ({len(doc_ids)}개 벡터)"}
+        save_indexing_progress(indexing_progress)
+        
+        # 완료된 항목은 30초 후 자동 정리 (메모리 관리)
+        import threading
+        def cleanup():
+            time.sleep(30)
+            if filename in indexing_progress and indexing_progress[filename].get('status') == 'completed':
+                del indexing_progress[filename]
+                save_indexing_progress(indexing_progress)
+                print(f"[INFO] 완료된 진행률 정보 정리: {filename}")
+        threading.Thread(target=cleanup, daemon=True).start()
         
         return {
             "success": True,
@@ -8733,12 +8787,14 @@ async def index_document_to_rag(request: Request):
         
     except HTTPException:
         indexing_progress[filename] = {"status": "error", "progress": 0, "message": "인덱싱 실패"}
+        save_indexing_progress(indexing_progress)
         raise
     except Exception as e:
         print(f"[ERROR] RAG 인덱싱 실패: {str(e)}")
         import traceback
         traceback.print_exc()
         indexing_progress[filename] = {"status": "error", "progress": 0, "message": f"오류: {str(e)}"}
+        save_indexing_progress(indexing_progress)
         raise HTTPException(status_code=500, detail=f"RAG 인덱싱 실패: {str(e)}")
 
 
