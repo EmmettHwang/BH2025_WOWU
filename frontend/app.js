@@ -8,6 +8,9 @@ window.API_BASE_URL = API_BASE_URL; // 전역으로 노출
 
 console.log('🌐 API_BASE_URL:', API_BASE_URL || '(프록시 사용)');
 
+// 시스템 기본값
+const DEFAULT_SYSTEM_TITLE = '바이오헬스 교육관리 시스템';
+
 // YouTube API cross-origin 에러 무시 (sandbox 환경)
 window.addEventListener('error', function(event) {
     if (event.message && event.message.includes('www-widgetapi.js')) {
