@@ -19945,8 +19945,8 @@ function showRAGProcessingModal() {
                         </div>
                     </div>
                     
-                    <!-- Embedding Stage -->
-                    <div id="stage-embedding" class="stage-container hidden">
+                    <!-- Embedding Stage (기본 표시) -->
+                    <div id="stage-embedding" class="stage-container">
                         <div class="flex items-center justify-center h-full">
                             <div class="code-stream-container">
                                 <div class="code-stream">
