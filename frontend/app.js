@@ -3339,9 +3339,9 @@ window.filterRegistrations = function() {
         const createdAt = reg.created_at ? new Date(reg.created_at).toLocaleString('ko-KR') : '-';
         const courseName = courseMap[reg.course_code] || reg.course_code || '-';
 
-        // 프로필 사진 표시
+        // 프로필 사진 표시 (FTP URL을 프록시를 통해 표시)
         const profilePhoto = reg.profile_photo
-            ? `<img src="${reg.profile_photo}" alt="프로필" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200">`
+            ? `<img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(reg.profile_photo)}" alt="프로필" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200">`
             : `<div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-400"><i class="fas fa-user"></i></div>`;
 
         const actionButtons = reg.status === 'pending' ? `
@@ -3401,7 +3401,7 @@ window.viewRegistrationDetail = function(regId) {
                 <!-- 프로필 사진 -->
                 <div class="flex justify-center mb-4">
                     ${reg.profile_photo
-                        ? `<img src="${reg.profile_photo}" alt="프로필" class="w-24 h-24 rounded-full object-cover border-4 border-orange-200 shadow-lg">`
+                        ? `<img src="${API_BASE_URL}/api/thumbnail?url=${encodeURIComponent(reg.profile_photo)}" alt="프로필" class="w-24 h-24 rounded-full object-cover border-4 border-orange-200 shadow-lg">`
                         : `<div class="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-3xl border-4 border-gray-300"><i class="fas fa-user"></i></div>`
                     }
                 </div>

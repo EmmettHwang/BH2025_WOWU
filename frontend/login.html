@@ -48,6 +48,17 @@
             }
         })();
     </script>
+    <style>
+        @keyframes ping {
+            75%, 100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+        .animate-ping {
+            animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+    </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center">
     <div class="container max-w-2xl mx-auto px-4">
@@ -411,27 +422,83 @@
                 if (detail.includes('|')) {
                     const [title, message] = detail.split('|');
                     
+                    // 상태에 따른 스타일 결정
+                    let bgColor, iconColor, iconClass, borderColor, textMessage;
+                    
+                    if (title.includes('대기')) {
+                        // 대기 중
+                        bgColor = 'bg-gradient-to-br from-yellow-50 to-orange-50';
+                        iconColor = 'text-yellow-500';
+                        iconClass = 'fa-clock';
+                        borderColor = 'border-yellow-400';
+                        textMessage = `${message}\n\n담당자가 정해지면 등록하신 번호로 연락 드리겠습니다.\n\n좋은 하루 되십시오! 😊`;
+                    } else if (title.includes('거절')) {
+                        // 거절됨
+                        bgColor = 'bg-gradient-to-br from-red-50 to-pink-50';
+                        iconColor = 'text-red-500';
+                        iconClass = 'fa-times-circle';
+                        borderColor = 'border-red-400';
+                        textMessage = `${message}\n\n자세한 사항은 관리자에게 문의해 주세요.\n\n좋은 하루 되십시오.`;
+                    } else if (title.includes('승인')) {
+                        // 승인됨
+                        bgColor = 'bg-gradient-to-br from-green-50 to-blue-50';
+                        iconColor = 'text-green-500';
+                        iconClass = 'fa-check-circle';
+                        borderColor = 'border-green-400';
+                        textMessage = `${message}\n\n로그인이 가능합니다.\n\n좋은 하루 되십시오! 🎉`;
+                    } else {
+                        // 기타
+                        bgColor = 'bg-gradient-to-br from-blue-50 to-indigo-50';
+                        iconColor = 'text-blue-500';
+                        iconClass = 'fa-info-circle';
+                        borderColor = 'border-blue-400';
+                        textMessage = message;
+                    }
+                    
                     // 예쁜 모달로 표시
                     const statusModal = document.createElement('div');
-                    statusModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                    statusModal.className = 'fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4';
                     statusModal.innerHTML = `
-                        <div class="bg-white rounded-lg shadow-2xl p-6 max-w-md w-full mx-4">
-                            <div class="flex items-center mb-4">
-                                <div class="w-12 h-12 rounded-full ${title.includes('대기') ? 'bg-yellow-100' : 'bg-red-100'} flex items-center justify-center mr-4">
-                                    <i class="fas ${title.includes('대기') ? 'fa-clock text-yellow-500' : 'fa-times-circle text-red-500'} text-2xl"></i>
+                        <div class="${bgColor} rounded-3xl shadow-2xl max-w-md w-full mx-auto transform transition-all duration-300 scale-95 hover:scale-100 overflow-hidden">
+                            <!-- 상단 장식 -->
+                            <div class="bg-gradient-to-r from-blue-500 to-purple-500 h-2"></div>
+                            
+                            <div class="p-8">
+                                <!-- 애니메이션 아이콘 -->
+                                <div class="relative inline-block mb-6">
+                                    <div class="absolute inset-0 ${iconColor.replace('text-', 'bg-')} rounded-full opacity-25 animate-ping"></div>
+                                    <div class="relative ${iconColor} text-7xl">
+                                        <i class="fas ${iconClass}"></i>
+                                    </div>
                                 </div>
-                                <h3 class="text-xl font-bold text-gray-800">${title}</h3>
+
+                                <!-- 제목 -->
+                                <h2 class="text-3xl font-bold text-gray-800 mb-4">
+                                    ${title}
+                                </h2>
+                                
+                                <!-- 메시지 카드 -->
+                                <div class="bg-white rounded-xl p-6 mb-6 shadow-inner border-l-4 ${borderColor}">
+                                    <p class="text-gray-700 leading-relaxed whitespace-pre-wrap">${textMessage}</p>
+                                </div>
+
+                                <!-- 확인 버튼 -->
+                                <button 
+                                    onclick="this.closest('.fixed').remove()" 
+                                    class="w-full text-white font-bold py-4 px-6 rounded-xl transition-all hover:shadow-xl transform hover:-translate-y-1 duration-200"
+                                    style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);"
+                                >
+                                    <i class="fas fa-check mr-2"></i>확인했습니다
+                                </button>
                             </div>
-                            <div class="bg-gray-50 rounded-lg p-4 mb-6">
-                                <p class="text-gray-700 whitespace-pre-wrap">${message}</p>
-                            </div>
-                            <button onclick="this.closest('.fixed').remove()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors">
-                                <i class="fas fa-check mr-2"></i>확인
-                            </button>
+
+                            <!-- 하단 장식 -->
+                            <div class="bg-gradient-to-r from-blue-500 to-purple-500 h-2"></div>
                         </div>
                     `;
                     document.body.appendChild(statusModal);
                 } else {
+                    // 일반 에러 메시지
                     showAlert(detail, 'error');
                 }
                 
