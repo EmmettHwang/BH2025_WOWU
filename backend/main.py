@@ -555,19 +555,36 @@ async def approve_student_registration(registration_id: int, data: dict):
         existing_columns = {col['Field'] for col in cursor.fetchall()}
         
         required_columns = {
-            'password': "VARCHAR(100) DEFAULT 'kdt2025'",
-            'profile_photo': "VARCHAR(500)",  # URL만 저장 (FTP 경로)
+            'code': "VARCHAR(50) UNIQUE",
+            'name': "VARCHAR(100)",
+            'birth_date': "VARCHAR(20)",
+            'gender': "VARCHAR(10)",
+            'phone': "VARCHAR(50)",
+            'email': "VARCHAR(100)",
+            'address': "TEXT",
+            'interests': "TEXT",
             'education': "VARCHAR(255)",
-            'introduction': "TEXT"
+            'introduction': "TEXT",
+            'course_code': "VARCHAR(50)",
+            'profile_photo': "VARCHAR(500)",
+            'password': "VARCHAR(100) DEFAULT 'kdt2025'"
         }
         
+        columns_added = []
         for col_name, col_def in required_columns.items():
             if col_name not in existing_columns:
                 try:
-                    cursor.execute(f"ALTER TABLE students ADD COLUMN {col_name} {col_def}")
+                    # UNIQUE 제약이 있으면 제거
+                    col_def_no_unique = col_def.replace(' UNIQUE', '')
+                    cursor.execute(f"ALTER TABLE students ADD COLUMN {col_name} {col_def_no_unique}")
+                    columns_added.append(col_name)
                     print(f"[OK] students 테이블에 {col_name} 컬럼 추가")
                 except Exception as col_err:
                     print(f"[WARN] {col_name} 컬럼 추가 실패: {col_err}")
+        
+        if columns_added:
+            conn.commit()
+            print(f"[OK] students 테이블 컬럼 {len(columns_added)}개 추가 완료: {', '.join(columns_added)}")
         
         conn.commit()
 
@@ -635,8 +652,11 @@ async def approve_student_registration(registration_id: int, data: dict):
         raise
     except Exception as e:
         conn.rollback()
+        import traceback
+        error_detail = traceback.format_exc()
         print(f"[ERROR] 신규가입 승인 실패: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[ERROR] 상세 오류:\n{error_detail}")
+        raise HTTPException(status_code=500, detail=f"승인 처리 실패: {str(e)}")
     finally:
         cursor.close()
         conn.close()
