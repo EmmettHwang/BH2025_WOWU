@@ -5795,7 +5795,10 @@ async def student_login(credentials: dict):
             cursor.execute("SELECT id, name FROM students ORDER BY id")
             all_students = cursor.fetchall()
             print(f"📋 등록된 학생 목록: {[s['name'] for s in all_students]}")
-            raise HTTPException(status_code=401, detail="등록되지 않은 학생입니다")
+            raise HTTPException(
+                status_code=401, 
+                detail="등록되지 않은 사용자|입력하신 정보로 등록된 학생을 찾을 수 없습니다.\n\n신규 가입을 원하시면 회원가입 페이지를 이용해 주세요."
+            )
         
         # 비밀번호 확인 (기본값: kdt2025)
         default_password = "kdt2025"

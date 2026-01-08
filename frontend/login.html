@@ -417,10 +417,27 @@
             } catch (error) {
                 console.error('로그인 오류:', error);
                 const detail = error.response?.data?.detail || '로그인에 실패했습니다';
+                const statusCode = error.response?.status;
                 
-                // 신청 상태 메시지 처리 ("|"로 구분)
-                if (detail.includes('|')) {
-                    const [title, message] = detail.split('|');
+                // 신청 상태 메시지 처리 ("|"로 구분) 또는 401/403 에러
+                if (detail.includes('|') || statusCode === 401 || statusCode === 403) {
+                    let title, message;
+                    
+                    if (detail.includes('|')) {
+                        [title, message] = detail.split('|');
+                    } else {
+                        // "|" 없는 401/403 에러 처리
+                        if (statusCode === 401) {
+                            title = '등록되지 않은 사용자';
+                            message = detail;
+                        } else if (statusCode === 403) {
+                            title = '접근 제한';
+                            message = detail;
+                        } else {
+                            title = '오류';
+                            message = detail;
+                        }
+                    }
                     
                     // 상태에 따른 스타일 결정
                     let bgColor, iconColor, iconClass, borderColor, textMessage;
@@ -446,6 +463,13 @@
                         iconClass = 'fa-check-circle';
                         borderColor = 'border-green-400';
                         textMessage = `${message}\n\n로그인이 가능합니다.\n\n좋은 하루 되십시오! 🎉`;
+                    } else if (title.includes('등록되지 않은')) {
+                        // 등록되지 않은 사용자
+                        bgColor = 'bg-gradient-to-br from-gray-50 to-blue-50';
+                        iconColor = 'text-gray-500';
+                        iconClass = 'fa-user-slash';
+                        borderColor = 'border-gray-400';
+                        textMessage = `${message}\n\n좋은 하루 되십시오.`;
                     } else {
                         // 기타
                         bgColor = 'bg-gradient-to-br from-blue-50 to-indigo-50';
