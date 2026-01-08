@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>캐시 클리어</title>
+</head>
+<body>
+    <h1>캐시 클리어</h1>
+    <script>
+        // 모든 localStorage 클리어
+        localStorage.clear();
+        
+        // 모든 sessionStorage 클리어
+        sessionStorage.clear();
+        
+        // 캐시 버전 강제 업데이트
+        localStorage.setItem('cache_version', '3.8.202601081106-force-clear');
+        
+        alert('캐시가 클리어되었습니다! 확인을 누르면 홈으로 이동합니다.');
+        window.location.href = '/';
+    </script>
+</body>
+</html>
