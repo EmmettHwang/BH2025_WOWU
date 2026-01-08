@@ -20161,8 +20161,9 @@ async function processRAGDocument(file) {
     };
     
     let currentStage = 0;
-    let stageInterval = null;
+    let progressInterval = null;
     let isProcessing = true;
+    let uploadedFilename = null;
     
     // 프로그레스바 초기화 (0%부터 시작)
     const progressBar = document.getElementById('rag-progress-bar');
@@ -20170,48 +20171,58 @@ async function processRAGDocument(file) {
     if (progressBar) progressBar.style.width = '0%';
     if (progressPercent) progressPercent.textContent = '0%';
     
-    // 스테이지 업데이트 함수
-    const updateStage = () => {
-        // 마지막 단계를 넘어가면 더 이상 업데이트하지 않음
-        if (currentStage >= stages.length) {
-            return;
-        }
+    // 진행률 조회 함수
+    const checkProgress = async () => {
+        if (!uploadedFilename || !isProcessing) return;
         
-        // 모든 스테이지 숨기기
-        stages.forEach(s => {
-            const el = document.getElementById(`stage-${s}`);
-            if (el) el.classList.add('hidden');
-        });
-        
-        // 현재 스테이지 표시
-        const stageName = stages[currentStage];
-        const el = document.getElementById(`stage-${stageName}`);
-        if (el) el.classList.remove('hidden');
-        
-        const statusText = document.getElementById('rag-status-text');
-        if (statusText) {
-            statusText.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i>${stageMessages[stageName]}`;
-        }
-        
-        // 프로그레스바 업데이트 (실제 진행 상황을 반영하되, 90%까지만)
-        const progress = Math.min(((currentStage + 1) / stages.length) * 90, 90);
-        if (progressBar) progressBar.style.width = `${progress}%`;
-        if (progressPercent) progressPercent.textContent = `${Math.round(progress)}%`;
-        
-        // 다음 스테이지로
-        currentStage++;
-    };
-    
-    // 첫 번째 스테이지를 즉시 표시
-    setTimeout(() => {
-        updateStage();
-        // 3초마다 스테이지 변경 (백엔드 처리가 끝날 때까지 반복)
-        stageInterval = setInterval(() => {
-            if (isProcessing) {
-                updateStage();
+        try {
+            const response = await axios.get(`${API_BASE_URL}/api/rag/indexing-progress/${encodeURIComponent(uploadedFilename)}`);
+            const data = response.data;
+            
+            // 진행률 업데이트
+            const progress = data.progress || 0;
+            if (progressBar) progressBar.style.width = `${progress}%`;
+            if (progressPercent) progressPercent.textContent = `${progress}%`;
+            
+            // 상태 메시지 업데이트
+            const statusText = document.getElementById('rag-status-text');
+            if (statusText && data.message) {
+                let icon = '<i class="fas fa-circle-notch fa-spin mr-2"></i>';
+                if (data.status === 'completed') {
+                    icon = '<i class="fas fa-check-circle mr-2 text-green-400"></i>';
+                } else if (data.status === 'error') {
+                    icon = '<i class="fas fa-times-circle mr-2 text-red-400"></i>';
+                }
+                statusText.innerHTML = `${icon}${data.message}`;
             }
-        }, 3000);
-    }, 100);
+            
+            // 완료 또는 에러 상태 처리
+            if (data.status === 'completed' || data.status === 'error') {
+                isProcessing = false;
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                    progressInterval = null;
+                }
+                
+                if (data.status === 'completed') {
+                    // 2초 후 모달 닫기
+                    setTimeout(async () => {
+                        hideRAGProcessingModal();
+                        await window.showCustomAlert('✨ 문서가 성공적으로 업로드되고 RAG 시스템에 인덱싱되었습니다!', 'success');
+                        loadDocuments();
+                    }, 2000);
+                } else {
+                    // 에러 처리
+                    setTimeout(async () => {
+                        hideRAGProcessingModal();
+                        await window.showCustomAlert('문서 처리 실패: ' + (data.message || '알 수 없는 오류'), 'error');
+                    }, 2000);
+                }
+            }
+        } catch (error) {
+            console.error('진행률 조회 실패:', error);
+        }
+    };
     
     try {
         // 실제 RAG 업로드
@@ -20225,44 +20236,31 @@ async function processRAGDocument(file) {
         
         // RAG 인덱싱 트리거 (백엔드에 별도 엔드포인트 필요)
         if (response.data.success) {
-            const filename = response.data.filename;
+            uploadedFilename = response.data.filename;
             
-            // RAG 인덱싱 요청 (타임아웃 5분)
-            await axios.post(`${API_BASE_URL}/api/rag/index-document`, {
-                filename: filename,
+            // 진행률 폴링 시작 (1초마다)
+            progressInterval = setInterval(checkProgress, 1000);
+            
+            // RAG 인덱싱 요청 (타임아웃 30분으로 증가)
+            axios.post(`${API_BASE_URL}/api/rag/index-document`, {
+                filename: uploadedFilename,
                 original_filename: response.data.original_filename
             }, {
-                timeout: 300000 // 5분 (300초)
+                timeout: 1800000 // 30분 (1800초)
+            }).catch(error => {
+                if (error.code === 'ECONNABORTED') {
+                    // 타임아웃 에러는 무시 (진행률로 상태 확인)
+                    console.log('인덱싱 요청 타임아웃 (진행률로 상태 확인 중)');
+                } else {
+                    throw error;
+                }
             });
         }
         
-        // 백엔드 처리 완료 - 애니메이션 중지
-        isProcessing = false;
-        if (stageInterval) {
-            clearInterval(stageInterval);
-        }
-        
-        // 완료 상태로 업데이트
-        const statusText = document.getElementById('rag-status-text');
-        if (statusText) {
-            statusText.innerHTML = '<i class="fas fa-check-circle mr-2 text-green-400"></i>✨ 문서 처리 완료! 이제 이 문서로 질문할 수 있습니다.';
-        }
-        const progressBar = document.getElementById('rag-progress-bar');
-        const progressPercent = document.getElementById('rag-progress-percentage');
-        if (progressBar) progressBar.style.width = '100%';
-        if (progressPercent) progressPercent.textContent = '100%';
-        
-        // 2초 후 모달 닫기
-        setTimeout(async () => {
-            hideRAGProcessingModal();
-            await window.showCustomAlert('✨ 문서가 성공적으로 업로드되고 RAG 시스템에 인덱싱되었습니다!', 'success');
-            loadDocuments();
-        }, 2000);
-        
     } catch (error) {
         isProcessing = false;
-        if (stageInterval) {
-            clearInterval(stageInterval);
+        if (progressInterval) {
+            clearInterval(progressInterval);
         }
         console.error('RAG 문서 처리 실패:', error);
         
