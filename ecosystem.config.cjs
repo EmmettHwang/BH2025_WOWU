@@ -2,10 +2,10 @@ module.exports = {
   apps: [
     {
       name: 'backend-server',
-      script: 'uvicorn',
+      script: '/usr/local/bin/uvicorn',
       args: 'backend.main:app --host 0.0.0.0 --port 8000',
-      cwd: './',
-      interpreter: 'python3',
+      cwd: '/root/BH2025_WOWU',
+      interpreter: 'none',
       instances: 1,
       autorestart: true,
       watch: false,
