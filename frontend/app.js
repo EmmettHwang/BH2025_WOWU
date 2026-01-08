@@ -20176,10 +20176,19 @@ async function processRAGDocument(file) {
         if (!uploadedFilename || !isProcessing) return;
         
         try {
-            const response = await axios.get(`${API_BASE_URL}/api/rag/indexing-progress/${encodeURIComponent(uploadedFilename)}`);
+            const url = `${API_BASE_URL}/api/rag/indexing-progress/${encodeURIComponent(uploadedFilename)}`;
+            console.log('📊 진행률 조회 시도:', url);
+            
+            const response = await axios.get(url);
             const data = response.data;
             
             console.log('📊 진행률 업데이트:', data);
+            
+            // not_found 상태면 아직 인덱싱 시작 안 됨
+            if (data.status === 'not_found') {
+                console.log('⏳ 인덱싱 시작 대기 중...');
+                return; // 계속 폴링
+            }
             
             // 진행률 업데이트
             const progress = data.progress || 0;
@@ -20233,7 +20242,8 @@ async function processRAGDocument(file) {
                 }
             }
         } catch (error) {
-            console.error('진행률 조회 실패:', error);
+            console.error('❌ 진행률 조회 실패:', error);
+            console.error('에러 상세:', error.response?.status, error.response?.data);
             // 에러가 발생해도 계속 진행 (백엔드가 작업 중일 수 있음)
         }
     };
@@ -20252,8 +20262,22 @@ async function processRAGDocument(file) {
         if (response.data.success) {
             uploadedFilename = response.data.filename;
             
+            console.log('✅ 파일 업로드 완료:', uploadedFilename);
+            console.log('🔄 진행률 폴링 시작...');
+            
+            // 초기 상태 업데이트
+            const statusText = document.getElementById('rag-status-text');
+            if (statusText) {
+                statusText.innerHTML = '<i class="fas fa-upload fa-spin mr-2"></i>📤 파일 업로드 완료! 인덱싱 시작 대기 중...';
+            }
+            if (progressBar) progressBar.style.width = '5%';
+            if (progressPercent) progressPercent.textContent = '5%';
+            
             // 진행률 폴링 시작 (1초마다)
             progressInterval = setInterval(checkProgress, 1000);
+            
+            // 즉시 한 번 체크
+            setTimeout(checkProgress, 100);
             
             // RAG 인덱싱 요청 (타임아웃 30분으로 증가)
             axios.post(`${API_BASE_URL}/api/rag/index-document`, {
@@ -20264,8 +20288,9 @@ async function processRAGDocument(file) {
             }).catch(error => {
                 if (error.code === 'ECONNABORTED') {
                     // 타임아웃 에러는 무시 (진행률로 상태 확인)
-                    console.log('인덱싱 요청 타임아웃 (진행률로 상태 확인 중)');
+                    console.log('⏰ 인덱싱 요청 타임아웃 (진행률로 상태 확인 중)');
                 } else {
+                    console.error('❌ 인덱싱 요청 실패:', error);
                     throw error;
                 }
             });
