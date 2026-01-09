@@ -15008,9 +15008,9 @@ window.saveSystemSettings = async function() {
         console.log('🔄 헤더 업데이트 시작...');
         await updateHeader();
 
-        // 테마 설정 저장
-        console.log('🎨 테마 설정 저장...');
-        window.saveThemeSettings();
+        // 테마 설정 저장 (현재 사용하지 않음)
+        // console.log('🎨 테마 설정 저장...');
+        // window.saveThemeSettings();
 
         // 프로그레스바 숨기기
         window.hideLoading();
