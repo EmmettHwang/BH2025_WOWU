@@ -19817,8 +19817,13 @@ if (document.readyState === 'loading') {
 
 // ==================== DB 백업 관리 ====================
 async function loadBackupManager() {
-    const content = document.getElementById('content');
-    content.innerHTML = `
+    const app = document.getElementById('app');
+    if (!app) {
+        console.error('app 요소를 찾을 수 없습니다');
+        return;
+    }
+    
+    app.innerHTML = `
         <div class="max-w-6xl mx-auto p-6">
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <div class="flex items-center justify-between mb-6">
@@ -19826,9 +19831,17 @@ async function loadBackupManager() {
                         <i class="fas fa-database mr-2 text-blue-600"></i>
                         데이터베이스 백업 관리
                     </h2>
-                    <button onclick="createBackupNow()" class="btn-primary px-6 py-2 rounded-lg">
-                        <i class="fas fa-plus mr-2"></i>백업 생성
-                    </button>
+                    <div class="flex space-x-2">
+                        <button onclick="createBackupNow()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">
+                            <i class="fas fa-plus mr-2"></i>백업 생성
+                        </button>
+                        <button onclick="exportDatabase()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition">
+                            <i class="fas fa-download mr-2"></i>내보내기
+                        </button>
+                        <button onclick="showImportModal()" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition">
+                            <i class="fas fa-upload mr-2"></i>불러오기
+                        </button>
+                    </div>
                 </div>
 
                 <!-- 백업 설정 -->
@@ -19845,7 +19858,7 @@ async function loadBackupManager() {
                                 class="w-full px-3 py-2 border rounded-lg" />
                         </div>
                         <div class="flex items-end">
-                            <button onclick="cleanupOldBackups()" class="btn-secondary px-4 py-2 rounded-lg">
+                            <button onclick="cleanupOldBackups()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
                                 <i class="fas fa-trash mr-2"></i>오래된 백업 정리
                             </button>
                         </div>
@@ -19903,8 +19916,16 @@ async function refreshBackupList() {
                         </div>
                     </div>
                     <div class="flex space-x-2">
+                        <button onclick="downloadBackup('${backup.filename}')" 
+                            class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                            <i class="fas fa-download mr-1"></i>다운로드
+                        </button>
+                        <button onclick="restoreBackup('${backup.filename}')" 
+                            class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition">
+                            <i class="fas fa-redo mr-1"></i>복원
+                        </button>
                         <button onclick="deleteBackup('${backup.filename}')" 
-                            class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                            class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">
                             <i class="fas fa-trash mr-1"></i>삭제
                         </button>
                     </div>
@@ -19973,6 +19994,215 @@ async function cleanupOldBackups() {
         hideLoading();
         console.error('백업 정리 실패:', error);
         showAlert('백업 정리에 실패했습니다', 'error');
+    }
+}
+
+// 백업 다운로드
+async function downloadBackup(filename) {
+    try {
+        showLoading('백업 파일 다운로드 중...');
+        
+        const response = await axios.get(`${API_BASE_URL}/api/backup/download/${filename}`, {
+            responseType: 'blob'
+        });
+        
+        // Blob을 다운로드
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        
+        hideLoading();
+        showAlert('백업 파일 다운로드 완료', 'success');
+    } catch (error) {
+        hideLoading();
+        console.error('백업 다운로드 실패:', error);
+        showAlert('백업 다운로드에 실패했습니다', 'error');
+    }
+}
+
+// 백업 복원
+async function restoreBackup(filename) {
+    if (!confirm(`⚠️ 경고!\n\n백업 파일 "${filename}"로 데이터베이스를 복원하시겠습니까?\n\n현재 데이터는 모두 삭제되고 백업 시점의 데이터로 대체됩니다.\n\n이 작업은 되돌릴 수 없습니다!`)) {
+        return;
+    }
+    
+    // 두 번째 확인
+    const confirmText = prompt('복원을 계속하려면 "복원"을 입력하세요:');
+    if (confirmText !== '복원') {
+        showAlert('복원이 취소되었습니다', 'info');
+        return;
+    }
+
+    try {
+        showLoading('백업 복원 중... 잠시만 기다려주세요');
+        
+        const response = await axios.post(`${API_BASE_URL}/api/backup/restore/${filename}`);
+        
+        hideLoading();
+        
+        if (response.data.success) {
+            showAlert(`백업 복원 완료!\n복원된 레코드: ${response.data.restored_records}개`, 'success');
+            
+            // 3초 후 페이지 새로고침
+            setTimeout(() => {
+                window.location.reload();
+            }, 3000);
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('백업 복원 실패:', error);
+        showAlert('백업 복원에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
+    }
+}
+
+// 전체 데이터베이스 내보내기
+async function exportDatabase() {
+    if (!confirm('전체 데이터베이스를 JSON 파일로 내보내시겠습니까?')) {
+        return;
+    }
+
+    try {
+        showLoading('데이터베이스 내보내기 중...');
+        
+        const response = await axios.get(`${API_BASE_URL}/api/backup/export`, {
+            responseType: 'blob'
+        });
+        
+        // 현재 날짜/시간으로 파일명 생성
+        const now = new Date();
+        const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const filename = `db_export_${timestamp}.json`;
+        
+        // Blob을 다운로드
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        
+        hideLoading();
+        showAlert('데이터베이스 내보내기 완료', 'success');
+    } catch (error) {
+        hideLoading();
+        console.error('내보내기 실패:', error);
+        showAlert('데이터베이스 내보내기에 실패했습니다', 'error');
+    }
+}
+
+// 불러오기 모달 표시
+function showImportModal() {
+    const modalHtml = `
+        <div id="import-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">
+                        <i class="fas fa-upload mr-2 text-purple-600"></i>
+                        데이터베이스 불러오기
+                    </h3>
+                    <button onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <i class="fas fa-file-upload text-4xl text-purple-500 mb-3"></i>
+                        <p class="text-sm text-gray-600 mb-3">
+                            JSON 백업 파일을 선택하세요
+                        </p>
+                        <input type="file" id="import-file-input" accept=".json" 
+                            class="hidden" onchange="handleImportFile(event)" />
+                        <button onclick="document.getElementById('import-file-input').click()" 
+                            class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition">
+                            <i class="fas fa-folder-open mr-2"></i>파일 선택
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                    <p class="text-sm text-yellow-800">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        <strong>경고:</strong> 현재 데이터가 모두 삭제되고 백업 파일의 데이터로 대체됩니다.
+                    </p>
+                </div>
+                
+                <div class="flex space-x-2">
+                    <button onclick="closeImportModal()" 
+                        class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg transition">
+                        취소
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// 불러오기 모달 닫기
+function closeImportModal() {
+    const modal = document.getElementById('import-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// 파일 선택 핸들러
+async function handleImportFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!file.name.endsWith('.json')) {
+        showAlert('JSON 파일만 업로드할 수 있습니다', 'error');
+        return;
+    }
+    
+    if (!confirm(`⚠️ 최종 확인\n\n파일: ${file.name}\n\n이 파일로 데이터베이스를 복원하시겠습니까?\n현재 데이터는 모두 삭제됩니다!`)) {
+        return;
+    }
+    
+    // 세 번째 확인
+    const confirmText = prompt('계속하려면 "불러오기"를 입력하세요:');
+    if (confirmText !== '불러오기') {
+        showAlert('불러오기가 취소되었습니다', 'info');
+        return;
+    }
+    
+    try {
+        closeImportModal();
+        showLoading('데이터베이스 불러오기 중... 잠시만 기다려주세요');
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await axios.post(`${API_BASE_URL}/api/backup/import`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        
+        hideLoading();
+        
+        if (response.data.success) {
+            showAlert(`데이터베이스 불러오기 완료!\n복원된 레코드: ${response.data.imported_records}개`, 'success');
+            
+            // 3초 후 페이지 새로고침
+            setTimeout(() => {
+                window.location.reload();
+            }, 3000);
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('불러오기 실패:', error);
+        showAlert('데이터베이스 불러오기에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
     }
 }
 

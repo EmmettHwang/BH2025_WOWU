@@ -7833,6 +7833,220 @@ async def auto_cleanup_backups(keep_days: int = 7):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"자동 정리 실패: {str(e)}")
 
+@app.get("/api/backup/download/{filename}")
+async def download_backup(filename: str):
+    """백업 파일 다운로드"""
+    import os
+    from fastapi.responses import FileResponse
+    
+    backup_dir = '/home/user/webapp/backend/backups'
+    filepath = os.path.join(backup_dir, filename)
+    
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="백업 파일을 찾을 수 없습니다")
+    
+    if not filename.startswith('db_backup_'):
+        raise HTTPException(status_code=400, detail="잘못된 파일명입니다")
+    
+    return FileResponse(
+        filepath,
+        media_type='application/json',
+        filename=filename
+    )
+
+@app.post("/api/backup/restore/{filename}")
+async def restore_backup(filename: str):
+    """백업 파일로 데이터베이스 복원"""
+    import os
+    import json
+    from datetime import datetime
+    
+    backup_dir = '/home/user/webapp/backend/backups'
+    filepath = os.path.join(backup_dir, filename)
+    
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="백업 파일을 찾을 수 없습니다")
+    
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=503, detail="데이터베이스 연결 실패")
+    
+    cursor = conn.cursor()
+    
+    try:
+        # 백업 파일 읽기
+        with open(filepath, 'r', encoding='utf-8') as f:
+            backup_data = json.load(f)
+        
+        restored_records = 0
+        
+        # 각 테이블별로 복원
+        for table_name, records in backup_data.items():
+            if not records:
+                continue
+            
+            try:
+                # 기존 데이터 삭제
+                cursor.execute(f"DELETE FROM {table_name}")
+                
+                # 데이터 삽입
+                for record in records:
+                    columns = ', '.join(record.keys())
+                    placeholders = ', '.join(['%s'] * len(record))
+                    values = tuple(record.values())
+                    
+                    insert_sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
+                    cursor.execute(insert_sql, values)
+                    restored_records += 1
+                
+                print(f"✅ {table_name}: {len(records)}개 복원")
+            
+            except Exception as table_error:
+                print(f"⚠️ {table_name} 복원 오류: {str(table_error)}")
+                continue
+        
+        conn.commit()
+        
+        return {
+            "success": True,
+            "restored_records": restored_records,
+            "backup_file": filename,
+            "message": f"백업 복원 완료: {restored_records}개 레코드"
+        }
+        
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"복원 실패: {str(e)}")
+    
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.get("/api/backup/export")
+async def export_database():
+    """전체 데이터베이스 JSON으로 내보내기"""
+    import json
+    from datetime import datetime
+    from fastapi.responses import StreamingResponse
+    import io
+    
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=503, detail="데이터베이스 연결 실패")
+    
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+    
+    try:
+        # 전체 테이블 목록 조회
+        cursor.execute("SHOW TABLES")
+        tables = [list(row.values())[0] for row in cursor.fetchall()]
+        
+        export_data = {}
+        
+        for table in tables:
+            try:
+                cursor.execute(f"SELECT * FROM {table}")
+                records = cursor.fetchall()
+                
+                # datetime 객체를 문자열로 변환
+                for record in records:
+                    for key, value in record.items():
+                        if isinstance(value, datetime):
+                            record[key] = value.isoformat()
+                
+                export_data[table] = records
+                print(f"✅ {table}: {len(records)}개 레코드")
+            
+            except Exception as table_error:
+                print(f"⚠️ {table} 읽기 오류: {str(table_error)}")
+                continue
+        
+        # JSON 문자열 생성
+        json_str = json.dumps(export_data, ensure_ascii=False, indent=2)
+        json_bytes = json_str.encode('utf-8')
+        
+        # StreamingResponse로 반환
+        return StreamingResponse(
+            io.BytesIO(json_bytes),
+            media_type='application/json',
+            headers={
+                'Content-Disposition': f'attachment; filename=db_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+            }
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"내보내기 실패: {str(e)}")
+    
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.post("/api/backup/import")
+async def import_database(file: UploadFile = File(...)):
+    """JSON 파일로 데이터베이스 불러오기"""
+    import json
+    from datetime import datetime
+    
+    if not file.filename.endswith('.json'):
+        raise HTTPException(status_code=400, detail="JSON 파일만 업로드 가능합니다")
+    
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=503, detail="데이터베이스 연결 실패")
+    
+    cursor = conn.cursor()
+    
+    try:
+        # 업로드된 파일 읽기
+        content = await file.read()
+        import_data = json.loads(content.decode('utf-8'))
+        
+        imported_records = 0
+        
+        # 각 테이블별로 불러오기
+        for table_name, records in import_data.items():
+            if not records:
+                continue
+            
+            try:
+                # 기존 데이터 삭제
+                cursor.execute(f"DELETE FROM {table_name}")
+                
+                # 데이터 삽입
+                for record in records:
+                    columns = ', '.join(record.keys())
+                    placeholders = ', '.join(['%s'] * len(record))
+                    values = tuple(record.values())
+                    
+                    insert_sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
+                    cursor.execute(insert_sql, values)
+                    imported_records += 1
+                
+                print(f"✅ {table_name}: {len(records)}개 불러오기")
+            
+            except Exception as table_error:
+                print(f"⚠️ {table_name} 불러오기 오류: {str(table_error)}")
+                continue
+        
+        conn.commit()
+        
+        return {
+            "success": True,
+            "imported_records": imported_records,
+            "filename": file.filename,
+            "message": f"데이터베이스 불러오기 완료: {imported_records}개 레코드"
+        }
+        
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="잘못된 JSON 형식입니다")
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"불러오기 실패: {str(e)}")
+    
+    finally:
+        cursor.close()
+        conn.close()
+
 if __name__ == "__main__":
     import uvicorn
     # 파일 업로드 크기 제한 100MB로 증가
