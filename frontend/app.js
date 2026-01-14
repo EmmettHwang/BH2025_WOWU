@@ -19815,7 +19815,7 @@ if (document.readyState === 'loading') {
     window.restoreBGMSettings(); // BGM 설정 복원 (헤더)
 }
 
-// ==================== DB 백업 관리 ====================
+// ==================== DB 관리 ====================
 async function loadBackupManager() {
     const app = document.getElementById('app');
     if (!app) {
@@ -19829,7 +19829,7 @@ async function loadBackupManager() {
                 <div class="flex items-center justify-between mb-6">
                     <h2 class="text-2xl font-bold text-gray-800">
                         <i class="fas fa-database mr-2 text-blue-600"></i>
-                        데이터베이스 백업 관리
+                        데이터베이스 관리
                     </h2>
                     <div class="flex space-x-2">
                         <button onclick="createBackupNow()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">
