@@ -14588,6 +14588,55 @@ function renderSystemSettings(settings) {
                             💡 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="hover:underline font-medium">Google Cloud Console</a>에서 발급 가능
                         </p>
                     </div>
+                    
+                    <!-- 시스템 연결 테스트 -->
+                    <div class="mt-6 pt-6 border-t border-orange-200">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">
+                            <i class="fas fa-server mr-2 text-orange-500"></i>시스템 연결 테스트
+                        </h3>
+                        
+                        <!-- DB 연결 테스트 -->
+                        <div class="mb-4">
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-database mr-2 text-blue-500"></i>데이터베이스 연결
+                            </label>
+                            <div class="flex gap-2">
+                                <div class="flex-1 px-4 py-3 border rounded-lg bg-gray-50 text-gray-600">
+                                    <span class="font-mono text-sm">www.kdt2025.com:3306 / bh2025</span>
+                                </div>
+                                <button type="button" onclick="window.testDatabaseConnection()" 
+                                        class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap">
+                                    <i class="fas fa-plug mr-2"></i>연결 테스트
+                                </button>
+                            </div>
+                            <div id="db-test-result" class="mt-2 text-sm hidden"></div>
+                            <p class="text-sm text-gray-600 mt-2">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                데이터베이스 서버 연결 상태를 확인합니다
+                            </p>
+                        </div>
+                        
+                        <!-- FTP 연결 테스트 -->
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-folder-open mr-2 text-green-500"></i>FTP 파일 서버 연결
+                            </label>
+                            <div class="flex gap-2">
+                                <div class="flex-1 px-4 py-3 border rounded-lg bg-gray-50 text-gray-600">
+                                    <span class="font-mono text-sm">bitnmeta2.synology.me:2121</span>
+                                </div>
+                                <button type="button" onclick="window.testFtpConnection()" 
+                                        class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap">
+                                    <i class="fas fa-plug mr-2"></i>연결 테스트
+                                </button>
+                            </div>
+                            <div id="ftp-test-result" class="mt-2 text-sm hidden"></div>
+                            <p class="text-sm text-gray-600 mt-2">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                FTP 파일 서버 연결 상태를 확인합니다 (프로필 사진, 파일 업로드)
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 저장 버튼 -->
@@ -22179,4 +22228,93 @@ async function deleteExam(examId, examName) {
 }
 
 console.log('✅ 문서관리 및 문제은행 함수 로드 완료');
+
+// ==================== 시스템 연결 테스트 ====================
+
+// DB 연결 테스트
+window.testDatabaseConnection = async function() {
+    const resultDiv = document.getElementById('db-test-result');
+    resultDiv.classList.remove('hidden', 'text-green-600', 'text-red-600', 'text-yellow-600');
+    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>데이터베이스 연결 테스트 중...';
+    resultDiv.classList.add('text-blue-600');
+    
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/test/database`);
+        
+        if (response.data.success) {
+            resultDiv.classList.remove('text-blue-600');
+            resultDiv.classList.add('text-green-600');
+            resultDiv.innerHTML = `
+                <i class="fas fa-check-circle mr-2"></i>
+                <strong>✅ 연결 성공!</strong>
+                <div class="mt-1 ml-6 text-xs">
+                    <div>• 서버: ${response.data.host || 'www.kdt2025.com'}</div>
+                    <div>• 데이터베이스: ${response.data.database || 'bh2025'}</div>
+                    <div>• 응답 시간: ${response.data.response_time || '0'}ms</div>
+                    <div>• 상태: ${response.data.message || '정상'}</div>
+                </div>
+            `;
+        } else {
+            throw new Error(response.data.message || '연결 실패');
+        }
+    } catch (error) {
+        console.error('DB 테스트 실패:', error);
+        resultDiv.classList.remove('text-blue-600');
+        resultDiv.classList.add('text-red-600');
+        
+        const errorMsg = error.response?.data?.detail || error.message || '알 수 없는 오류';
+        resultDiv.innerHTML = `
+            <i class="fas fa-times-circle mr-2"></i>
+            <strong>❌ 연결 실패</strong>
+            <div class="mt-1 ml-6 text-xs">
+                ${errorMsg}
+            </div>
+        `;
+    }
+};
+
+// FTP 연결 테스트
+window.testFtpConnection = async function() {
+    const resultDiv = document.getElementById('ftp-test-result');
+    resultDiv.classList.remove('hidden', 'text-green-600', 'text-red-600', 'text-yellow-600');
+    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>FTP 서버 연결 테스트 중...';
+    resultDiv.classList.add('text-blue-600');
+    
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/test/ftp`);
+        
+        if (response.data.success) {
+            resultDiv.classList.remove('text-blue-600');
+            resultDiv.classList.add('text-green-600');
+            resultDiv.innerHTML = `
+                <i class="fas fa-check-circle mr-2"></i>
+                <strong>✅ 연결 성공!</strong>
+                <div class="mt-1 ml-6 text-xs">
+                    <div>• 서버: ${response.data.host || 'bitnmeta2.synology.me'}</div>
+                    <div>• 포트: ${response.data.port || '2121'}</div>
+                    <div>• 사용자: ${response.data.user || 'ha'}</div>
+                    <div>• 응답 시간: ${response.data.response_time || '0'}ms</div>
+                    <div>• 상태: ${response.data.message || '정상'}</div>
+                </div>
+            `;
+        } else {
+            throw new Error(response.data.message || '연결 실패');
+        }
+    } catch (error) {
+        console.error('FTP 테스트 실패:', error);
+        resultDiv.classList.remove('text-blue-600');
+        resultDiv.classList.add('text-red-600');
+        
+        const errorMsg = error.response?.data?.detail || error.message || '알 수 없는 오류';
+        resultDiv.innerHTML = `
+            <i class="fas fa-times-circle mr-2"></i>
+            <strong>❌ 연결 실패</strong>
+            <div class="mt-1 ml-6 text-xs">
+                ${errorMsg}
+            </div>
+        `;
+    }
+};
+
+console.log('✅ 시스템 연결 테스트 함수 로드 완료');
 

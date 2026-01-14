@@ -9482,6 +9482,87 @@ async def get_document_rag_status(filename: str):
         raise HTTPException(status_code=500, detail=f"RAG 상태 조회 실패: {str(e)}")
 
 
+# ==================== 시스템 연결 테스트 API ====================
+
+@app.get("/api/test/database")
+async def test_database_connection():
+    """데이터베이스 연결 테스트"""
+    import time
+    start_time = time.time()
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 간단한 쿼리 실행
+        cursor.execute("SELECT 1 as test")
+        result = cursor.fetchone()
+        
+        cursor.close()
+        conn.close()
+        
+        response_time = int((time.time() - start_time) * 1000)
+        
+        print(f"[OK] DB 연결 테스트 성공 ({response_time}ms)")
+        
+        return {
+            "success": True,
+            "message": "데이터베이스 연결 정상",
+            "host": DB_CONFIG['host'],
+            "database": DB_CONFIG['db'],
+            "response_time": response_time
+        }
+    except Exception as e:
+        response_time = int((time.time() - start_time) * 1000)
+        print(f"[ERROR] DB 연결 테스트 실패: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"데이터베이스 연결 실패: {str(e)}"
+        )
+
+@app.get("/api/test/ftp")
+async def test_ftp_connection():
+    """FTP 서버 연결 테스트"""
+    import time
+    from ftplib import FTP
+    
+    start_time = time.time()
+    
+    try:
+        ftp = FTP()
+        ftp.encoding = 'utf-8'
+        
+        # FTP 연결
+        ftp.connect(FTP_CONFIG['host'], FTP_CONFIG['port'])
+        ftp.login(FTP_CONFIG['user'], FTP_CONFIG['passwd'])
+        
+        # 현재 디렉토리 확인
+        current_dir = ftp.pwd()
+        
+        ftp.quit()
+        
+        response_time = int((time.time() - start_time) * 1000)
+        
+        print(f"[OK] FTP 연결 테스트 성공 ({response_time}ms)")
+        
+        return {
+            "success": True,
+            "message": "FTP 서버 연결 정상",
+            "host": FTP_CONFIG['host'],
+            "port": FTP_CONFIG['port'],
+            "user": FTP_CONFIG['user'],
+            "current_dir": current_dir,
+            "response_time": response_time
+        }
+    except Exception as e:
+        response_time = int((time.time() - start_time) * 1000)
+        print(f"[ERROR] FTP 연결 테스트 실패: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"FTP 서버 연결 실패: {str(e)}"
+        )
+
+
 # ==================== 서버 시작 ====================
 if __name__ == "__main__":
     import uvicorn
