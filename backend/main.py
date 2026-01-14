@@ -8209,15 +8209,6 @@ async def reset_database(request: Request, data: dict):
     finally:
         cursor.close()
         conn.close()
-        
-    except Exception as e:
-        conn.rollback()
-        print(f"❌ DB 초기화 실패: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"초기화 실패: {str(e)}")
-    
-    finally:
-        cursor.close()
-        conn.close()
 
 @app.get("/api/backup/tables-info")
 async def get_tables_info():
