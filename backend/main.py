@@ -5555,9 +5555,12 @@ async def login(credentials: dict):
     if not user_name or not password:
         raise HTTPException(status_code=400, detail="이름과 비밀번호를 입력하세요")
     
-    # 🔐 관리자 계정 하드코딩 (DB 없이 무조건 접속 가능)
-    if user_name.strip() == "root" and password == "xhRl1004!@#":
-        print("[OK] 관리자(root) 로그인 성공")
+    # 🔐 관리자 계정 (.env에서 로드, DB 없이 무조건 접속 가능)
+    ROOT_USERNAME = os.getenv('ROOT_USERNAME', 'root')
+    ROOT_PASSWORD = os.getenv('ROOT_PASSWORD', 'xhRl1004!@#')
+    
+    if user_name.strip() == ROOT_USERNAME and password == ROOT_PASSWORD:
+        print(f"[OK] 관리자({ROOT_USERNAME}) 로그인 성공")
         # 모든 메뉴에 대한 권한 부여
         all_permissions = {
             "dashboard": True,
@@ -5582,13 +5585,13 @@ async def login(credentials: dict):
             "message": "관리자님, 환영합니다!",
             "instructor": {
                 "code": "ROOT",
-                "name": "root",
+                "name": ROOT_USERNAME,
                 "phone": None,
                 "major": "시스템 관리자",
                 "instructor_type": "0",
                 "email": "root@system.com",
                 "photo_urls": None,
-                "password": "xhRl1004!@#",
+                "password": ROOT_PASSWORD,
                 "instructor_type_name": "관리자",
                 "instructor_type_type": "0",
                 "permissions": all_permissions,
