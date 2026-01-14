@@ -2200,7 +2200,11 @@ async def delete_course(code: str):
         cursor.execute("DELETE FROM training_logs WHERE course_code = %s", (code,))
         
         # 4. 수업노트 삭제 (과정별 수업노트가 있을 경우)
-        cursor.execute("DELETE FROM class_notes WHERE course_code = %s", (code,))
+        try:
+            cursor.execute("DELETE FROM class_notes WHERE course_code = %s", (code,))
+            print(f"[INFO] class_notes에서 과정 {code} 관련 데이터 삭제")
+        except Exception as e:
+            print(f"[INFO] class_notes 테이블에 course_code 컬럼이 없음 (정상, 스킵): {e}")
         
         # 5. 과정-교과목 연결 삭제
         cursor.execute("DELETE FROM course_subjects WHERE course_code = %s", (code,))
@@ -6827,6 +6831,24 @@ def ensure_notices_table(cursor):
                 INDEX idx_dates (start_date, end_date)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
+        
+        # 기존 테이블에 컬럼 추가 (없는 경우만)
+        try:
+            cursor.execute("SHOW COLUMNS FROM notices LIKE 'target_type'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE notices ADD COLUMN target_type VARCHAR(20) DEFAULT 'all' COMMENT '대상: all(전체), courses(특정반)'")
+                print("[OK] notices 테이블에 target_type 컬럼 추가")
+        except:
+            pass
+        
+        try:
+            cursor.execute("SHOW COLUMNS FROM notices LIKE 'target_courses'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE notices ADD COLUMN target_courses TEXT COMMENT '대상 반 목록 (JSON)'")
+                print("[OK] notices 테이블에 target_courses 컬럼 추가")
+        except:
+            pass
+        
         print("[OK] notices 테이블 확인/생성 완료")
     except Exception as e:
         print(f"[WARN] notices 테이블 생성 실패: {e}")
