@@ -20637,10 +20637,10 @@ window.showResetConfirmModal = function() {
                             <input type="checkbox" id="complete-reset-checkbox" 
                                 class="mt-1 w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-500">
                             <div class="ml-3">
-                                <span class="font-bold text-red-700">⚠️ 완전 초기화 (위험!)</span>
+                                <span class="font-bold text-red-700">⚠️ 완전 초기화</span>
                                 <p class="text-sm text-gray-700 mt-1">
-                                    시스템 설정, 강사 정보, 과정 정보까지 <strong class="text-red-600">모두 삭제</strong>합니다.
-                                    <br>백업 필수! 로그 테이블만 유지됩니다.
+                                    <strong class="text-red-600">과정 정보(courses)까지 삭제</strong>합니다.
+                                    <br>✅ 유지: 시스템 설정, Root 계정, 강사 정보
                                 </p>
                             </div>
                         </label>
