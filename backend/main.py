@@ -2185,19 +2185,25 @@ async def delete_course(code: str):
         if timetable_count > 0 or training_log_count > 0 or student_count > 0:
             print(f"[WARN] 과정 삭제: {code} - 시간표 {timetable_count}건, 훈련일지 {training_log_count}건, 학생 {student_count}명 함께 삭제됨!")
         
-        # 1. 시간표 삭제
+        # 1. 학생 가입 신청 삭제
+        cursor.execute("DELETE FROM student_registrations WHERE course_code = %s", (code,))
+        
+        # 2. 시간표 삭제
         cursor.execute("DELETE FROM timetables WHERE course_code = %s", (code,))
         
-        # 2. 훈련일지 삭제
+        # 3. 훈련일지 삭제
         cursor.execute("DELETE FROM training_logs WHERE course_code = %s", (code,))
         
-        # 3. 과정-교과목 연결 삭제
+        # 4. 수업노트 삭제 (과정별 수업노트가 있을 경우)
+        cursor.execute("DELETE FROM class_notes WHERE course_code = %s", (code,))
+        
+        # 5. 과정-교과목 연결 삭제
         cursor.execute("DELETE FROM course_subjects WHERE course_code = %s", (code,))
         
-        # 4. 학생 데이터 처리 (course_id를 NULL로 설정하거나 삭제)
+        # 6. 학생 데이터 처리 (course_id를 NULL로 설정)
         cursor.execute("UPDATE students SET course_id = NULL WHERE course_id = %s", (code,))
         
-        # 5. 과정 삭제
+        # 7. 과정 삭제
         cursor.execute("DELETE FROM courses WHERE code = %s", (code,))
         
         conn.commit()
