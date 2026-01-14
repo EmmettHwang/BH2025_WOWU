@@ -2038,7 +2038,32 @@
         }
         
         // 페이지 로드 시 학생 정보 표시
+        // ==================== 시스템 설정 로드 ====================
+        
+        async function loadSystemSettings() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
+                const settings = response.data;
+                
+                // 타이틀 업데이트
+                if (settings.system_title) {
+                    document.title = `학생 MyPage - ${settings.system_title}`;
+                }
+                
+                console.log('✅ 시스템 설정 로드 완료:', settings.system_title);
+            } catch (error) {
+                console.error('❌ 시스템 설정 로드 실패:', error);
+                // 실패 시 기본값 유지
+                document.title = '학생 MyPage - 바이오헬스교육관리시스템';
+            }
+        }
+        
+        // ==================== 페이지 초기화 ====================
+        
         window.addEventListener('DOMContentLoaded', async () => {
+            // 시스템 설정 로드 (타이틀 업데이트)
+            loadSystemSettings();
+            
             // 기본적으로 수업메모 탭 표시
             showTab('notes');
             // 메모 목록 불러오기

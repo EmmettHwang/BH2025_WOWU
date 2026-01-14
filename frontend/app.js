@@ -15083,6 +15083,11 @@ async function updateHeader() {
         const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
         const settings = response.data;
         
+        // 페이지 타이틀 업데이트
+        if (settings.system_title) {
+            document.title = settings.system_title;
+        }
+        
         // 제목 업데이트 (버전은 별도로 관리)
         const titleElement = document.getElementById('system-title-header');
         if (titleElement) {

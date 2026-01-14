@@ -274,6 +274,11 @@
                 const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
                 const settings = response.data;
                 
+                // 페이지 타이틀 업데이트
+                if (settings.system_title) {
+                    document.title = `${settings.system_title} - 로그인`;
+                }
+                
                 // 제목 업데이트 - 기본값 고정 (시스템 설정 무시)
                 // document.getElementById('system-title-login').textContent = settings.system_title || '바이오헬스교육관리시스템';
                 
