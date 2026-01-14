@@ -2,7 +2,10 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -37,71 +40,92 @@
     </style>
 </head>
 <body class="bg-gray-50">
-    <!-- 헤더 -->
+    <!-- 헤더 (모바일 반응형) -->
     <header class="bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-4">
-                <i class="fas fa-user-graduate text-3xl"></i>
+        <div class="container mx-auto px-2 sm:px-4 py-3 sm:py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2 sm:gap-4">
+                <i class="fas fa-user-graduate text-xl sm:text-3xl"></i>
                 <div>
-                    <h1 class="text-2xl font-bold">학생 MyPage</h1>
-                    <p class="text-sm text-green-100">환영합니다, <span id="studentName"></span>님!</p>
+                    <h1 class="text-lg sm:text-2xl font-bold">학생 MyPage</h1>
+                    <p class="text-xs sm:text-sm text-green-100">환영합니다, <span id="studentName"></span>님!</p>
                 </div>
             </div>
-            <button onclick="window.logout()" class="bg-white text-green-600 hover:bg-green-50 px-4 py-2 rounded-lg font-semibold transition-all">
-                <i class="fas fa-sign-out-alt mr-2"></i>로그아웃
-            </button>
+            <div class="flex items-center gap-2">
+                <!-- 모바일 캐시 클리어 버튼 -->
+                <button onclick="clearCacheAndReload()" 
+                        class="bg-white/20 hover:bg-white/30 text-white px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all"
+                        title="페이지 새로고침 (캐시 클리어)">
+                    <i class="fas fa-sync-alt"></i>
+                    <span class="hidden md:inline ml-2">새로고침</span>
+                </button>
+                <button onclick="window.logout()" class="bg-white text-green-600 hover:bg-green-50 px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base font-semibold transition-all">
+                    <i class="fas fa-sign-out-alt mr-1 sm:mr-2"></i><span class="hidden sm:inline">로그아웃</span><span class="sm:hidden">OUT</span>
+                </button>
+            </div>
         </div>
     </header>
 
-    <!-- 탭 메뉴 -->
+    <!-- 탭 메뉴 (모바일 반응형) -->
     <div class="bg-white shadow-md sticky top-0 z-10">
-        <div class="container mx-auto px-4">
+        <div class="container mx-auto px-2 sm:px-4">
             <div class="max-w-4xl mx-auto">
-                <div class="flex gap-2">
+                <!-- 모바일: 가로 스크롤 / 데스크탑: 일반 flex -->
+                <div class="flex gap-1 sm:gap-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
                     <button onclick="showTab('profile')" 
                             id="tab-profile"
-                            class="px-6 py-3 font-semibold transition-all border-b-2 border-transparent hover:border-green-500 hover:text-green-600">
-                        <i class="fas fa-user mr-2"></i>내 정보
+                            class="flex-shrink-0 px-3 sm:px-6 py-3 text-xs sm:text-base font-semibold transition-all border-b-2 border-transparent hover:border-green-500 hover:text-green-600">
+                        <i class="fas fa-user mr-1 sm:mr-2"></i><span class="hidden sm:inline">내 정보</span><span class="sm:hidden">정보</span>
                     </button>
                     <button onclick="showTab('notes')" 
                             id="tab-notes"
-                            class="px-6 py-3 font-semibold transition-all border-b-2 border-green-500 text-green-600">
-                        <i class="fas fa-book-open mr-2"></i>SSIRN
+                            class="flex-shrink-0 px-3 sm:px-6 py-3 text-xs sm:text-base font-semibold transition-all border-b-2 border-green-500 text-green-600">
+                        <i class="fas fa-book-open mr-1 sm:mr-2"></i><span class="hidden sm:inline">SSIRN</span><span class="sm:hidden">수업</span>
                     </button>
                     <button onclick="showTab('exam')" 
                             id="tab-exam"
-                            class="px-6 py-3 font-semibold transition-all border-b-2 border-transparent hover:border-green-500 hover:text-green-600">
-                        <i class="fas fa-laptop mr-2"></i>온라인시험/과제
+                            class="flex-shrink-0 px-3 sm:px-6 py-3 text-xs sm:text-base font-semibold transition-all border-b-2 border-transparent hover:border-green-500 hover:text-green-600">
+                        <i class="fas fa-laptop mr-1 sm:mr-2"></i><span class="hidden sm:inline">온라인시험/과제</span><span class="sm:hidden">시험</span>
                     </button>
                     <button onclick="showTab('notices')" 
                             id="tab-notices"
-                            class="px-6 py-3 font-semibold transition-all border-b-2 border-transparent hover:border-green-500 hover:text-green-600">
-                        <i class="fas fa-bullhorn mr-2"></i>공지사항
+                            class="flex-shrink-0 px-3 sm:px-6 py-3 text-xs sm:text-base font-semibold transition-all border-b-2 border-transparent hover:border-green-500 hover:text-green-600">
+                        <i class="fas fa-bullhorn mr-1 sm:mr-2"></i><span class="hidden sm:inline">공지사항</span><span class="sm:hidden">공지</span>
                     </button>
                 </div>
             </div>
         </div>
     </div>
+    
+    <style>
+        /* 모바일 스크롤바 숨기기 */
+        .scrollbar-hide {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;  /* Chrome, Safari, Opera */
+        }
+    </style>
 
-    <!-- 메인 컨텐츠 -->
-    <main class="container mx-auto px-4 py-8">
+    <!-- 메인 컨텐츠 (모바일 반응형) -->
+    <main class="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         <div class="max-w-4xl mx-auto">
             <!-- SSIRN 섹션 -->
             <div id="section-notes">
             <!-- SSIRN 카드 -->
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
-                <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-6 text-white">
                     <div class="flex justify-between items-center">
                         <div>
-                            <h2 class="text-2xl font-bold flex items-center">
-                                <i class="fas fa-book-open mr-3"></i>
+                            <h2 class="text-xl sm:text-2xl font-bold flex items-center">
+                                <i class="fas fa-book-open mr-2 sm:mr-3"></i>
                                 SSIRN
                             </h2>
-                            <p class="text-blue-100 mt-2 text-sm">수업 내용을 기록하고 관리하세요</p>
+                            <p class="text-blue-100 mt-1 sm:mt-2 text-xs sm:text-sm">수업 내용을 기록하고 관리하세요</p>
                         </div>
                         <button onclick="showNewNoteModal()" 
-                                class="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 font-semibold">
-                            <i class="fas fa-plus mr-2"></i>새 메모
+                                class="bg-white text-blue-600 px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-50 text-sm sm:text-base font-semibold">
+                            <i class="fas fa-plus mr-1 sm:mr-2"></i><span class="hidden sm:inline">새 메모</span><span class="sm:hidden">작성</span>
                         </button>
                     </div>
                 </div>
@@ -353,24 +377,25 @@
             </div>
             <!-- 프로필 섹션 끝 -->
             
-            <!-- 온라인시험/과제 섹션 -->
+            <!-- 온라인시험/과제 섹션 (모바일 반응형) -->
             <div id="section-exam" class="hidden">
                 <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
-                    <div class="bg-gradient-to-r from-blue-600 to-cyan-600 p-6 text-white">
-                        <h2 class="text-2xl font-bold flex items-center">
-                            <i class="fas fa-laptop mr-3"></i>
-                            온라인시험/과제
+                    <div class="bg-gradient-to-r from-blue-600 to-cyan-600 p-4 sm:p-6 text-white">
+                        <h2 class="text-xl sm:text-2xl font-bold flex items-center">
+                            <i class="fas fa-laptop mr-2 sm:mr-3"></i>
+                            <span class="hidden sm:inline">온라인시험/과제</span>
+                            <span class="sm:hidden">시험/과제</span>
                         </h2>
-                        <p class="text-blue-100 mt-2 text-sm">진행 중인 시험과 과제에 참여하세요</p>
+                        <p class="text-blue-100 mt-2 text-xs sm:text-sm">진행 중인 시험과 과제에 참여하세요</p>
                     </div>
 
-                    <div class="p-6">
-                        <div id="student-exam-list" class="space-y-4">
+                    <div class="p-4 sm:p-6">
+                        <div id="student-exam-list" class="space-y-3 sm:space-y-4">
                             <!-- 시험/과제 목록이 여기에 동적으로 추가됩니다 -->
                         </div>
-                        <div id="student-exam-empty" class="hidden text-center py-12 text-gray-500">
-                            <i class="fas fa-clipboard-list text-6xl mb-4"></i>
-                            <p>참여 가능한 시험/과제가 없습니다</p>
+                        <div id="student-exam-empty" class="hidden text-center py-8 sm:py-12 text-gray-500">
+                            <i class="fas fa-clipboard-list text-4xl sm:text-6xl mb-3 sm:mb-4"></i>
+                            <p class="text-sm sm:text-base">참여 가능한 시험/과제가 없습니다</p>
                         </div>
                     </div>
                 </div>
@@ -2556,6 +2581,43 @@
         };
         
         // 로그아웃
+        // ==================== 캐시 클리어 및 새로고침 ====================
+        
+        window.clearCacheAndReload = function() {
+            // 확인 모달
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-md mx-4 text-center">
+                    <div class="mb-6">
+                        <i class="fas fa-sync-alt text-4xl sm:text-6xl text-blue-600 mb-4 animate-spin"></i>
+                        <h3 class="text-xl sm:text-2xl font-bold text-gray-800 mb-2">페이지 새로고침</h3>
+                        <p class="text-sm sm:text-base text-gray-600 mb-2">캐시를 지우고 최신 버전을 불러옵니다.</p>
+                        <p class="text-xs sm:text-sm text-gray-500">업데이트가 안 보일 때 사용하세요.</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="reload-cancel" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm sm:text-base font-semibold transition-all">
+                            <i class="fas fa-times mr-1 sm:mr-2"></i>취소
+                        </button>
+                        <button id="reload-confirm" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg text-sm sm:text-base font-semibold transition-all">
+                            <i class="fas fa-check mr-1 sm:mr-2"></i>확인
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            document.getElementById('reload-cancel').onclick = () => modal.remove();
+            document.getElementById('reload-confirm').onclick = () => {
+                modal.remove();
+                // 캐시 클리어 후 새로고침 (강력 새로고침)
+                location.reload(true);
+            };
+        };
+        
+        // ==================== 로그아웃 ====================
+        
         window.logout = function() {
             // 커스텀 확인 모달
             const student = JSON.parse(sessionStorage.getItem('student') || '{}');
