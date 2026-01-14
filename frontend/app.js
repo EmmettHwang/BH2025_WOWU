@@ -15751,6 +15751,10 @@ function renderNotices() {
                                         <span class="px-3 py-1 rounded-full text-xs font-semibold ${statusColor}">
                                             <i class="fas ${statusIcon} mr-1"></i>${statusText}
                                         </span>
+                                        ${notice.target_type === 'courses' ? 
+                                            '<span class="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800"><i class="fas fa-users mr-1"></i>특정 반</span>' : 
+                                            '<span class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"><i class="fas fa-globe mr-1"></i>전체</span>'
+                                        }
                                         <h3 class="text-lg font-bold text-gray-800">${notice.title}</h3>
                                     </div>
                                     <div class="text-sm text-gray-600 mb-2">

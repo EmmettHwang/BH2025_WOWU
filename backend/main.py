@@ -6929,13 +6929,19 @@ async def create_notice(data: dict):
 @app.put("/api/notices/{notice_id}")
 async def update_notice(notice_id: int, data: dict):
     """공지사항 수정"""
+    import json
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         
+        # target_courses를 JSON 문자열로 변환
+        target_courses = data.get('target_courses', [])
+        target_courses_json = json.dumps(target_courses) if target_courses else None
+        
         query = """
             UPDATE notices
-            SET title = %s, content = %s, start_date = %s, end_date = %s
+            SET title = %s, content = %s, start_date = %s, end_date = %s,
+                target_type = %s, target_courses = %s
             WHERE id = %s
         """
         cursor.execute(query, (
@@ -6943,6 +6949,8 @@ async def update_notice(notice_id: int, data: dict):
             data['content'],
             data['start_date'],
             data['end_date'],
+            data.get('target_type', 'all'),
+            target_courses_json,
             notice_id
         ))
         conn.commit()
