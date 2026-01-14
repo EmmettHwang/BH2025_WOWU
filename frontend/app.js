@@ -19940,10 +19940,41 @@ async function refreshBackupList() {
 }
 
 async function createBackupNow() {
-    if (!confirm('현재 데이터베이스의 백업을 생성하시겠습니까?')) {
-        return;
-    }
+    // 예쁜 확인 모달
+    const modalHtml = `
+        <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="animation: fadeIn 0.2s;">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform" style="animation: slideUp 0.3s;">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                        <i class="fas fa-database text-white text-3xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">백업 생성</h3>
+                    <p class="text-gray-600">현재 데이터베이스의 백업을 생성하시겠습니까?</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="document.getElementById('confirm-modal').remove()" 
+                        class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105">
+                        취소
+                    </button>
+                    <button onclick="confirmCreateBackup()" 
+                        class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                        <i class="fas fa-check mr-2"></i>생성
+                    </button>
+                </div>
+            </div>
+        </div>
+        <style>
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        </style>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
 
+window.confirmCreateBackup = async function() {
+    document.getElementById('confirm-modal').remove();
+    
     try {
         showLoading('백업 생성 중...');
         const response = await axios.post(`${API_BASE_URL}/api/backup/create`);
@@ -19951,49 +19982,106 @@ async function createBackupNow() {
         hideLoading();
         
         if (response.data.success) {
-            showAlert(`백업 생성 완료!\n총 레코드: ${response.data.total_records}개\n파일 크기: ${(response.data.file_size / 1024 / 1024).toFixed(2)} MB`, 'success');
+            showBeautifulSuccess('백업 생성 완료!', `총 레코드: ${response.data.total_records}개\n파일 크기: ${(response.data.file_size / 1024 / 1024).toFixed(2)} MB`);
             await refreshBackupList();
         }
     } catch (error) {
         hideLoading();
         console.error('백업 생성 실패:', error);
-        showAlert('백업 생성에 실패했습니다', 'error');
+        showBeautifulError('백업 생성 실패', '백업 생성에 실패했습니다');
     }
 }
 
 async function deleteBackup(filename) {
-    if (!confirm(`백업 파일 "${filename}"을(를) 삭제하시겠습니까?`)) {
-        return;
-    }
+    // 예쁜 삭제 확인 모달
+    const modalHtml = `
+        <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="animation: fadeIn 0.2s;">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform" style="animation: slideUp 0.3s;">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                        <i class="fas fa-trash text-white text-3xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">백업 파일 삭제</h3>
+                    <p class="text-gray-600 mb-3">다음 백업 파일을 삭제하시겠습니까?</p>
+                    <div class="bg-gray-100 rounded-lg p-3">
+                        <p class="font-mono text-sm text-gray-700">${filename}</p>
+                    </div>
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="document.getElementById('delete-modal').remove()" 
+                        class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105">
+                        취소
+                    </button>
+                    <button onclick="confirmDeleteBackup('${filename}')" 
+                        class="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                        <i class="fas fa-trash mr-2"></i>삭제
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
 
+window.confirmDeleteBackup = async function(filename) {
+    document.getElementById('delete-modal').remove();
+    
     try {
         await axios.delete(`${API_BASE_URL}/api/backup/delete/${filename}`);
-        showAlert('백업 파일이 삭제되었습니다', 'success');
+        showBeautifulSuccess('삭제 완료', '백업 파일이 삭제되었습니다');
         await refreshBackupList();
     } catch (error) {
         console.error('백업 삭제 실패:', error);
-        showAlert('백업 삭제에 실패했습니다', 'error');
+        showBeautifulError('삭제 실패', '백업 삭제에 실패했습니다');
     }
 }
 
 async function cleanupOldBackups() {
     const keepDays = parseInt(document.getElementById('backup-keep-days').value);
     
-    if (!confirm(`${keepDays}일 이전의 백업 파일을 모두 삭제하시겠습니까?`)) {
-        return;
-    }
+    // 예쁜 정리 확인 모달
+    const modalHtml = `
+        <div id="cleanup-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="animation: fadeIn 0.2s;">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform" style="animation: slideUp 0.3s;">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                        <i class="fas fa-broom text-white text-3xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">오래된 백업 정리</h3>
+                    <p class="text-gray-600 mb-3">${keepDays}일 이전의 백업 파일을 모두 삭제하시겠습니까?</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="document.getElementById('cleanup-modal').remove()" 
+                        class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105">
+                        취소
+                    </button>
+                    <button onclick="confirmCleanupBackups(${keepDays})" 
+                        class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                        <i class="fas fa-check mr-2"></i>정리
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
 
+window.confirmCleanupBackups = async function(keepDays) {
+    document.getElementById('cleanup-modal').remove();
+    
     try {
         showLoading('오래된 백업 정리 중...');
         const response = await axios.post(`${API_BASE_URL}/api/backup/auto-cleanup?keep_days=${keepDays}`);
         hideLoading();
         
-        showAlert(response.data.message, 'success');
+        showBeautifulSuccess('정리 완료', response.data.message);
         await refreshBackupList();
     } catch (error) {
         hideLoading();
         console.error('백업 정리 실패:', error);
-        showAlert('백업 정리에 실패했습니다', 'error');
+        showBeautifulError('정리 실패', '백업 정리에 실패했습니다');
     }
 }
 
@@ -20027,17 +20115,90 @@ async function downloadBackup(filename) {
 
 // 백업 복원
 async function restoreBackup(filename) {
-    if (!confirm(`⚠️ 경고!\n\n백업 파일 "${filename}"로 데이터베이스를 복원하시겠습니까?\n\n현재 데이터는 모두 삭제되고 백업 시점의 데이터로 대체됩니다.\n\n이 작업은 되돌릴 수 없습니다!`)) {
+    // 1단계: 예쁜 경고 모달
+    const modalHtml = `
+        <div id="restore-warning-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="animation: fadeIn 0.2s;">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4 transform" style="animation: slideUp 0.3s;">
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 bg-gradient-to-br from-yellow-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                        <i class="fas fa-exclamation-triangle text-white text-4xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-red-600 mb-3">⚠️ 위험한 작업 경고!</h3>
+                    <div class="text-left bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                        <p class="font-semibold text-gray-800 mb-2">백업 파일:</p>
+                        <p class="font-mono text-sm text-gray-700 bg-white px-3 py-2 rounded">${filename}</p>
+                    </div>
+                    <div class="bg-yellow-50 border border-yellow-300 rounded-lg p-4 text-left space-y-2">
+                        <p class="text-red-600 font-bold">🔴 주의사항:</p>
+                        <ul class="text-sm text-gray-700 space-y-1 ml-4">
+                            <li>• 현재 데이터는 <strong class="text-red-600">모두 삭제</strong>됩니다</li>
+                            <li>• 백업 시점의 데이터로 대체됩니다</li>
+                            <li>• 이 작업은 <strong class="text-red-600">되돌릴 수 없습니다</strong></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="document.getElementById('restore-warning-modal').remove()" 
+                        class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105">
+                        취소
+                    </button>
+                    <button onclick="showRestoreConfirmModal('${filename}')" 
+                        class="flex-1 bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-600 hover:to-red-700 text-white font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                        <i class="fas fa-arrow-right mr-2"></i>계속
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// 2단계: 복원 텍스트 입력 모달
+window.showRestoreConfirmModal = function(filename) {
+    document.getElementById('restore-warning-modal').remove();
+    
+    const modalHtml = `
+        <div id="restore-confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="animation: fadeIn 0.2s;">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform" style="animation: slideUp 0.3s;">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-keyboard text-white text-3xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3">최종 확인</h3>
+                    <p class="text-gray-600 mb-4">복원을 계속하려면 아래에 "<strong class="text-red-600">복원</strong>"을 입력하세요:</p>
+                    <input type="text" id="restore-confirm-input" placeholder="복원" 
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-lg font-semibold focus:border-yellow-500 focus:outline-none"
+                        onkeypress="if(event.key==='Enter') confirmRestoreBackup('${filename}')">
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="document.getElementById('restore-confirm-modal').remove()" 
+                        class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105">
+                        취소
+                    </button>
+                    <button onclick="confirmRestoreBackup('${filename}')" 
+                        class="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                        <i class="fas fa-redo mr-2"></i>복원 실행
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    setTimeout(() => document.getElementById('restore-confirm-input').focus(), 100);
+}
+
+window.confirmRestoreBackup = async function(filename) {
+    const input = document.getElementById('restore-confirm-input');
+    if (input && input.value !== '복원') {
+        showBeautifulError('입력 오류', '"복원"을 정확히 입력해주세요');
+        input.focus();
         return;
     }
     
-    // 두 번째 확인
-    const confirmText = prompt('복원을 계속하려면 "복원"을 입력하세요:');
-    if (confirmText !== '복원') {
-        showAlert('복원이 취소되었습니다', 'info');
-        return;
-    }
-
+    document.getElementById('restore-confirm-modal').remove();
+    
     try {
         showLoading('백업 복원 중... 잠시만 기다려주세요');
         
@@ -20046,7 +20207,7 @@ async function restoreBackup(filename) {
         hideLoading();
         
         if (response.data.success) {
-            showAlert(`백업 복원 완료!\n복원된 레코드: ${response.data.restored_records}개`, 'success');
+            showBeautifulSuccess('복원 완료!', `복원된 레코드: ${response.data.restored_records}개\n\n3초 후 페이지가 새로고침됩니다`);
             
             // 3초 후 페이지 새로고침
             setTimeout(() => {
@@ -20056,16 +20217,43 @@ async function restoreBackup(filename) {
     } catch (error) {
         hideLoading();
         console.error('백업 복원 실패:', error);
-        showAlert('백업 복원에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
+        showBeautifulError('복원 실패', '백업 복원에 실패했습니다: ' + (error.response?.data?.detail || error.message));
     }
 }
 
 // 전체 데이터베이스 내보내기
 async function exportDatabase() {
-    if (!confirm('전체 데이터베이스를 JSON 파일로 내보내시겠습니까?')) {
-        return;
-    }
+    // 예쁜 내보내기 확인 모달
+    const modalHtml = `
+        <div id="export-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="animation: fadeIn 0.2s;">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform" style="animation: slideUp 0.3s;">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                        <i class="fas fa-download text-white text-3xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">데이터베이스 내보내기</h3>
+                    <p class="text-gray-600">전체 데이터베이스를 JSON 파일로 내보내시겠습니까?</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="document.getElementById('export-modal').remove()" 
+                        class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105">
+                        취소
+                    </button>
+                    <button onclick="confirmExportDatabase()" 
+                        class="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                        <i class="fas fa-download mr-2"></i>내보내기
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
 
+window.confirmExportDatabase = async function() {
+    document.getElementById('export-modal').remove();
+    
     try {
         showLoading('데이터베이스 내보내기 중...');
         
@@ -20089,11 +20277,11 @@ async function exportDatabase() {
         window.URL.revokeObjectURL(url);
         
         hideLoading();
-        showAlert('데이터베이스 내보내기 완료', 'success');
+        showBeautifulSuccess('내보내기 완료', '데이터베이스 내보내기가 완료되었습니다');
     } catch (error) {
         hideLoading();
         console.error('내보내기 실패:', error);
-        showAlert('데이터베이스 내보내기에 실패했습니다', 'error');
+        showBeautifulError('내보내기 실패', '데이터베이스 내보내기에 실패했습니다');
     }
 }
 
@@ -20161,18 +20349,100 @@ async function handleImportFile(event) {
     if (!file) return;
     
     if (!file.name.endsWith('.json')) {
-        showAlert('JSON 파일만 업로드할 수 있습니다', 'error');
+        showBeautifulError('파일 형식 오류', 'JSON 파일만 업로드할 수 있습니다');
         return;
     }
     
-    if (!confirm(`⚠️ 최종 확인\n\n파일: ${file.name}\n\n이 파일로 데이터베이스를 복원하시겠습니까?\n현재 데이터는 모두 삭제됩니다!`)) {
+    // 1단계: 예쁜 최종 확인 모달
+    const modalHtml = `
+        <div id="import-warning-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="animation: fadeIn 0.2s;">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4 transform" style="animation: slideUp 0.3s;">
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                        <i class="fas fa-exclamation-triangle text-white text-4xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-purple-600 mb-3">⚠️ 최종 확인</h3>
+                    <div class="text-left bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                        <p class="font-semibold text-gray-800 mb-2">파일명:</p>
+                        <p class="font-mono text-sm text-gray-700 bg-white px-3 py-2 rounded break-all">${file.name}</p>
+                    </div>
+                    <div class="bg-yellow-50 border border-yellow-300 rounded-lg p-4 text-left space-y-2">
+                        <p class="text-red-600 font-bold">🔴 주의사항:</p>
+                        <ul class="text-sm text-gray-700 space-y-1 ml-4">
+                            <li>• 현재 데이터는 <strong class="text-red-600">모두 삭제</strong>됩니다</li>
+                            <li>• 파일의 데이터로 대체됩니다</li>
+                            <li>• 이 작업은 <strong class="text-red-600">되돌릴 수 없습니다</strong></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="closeImportModal(); document.getElementById('import-warning-modal').remove()" 
+                        class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105">
+                        취소
+                    </button>
+                    <button onclick="showImportConfirmModal('${file.name}')" 
+                        class="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                        <i class="fas fa-arrow-right mr-2"></i>계속
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // 파일 저장 (전역)
+    window.selectedImportFile = file;
+}
+
+// 2단계: 불러오기 텍스트 입력 모달
+window.showImportConfirmModal = function(filename) {
+    document.getElementById('import-warning-modal').remove();
+    
+    const modalHtml = `
+        <div id="import-confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="animation: fadeIn 0.2s;">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform" style="animation: slideUp 0.3s;">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-keyboard text-white text-3xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3">최종 확인</h3>
+                    <p class="text-gray-600 mb-4">계속하려면 아래에 "<strong class="text-purple-600">불러오기</strong>"를 입력하세요:</p>
+                    <input type="text" id="import-confirm-input" placeholder="불러오기" 
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-lg font-semibold focus:border-purple-500 focus:outline-none"
+                        onkeypress="if(event.key==='Enter') confirmImportDatabase()">
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="closeImportModal(); document.getElementById('import-confirm-modal').remove()" 
+                        class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105">
+                        취소
+                    </button>
+                    <button onclick="confirmImportDatabase()" 
+                        class="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                        <i class="fas fa-upload mr-2"></i>불러오기 실행
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    setTimeout(() => document.getElementById('import-confirm-input').focus(), 100);
+}
+
+window.confirmImportDatabase = async function() {
+    const input = document.getElementById('import-confirm-input');
+    if (input && input.value !== '불러오기') {
+        showBeautifulError('입력 오류', '"불러오기"를 정확히 입력해주세요');
+        input.focus();
         return;
     }
     
-    // 세 번째 확인
-    const confirmText = prompt('계속하려면 "불러오기"를 입력하세요:');
-    if (confirmText !== '불러오기') {
-        showAlert('불러오기가 취소되었습니다', 'info');
+    document.getElementById('import-confirm-modal').remove();
+    
+    const file = window.selectedImportFile;
+    if (!file) {
+        showBeautifulError('오류', '파일을 찾을 수 없습니다');
         return;
     }
     
@@ -20192,7 +20462,7 @@ async function handleImportFile(event) {
         hideLoading();
         
         if (response.data.success) {
-            showAlert(`데이터베이스 불러오기 완료!\n복원된 레코드: ${response.data.imported_records}개`, 'success');
+            showBeautifulSuccess('불러오기 완료!', `복원된 레코드: ${response.data.imported_records}개\n\n3초 후 페이지가 새로고침됩니다`);
             
             // 3초 후 페이지 새로고침
             setTimeout(() => {
@@ -20202,8 +20472,54 @@ async function handleImportFile(event) {
     } catch (error) {
         hideLoading();
         console.error('불러오기 실패:', error);
-        showAlert('데이터베이스 불러오기에 실패했습니다: ' + (error.response?.data?.detail || error.message), 'error');
+        showBeautifulError('불러오기 실패', '데이터베이스 불러오기에 실패했습니다: ' + (error.response?.data?.detail || error.message));
     }
+}
+
+// 예쁜 성공 메시지
+function showBeautifulSuccess(title, message) {
+    const modalHtml = `
+        <div id="success-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="animation: fadeIn 0.2s;">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform" style="animation: slideUp 0.3s;">
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-gradient-to-br from-green-400 to-green-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                        <i class="fas fa-check text-white text-4xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3">${title}</h3>
+                    <p class="text-gray-600 whitespace-pre-line mb-6">${message}</p>
+                    <button onclick="document.getElementById('success-modal').remove()" 
+                        class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 px-8 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                        확인
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// 예쁜 에러 메시지
+function showBeautifulError(title, message) {
+    const modalHtml = `
+        <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="animation: fadeIn 0.2s;">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform" style="animation: slideUp 0.3s;">
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-gradient-to-br from-red-400 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                        <i class="fas fa-times text-white text-4xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3">${title}</h3>
+                    <p class="text-gray-600 whitespace-pre-line mb-6">${message}</p>
+                    <button onclick="document.getElementById('error-modal').remove()" 
+                        class="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-3 px-8 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                        확인
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
 // ==================== Web Speech API 음성 인식 ====================
