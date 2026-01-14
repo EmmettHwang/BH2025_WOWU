@@ -156,8 +156,42 @@ DB_CONFIG = {
 }
 
 def get_db_connection():
-    """데이터베이스 연결"""
-    return pymysql.connect(**DB_CONFIG)
+    """데이터베이스 연결 (재시도 및 예외 처리)"""
+    try:
+        return pymysql.connect(**DB_CONFIG)
+    except pymysql.err.OperationalError as e:
+        error_code = e.args[0] if e.args else 0
+        error_msg = str(e)
+        
+        print(f"[ERROR] DB 연결 실패: {error_msg}")
+        
+        # 사용자 친화적인 에러 메시지
+        if error_code == 2003:  # Can't connect to MySQL server
+            raise HTTPException(
+                status_code=503,
+                detail="데이터베이스 서버 점검 중|현재 데이터베이스 서버에 연결할 수 없습니다.\n\n잠시 후 다시 시도해주시거나\n관리자에게 문의해주세요.\n\n💡 관리자(root) 계정은 정상 이용 가능합니다."
+            )
+        elif error_code == 1045:  # Access denied
+            raise HTTPException(
+                status_code=503,
+                detail="데이터베이스 인증 오류|데이터베이스 접근 권한 문제가 발생했습니다.\n\n시스템 관리자에게 문의해주세요."
+            )
+        elif error_code == 2002:  # Can't connect through socket
+            raise HTTPException(
+                status_code=503,
+                detail="데이터베이스 연결 실패|데이터베이스 서버와의 연결이 끊어졌습니다.\n\n네트워크 상태를 확인해주세요."
+            )
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail="데이터베이스 오류|데이터베이스 서버에 일시적인 문제가 발생했습니다.\n\n잠시 후 다시 시도해주세요.\n\n오류 코드: " + str(error_code)
+            )
+    except Exception as e:
+        print(f"[ERROR] DB 연결 중 예상치 못한 오류: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="시스템 오류|데이터베이스 연결 중 오류가 발생했습니다.\n\n잠시 후 다시 시도해주세요."
+        )
 
 def ensure_photo_urls_column(cursor, table_name: str):
     """photo_urls 컬럼이 없으면 추가"""

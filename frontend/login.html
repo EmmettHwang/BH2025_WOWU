@@ -449,19 +449,22 @@
                 const detail = error.response?.data?.detail || '로그인에 실패했습니다';
                 const statusCode = error.response?.status;
                 
-                // 신청 상태 메시지 처리 ("|"로 구분) 또는 401/403 에러
-                if (detail.includes('|') || statusCode === 401 || statusCode === 403) {
+                // 신청 상태 메시지 처리 ("|"로 구분) 또는 401/403/503 에러
+                if (detail.includes('|') || statusCode === 401 || statusCode === 403 || statusCode === 503) {
                     let title, message;
                     
                     if (detail.includes('|')) {
                         [title, message] = detail.split('|');
                     } else {
-                        // "|" 없는 401/403 에러 처리
+                        // "|" 없는 401/403/503 에러 처리
                         if (statusCode === 401) {
                             title = '등록되지 않은 사용자';
                             message = detail;
                         } else if (statusCode === 403) {
                             title = '접근 제한';
+                            message = detail;
+                        } else if (statusCode === 503) {
+                            title = '시스템 점검 중';
                             message = detail;
                         } else {
                             title = '오류';
@@ -500,6 +503,13 @@
                         iconClass = 'fa-user-slash';
                         borderColor = 'border-gray-400';
                         textMessage = `${message}\n\n좋은 하루 되십시오.`;
+                    } else if (title.includes('데이터베이스') || title.includes('시스템')) {
+                        // 데이터베이스/시스템 오류
+                        bgColor = 'bg-gradient-to-br from-orange-50 to-red-50';
+                        iconColor = 'text-orange-500';
+                        iconClass = 'fa-database';
+                        borderColor = 'border-orange-400';
+                        textMessage = message;
                     } else {
                         // 기타
                         bgColor = 'bg-gradient-to-br from-blue-50 to-indigo-50';
