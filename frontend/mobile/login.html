@@ -127,9 +127,6 @@
                             <i id="passwordIcon" class="fas fa-eye"></i>
                         </button>
                     </div>
-                    <p class="text-xs text-gray-500 mt-2">
-                        <i class="fas fa-info-circle mr-1"></i>기본 비밀번호: kdt2025
-                    </p>
                 </div>
                 
                 <!-- 로그인 정보 저장 체크박스 -->
@@ -147,6 +144,42 @@
                     <i class="fas fa-sign-in-alt mr-2"></i>로그인
                 </button>
             </form>
+            
+            <!-- 신규수강신청 버튼 -->
+            <div class="mt-4">
+                <button 
+                    onclick="window.location.href='/register.html'"
+                    class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-4 rounded-xl transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg border-2 border-blue-300"
+                >
+                    <i class="fas fa-user-plus mr-2"></i>신규수강신청
+                </button>
+            </div>
+            
+            <!-- 강좌 안내 버튼 (SNS) -->
+            <div class="mt-4 flex gap-3">
+                <!-- Facebook 버튼 -->
+                <button 
+                    onclick="window.open('https://www.facebook.com/profile.php?id=61579911359428', '_blank')"
+                    class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 rounded-xl transition-all transform hover:scale-[1.02] active:scale-95 shadow-md"
+                >
+                    <i class="fab fa-facebook-f mr-2"></i>Facebook
+                </button>
+                
+                <!-- Instagram 버튼 -->
+                <button 
+                    onclick="window.open('https://www.instagram.com/biohealth_academy/', '_blank')"
+                    class="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold py-3 rounded-xl transition-all transform hover:scale-[1.02] active:scale-95 shadow-md"
+                >
+                    <i class="fab fa-instagram mr-2"></i>Instagram
+                </button>
+            </div>
+            
+            <!-- 강좌 안내 텍스트 -->
+            <div class="mt-3 text-center">
+                <p class="text-xs text-gray-500">
+                    <i class="fas fa-info-circle mr-1"></i>강좌 상세 정보 및 공지사항 확인
+                </p>
+            </div>
             
             <!-- 홈화면 추가 가이드 버튼 -->
             <div id="installPrompt" class="hidden mt-4">
@@ -181,6 +214,23 @@
         console.log(`%c🚀 Login ${APP_VERSION} 로드됨`, 'color: #10b981; font-weight: bold; font-size: 14px;');
 
         const API_BASE_URL = '';
+        
+        // 시스템 설정 로드
+        async function loadSystemSettings() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/system-settings`);
+                const settings = response.data;
+                
+                // 페이지 타이틀 업데이트
+                if (settings.system_title) {
+                    document.title = `로그인 - ${settings.system_title}`;
+                }
+                
+                console.log('✅ 모바일 로그인 페이지 시스템 설정 로드 완료');
+            } catch (error) {
+                console.error('❌ 시스템 설정 로드 실패:', error);
+            }
+        }
         
         // 홈화면 추가 가이드 (HTTP 환경용 - PWA 설치 불가)
         // 페이지 로드 시 항상 버튼 표시
@@ -314,6 +364,9 @@
         
         // 페이지 로드 시 초기화
         window.addEventListener('DOMContentLoaded', () => {
+            // 시스템 설정 로드 (타이틀 업데이트)
+            loadSystemSettings();
+            
             // 현재 세션에 로그인 정보가 있으면 메인 페이지로 리다이렉트
             if (sessionStorage.getItem('user')) {
                 window.location.href = 'index.html';
