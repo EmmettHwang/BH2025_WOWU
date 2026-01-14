@@ -20630,6 +20630,22 @@ window.showResetConfirmModal = function() {
                             class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-red-500 focus:outline-none"
                             onkeypress="if(event.key==='Enter') document.getElementById('reset-confirm-input').focus()">
                     </div>
+                    
+                    <!-- 완전 초기화 옵션 -->
+                    <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4">
+                        <label class="flex items-start cursor-pointer">
+                            <input type="checkbox" id="complete-reset-checkbox" 
+                                class="mt-1 w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-500">
+                            <div class="ml-3">
+                                <span class="font-bold text-red-700">⚠️ 완전 초기화 (위험!)</span>
+                                <p class="text-sm text-gray-700 mt-1">
+                                    시스템 설정, 강사 정보, 과정 정보까지 <strong class="text-red-600">모두 삭제</strong>합니다.
+                                    <br>백업 필수! 로그 테이블만 유지됩니다.
+                                </p>
+                            </div>
+                        </label>
+                    </div>
+                    
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">확인 문구</label>
                         <p class="text-sm text-gray-600 mb-2">아래에 "<strong class="text-red-600">초기화</strong>"를 입력하세요:</p>
@@ -20662,6 +20678,7 @@ window.confirmResetDatabase = async function() {
     const operatorName = document.getElementById('reset-operator-name')?.value?.trim();
     const password = document.getElementById('reset-password')?.value?.trim();
     const input = document.getElementById('reset-confirm-input')?.value?.trim();
+    const completeReset = document.getElementById('complete-reset-checkbox')?.checked || false;
     
     // 유효성 검증
     if (!operatorName) {
@@ -20685,17 +20702,19 @@ window.confirmResetDatabase = async function() {
     document.getElementById('reset-confirm-modal').remove();
     
     try {
-        showLoading('데이터베이스 초기화 중...\n\n자동 백업을 생성하고 있습니다\n잠시만 기다려주세요');
+        const resetMode = completeReset ? '완전 초기화' : '일반 초기화';
+        showLoading(`데이터베이스 ${resetMode} 중...\n\n자동 백업을 생성하고 있습니다\n잠시만 기다려주세요`);
         
         const response = await axios.post(`${API_BASE_URL}/api/backup/reset`, {
             operator_name: operatorName,
-            password: password
+            password: password,
+            complete_reset: completeReset
         });
         
         hideLoading();
         
         if (response.data.success) {
-            const message = `작업자: ${response.data.operator}\n백업 파일: ${response.data.backup_file}\n삭제된 레코드: ${response.data.total_deleted.toLocaleString()}개\n\n3초 후 페이지가 새로고침됩니다`;
+            const message = `${response.data.reset_type}\n작업자: ${response.data.operator}\n백업 파일: ${response.data.backup_file}\n삭제된 레코드: ${response.data.total_deleted.toLocaleString()}개\n\n3초 후 페이지가 새로고침됩니다`;
             showBeautifulSuccess('초기화 완료!', message);
             
             // 백업 목록 새로고침
