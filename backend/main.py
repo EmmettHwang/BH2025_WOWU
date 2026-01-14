@@ -5136,7 +5136,7 @@ async def upload_image(
     try:
         # 파일 확장자 검증 (이미지 + PDF)
         allowed_extensions = [
-            '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp',  # 이미지
+            '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.ico', '.svg',  # 이미지 + 파비콘
             '.pdf',  # PDF
             '.ppt', '.pptx',  # PowerPoint
             '.xls', '.xlsx',  # Excel
