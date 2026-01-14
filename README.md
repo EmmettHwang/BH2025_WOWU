@@ -1,11 +1,89 @@
 # BH2025 바이오헬스 교육관리 플랫폼
 
 ## 📌 버전 정보
-- **현재 버전**: v3.91.202601090301
-- **최종 업데이트**: 2026년 01월 09일 03시 01분
-- **버전 형식**: 메이저.마이너.날짜시간 (예: 3.91.202601090301)
+- **현재 버전**: v3.92.202601140345
+- **최종 업데이트**: 2026년 01월 14일 03시 45분
+- **버전 형식**: 메이저.마이너.날짜시간 (예: 3.92.202601140345)
 
-## 🎉 최근 업데이트 (v3.91.202601090301)
+## 🎉 최근 업데이트 (v3.92.202601140345)
+
+### ✨ 신규 기능
+1. **파비콘 동적 변경 시스템**
+   - 시스템 설정에서 파비콘 업로드 가능
+   - FTP 서버 자동 업로드 지원
+   - 실시간 미리보기 (16x16)
+   - 권장 형식: ICO, PNG, SVG (16x16 ~ 512x512px)
+   - 자동 이미지 압축 (최대 512x512, quality 0.9)
+   - 모든 페이지에 즉시 적용
+   - `/api/download-image?url=` 프록시로 FTP URL 처리
+
+2. **PWA 앱 이름 변경**
+   - manifest.json:
+     * name: "AI 기반 교육관리 시스템" (기존: "바이오헬스 교육관리 시스템")
+     * short_name: "AI 교육관리" (기존: "BH2025")
+     * description: "AI 기반 스마트 교육관리 플랫폼" (기존: "학급 기반의...")
+   - apple-mobile-web-app-title: "AI 기반" (기존: "BH2025")
+   - iOS/Android 홈 화면 아이콘 이름 통일
+
+3. **모바일 로그인 페이지 데스크탑 동기화**
+   - 신규수강신청 버튼 추가 (전체 너비, 파란-인디고 그라데이션)
+   - SNS 강좌 안내 버튼 추가 (Facebook/Instagram, 50%/50% 레이아웃)
+   - 기본 비밀번호 힌트 제거 (보안 강화)
+   - 시스템 설정 타이틀 동적 로드
+
+4. **학생 페이지 모바일 반응형 최적화**
+   - 탭 메뉴 가로 스크롤 (내 정보, SSIRN, 온라인시험/과제, 공지사항)
+   - 텍스트 축약 (모바일: 내정보/SSIRN/시험과제/공지, 데스크탑: 전체)
+   - 모바일 전용 새로고침(캐시 클리어) 버튼
+   - PWA 메타 태그 추가 (mobile-web-app-capable, viewport max-scale=5.0)
+   - 카드 헤더 반응형 (모바일: text-sm/px-2, 데스크탑: text-base/px-4)
+   - 온라인시험/과제 섹션 모바일 레이아웃 최적화
+
+5. **페이지 타이틀 동적 로드**
+   - 모든 페이지의 `<title>` 태그가 시스템 설정에서 로드
+   - 하드코딩 제거:
+     * student.html: `document.title = '학생 MyPage - ' + settings.system_title`
+     * index.html (관리자): `document.title = settings.system_title`
+     * login.html: `document.title = settings.system_title + ' - 로그인'`
+     * register.html: `document.title = settings.system_title + ' - 신규가입'`
+   - 시스템 설정 변경 시 모든 페이지 타이틀 자동 반영
+
+6. **로그인 페이지 UI/UX 개선**
+   - 로그인 정보 저장 체크박스 텍스트 간소화:
+     * Before: "로그인 정보 저장 (이름+비밀번호)"
+     * After: "로그인 정보 저장"
+   - 헤더 제목/부제목 동적 로드 (데스크탑/모바일 모두)
+
+### 🔧 버그 수정
+1. **파비콘 경로 하드코딩 문제 해결**
+   - Before: `/favicon.ico` 고정
+   - After: `system_settings.favicon_url` 동적 로드
+   - FTP URL 자동 프록시 처리
+
+2. **페이지 타이틀 불일치 문제 해결**
+   - 모든 페이지가 시스템 설정의 system_title 사용
+   - 브랜드 일관성 확보
+
+### 🎨 UI/UX 개선
+1. **시스템 설정 UI 강화**
+   - AI쳇봇 & TTS API키 설정 섹션에 파비콘 업로드 추가
+   - 현재 파비콘 미리보기 (16x16)
+   - 노란색 업로드 버튼 (fa-upload 아이콘)
+   - 프로그레스 바 (업로드 진행률 표시)
+
+2. **모바일 사용성 향상**
+   - 탭 메뉴 터치 스크롤 개선
+   - 캐시 클리어 버튼으로 즉시 새로고침
+   - 반응형 카드 레이아웃
+
+### 🔐 보안 개선
+1. **비밀번호 힌트 제거**
+   - 모바일/데스크탑 로그인 페이지 모두 기본 비밀번호 안내 제거
+   - 브루트포스 공격 방어 강화
+
+---
+
+## 📜 이전 업데이트 (v3.91.202601090301)
 
 ### ✨ 신규 기능
 1. **학생 페이지 온라인시험/과제 탭 추가**
@@ -309,6 +387,148 @@ pm2 restart all
 
 # 3) 여전히 안 되면
 sudo systemctl restart pm2-root
+
+---
+
+---
+
+## 🎨 파비콘 관리 가이드
+
+### 📌 파비콘이란?
+파비콘(Favicon)은 브라우저 탭, 북마크, 홈 화면 아이콘에 표시되는 작은 이미지입니다.
+
+### ✨ 동적 파비콘 변경 기능
+시스템 설정에서 파비콘을 업로드하면 **모든 페이지에 즉시 적용**됩니다.
+
+#### 🚀 사용 방법
+1. **관리자 로그인** → 시스템 등록 → AI쳇봇 & TTS API키 설정
+2. **파비콘 업로드 섹션** 찾기
+   - 현재 파비콘 미리보기 (16x16)
+   - 노란색 "파비콘 업로드" 버튼
+3. **파비콘 파일 선택**
+   - 형식: ICO, PNG, SVG
+   - 크기: 16x16 ~ 512x512px
+   - 최적 크기: 32x32 또는 64x64
+   - 파일 크기: 2MB 이하
+   - 배경: 투명 또는 단색 권장
+4. **업로드 진행**
+   - 자동 이미지 압축 (최대 512x512, quality 0.9)
+   - FTP 서버 자동 업로드
+   - 프로그레스 바 표시
+5. **저장 버튼 클릭**
+   - 시스템 설정에 저장
+   - 브라우저 탭 아이콘 즉시 변경
+
+#### 🎯 권장 사양
+```yaml
+형식: ICO (Internet Explorer 호환), PNG (투명 배경), SVG (벡터)
+크기:
+  - favicon.ico: 16x16, 32x32, 48x48 (멀티 사이즈)
+  - favicon-16x16.png: 16x16
+  - favicon-32x32.png: 32x32
+  - apple-touch-icon.png: 180x180 (iOS)
+  - icon-192x192.png: 192x192 (Android)
+  - icon-512x512.png: 512x512 (PWA)
+배경: 투명 또는 단색 (#3B82F6 파란색, #667eea 인디고)
+파일 크기: 2MB 이하 (자동 압축 지원)
+```
+
+#### 🔧 기술 구현
+- **백엔드 API**:
+  - `GET /api/system-settings`: `favicon_url` 필드 포함
+  - `POST /api/system-settings`: `favicon_url` 저장
+  - `POST /api/upload-image?category=teacher`: 파비콘 업로드
+- **프론트엔드**:
+  - `updateHeader()` 함수에서 동적 `<link rel="icon">` 생성
+  - FTP URL 자동 프록시: `/api/download-image?url=...`
+  - 이미지 압축: `maxWidth=512, maxHeight=512, quality=0.9`
+- **파일 경로**:
+  - 현재 파비콘: `/home/user/webapp/frontend/favicon.ico`
+  - FTP 업로드: `ftp://bitnmeta2.synology.me:2121/homes/ha/camFTP/BH2025/teacher/`
+
+#### 🎨 디자인 가이드
+**파비콘 디자인 아이디어**:
+- 🤖 로봇 아이콘 + AI 강조
+- 🧠 뇌 + AI 회로 패턴
+- 📚 책 + AI 로고
+- 🎓 졸업모자 + AI 심볼
+
+**색상 추천**:
+- 주 색상: 파란색 (#3B82F6) - 신뢰, 기술
+- 보조 색상: 인디고 (#667eea) - 혁신, AI
+- 강조 색상: 초록색 (#10B981) - 성장, 교육
+
+#### 📊 Before / After
+| 항목 | Before | After |
+|------|--------|-------|
+| 변경 방식 | 서버 파일 직접 교체 | 시스템 설정 UI 업로드 |
+| 적용 시간 | 재시작 + 캐시 클리어 필요 | 즉시 적용 |
+| FTP 지원 | 없음 | 자동 업로드 |
+| 미리보기 | 없음 | 현재 파비콘 16x16 표시 |
+| 권한 | 서버 접근 권한 필요 | 관리자 로그인만 필요 |
+
+#### 🛠️ 파비콘 생성 도구
+- **온라인 생성기** (권장):
+  - https://realfavicongenerator.net/ - 모든 플랫폼 대응
+  - https://favicon.io/ - 텍스트/이모지 → 파비콘
+  - https://www.favicon-generator.org/ - 간단한 변환
+- **디자인 툴**:
+  - Figma, Adobe Illustrator (SVG)
+  - GIMP, Photoshop (PNG)
+  - Canva (템플릿)
+
+#### 🔄 파비콘 캐시 클리어 방법
+파비콘이 즉시 반영되지 않을 경우:
+1. **하드 새로고침**: `Ctrl+F5` (Windows) / `Cmd+Shift+R` (Mac)
+2. **브라우저 캐시 삭제**: 설정 → 개인정보 및 보안 → 인터넷 사용 기록 삭제
+3. **개발자 도구**: F12 → Network 탭 → Disable cache 체크
+4. **시크릿 모드**: 새 시크릿 창에서 확인
+
+#### 📱 PWA 아이콘 vs 파비콘
+| 항목 | 파비콘 | PWA 아이콘 |
+|------|--------|------------|
+| 용도 | 브라우저 탭, 북마크 | 홈 화면, 스플래시 화면 |
+| 크기 | 16x16 ~ 64x64 | 192x192, 512x512 |
+| 형식 | ICO, PNG | PNG (투명 배경) |
+| 설정 | `<link rel="icon">` | `manifest.json` |
+| 변경 | 시스템 설정 업로드 | `/frontend/manifest.json` 수정 |
+
+#### 🚨 문제 해결
+**Q1. 파비콘이 변경되지 않아요**
+- 브라우저 캐시를 강제로 클리어하세요 (Ctrl+F5)
+- 시크릿 모드에서 확인하세요
+- 파일 형식이 올바른지 확인하세요 (ICO, PNG, SVG)
+
+**Q2. 파비콘이 깨져 보여요**
+- 투명 배경 PNG를 사용하세요
+- 이미지 크기를 32x32 또는 64x64로 조정하세요
+- 복잡한 디자인은 작은 크기에서 보이지 않을 수 있어요
+
+**Q3. iOS/Android에서 파비콘이 다르게 보여요**
+- iOS: `apple-touch-icon.png` (180x180) 별도 설정
+- Android: `manifest.json`의 icons 배열 확인
+- PWA 아이콘은 파비콘과 별도 관리됩니다
+
+#### 🔗 관련 파일
+```
+frontend/
+├── favicon.ico              # 기본 파비콘
+├── favicon-16x16.png        # 16x16
+├── favicon-32x32.png        # 32x32
+├── apple-touch-icon.png     # iOS (180x180)
+├── icon-192x192.png         # PWA (192x192)
+├── icon-512x512.png         # PWA (512x512)
+└── manifest.json            # PWA 설정
+```
+
+#### 📈 적용 범위
+동적 파비콘 기능이 적용된 페이지:
+- ✅ index.html (관리자)
+- ✅ login.html (로그인)
+- ✅ register.html (신규가입)
+- ✅ student.html (학생)
+- ✅ mobile/login.html (모바일 로그인)
+- ✅ aesong-3d-chat.html (예진이 채팅)
 
 ---
 
