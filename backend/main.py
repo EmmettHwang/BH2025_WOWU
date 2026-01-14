@@ -8144,8 +8144,7 @@ async def reset_database(request: Request, data: dict):
     
     try:
         # db_management_logs 테이블 확인/생성
-        ensure_db_management_logs_table(cursor)
-        conn.commit()
+        ensure_db_management_logs_table()
         
         # 0단계: 강사 인증 확인
         cursor.execute("SELECT code, name, password FROM instructor_codes WHERE name = %s", (operator_name,))
