@@ -2178,8 +2178,13 @@ async def delete_course(code: str):
         cursor.execute("SELECT COUNT(*) as count FROM training_logs WHERE course_code = %s", (code,))
         training_log_count = cursor.fetchone()['count']
         
-        cursor.execute("SELECT COUNT(*) as count FROM students WHERE course_id = %s", (code,))
-        student_count = cursor.fetchone()['count']
+        # students 테이블에 course_id 컬럼이 있는지 확인
+        student_count = 0
+        try:
+            cursor.execute("SELECT COUNT(*) as count FROM students WHERE course_id = %s", (code,))
+            student_count = cursor.fetchone()['count']
+        except Exception as e:
+            print(f"[INFO] students 테이블에 course_id 컬럼이 없음 (정상): {e}")
         
         # 데이터가 많을 경우 경고 로그
         if timetable_count > 0 or training_log_count > 0 or student_count > 0:
@@ -2200,8 +2205,12 @@ async def delete_course(code: str):
         # 5. 과정-교과목 연결 삭제
         cursor.execute("DELETE FROM course_subjects WHERE course_code = %s", (code,))
         
-        # 6. 학생 데이터 처리 (course_id를 NULL로 설정)
-        cursor.execute("UPDATE students SET course_id = NULL WHERE course_id = %s", (code,))
+        # 6. 학생 데이터 처리 (course_id를 NULL로 설정 - 컬럼이 있는 경우만)
+        try:
+            cursor.execute("UPDATE students SET course_id = NULL WHERE course_id = %s", (code,))
+            print(f"[INFO] 학생 {student_count}명의 course_id를 NULL로 설정")
+        except Exception as e:
+            print(f"[INFO] students 테이블에 course_id 컬럼이 없음 (정상, 스킵): {e}")
         
         # 7. 과정 삭제
         cursor.execute("DELETE FROM courses WHERE code = %s", (code,))
