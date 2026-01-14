@@ -15688,6 +15688,37 @@ function renderNotices() {
                         </div>
                     </div>
                     
+                    <!-- 반별 공지 설정 -->
+                    <div class="mb-4 border rounded-lg p-4 bg-white">
+                        <label class="block text-gray-700 font-semibold mb-3">
+                            <i class="fas fa-users mr-2"></i>공지 대상 *
+                        </label>
+                        <div class="space-y-3">
+                            <label class="flex items-start">
+                                <input type="radio" name="target-type" value="all" id="target-all" class="mt-1 mr-3" checked>
+                                <div>
+                                    <div class="font-medium">전체 공지</div>
+                                    <div class="text-sm text-gray-500">모든 학생에게 공지됩니다</div>
+                                </div>
+                            </label>
+                            <label class="flex items-start">
+                                <input type="radio" name="target-type" value="courses" id="target-courses" class="mt-1 mr-3">
+                                <div>
+                                    <div class="font-medium">특정 반만</div>
+                                    <div class="text-sm text-gray-500">선택한 반 학생들에게만 공지됩니다</div>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <!-- 반 선택 영역 -->
+                        <div id="course-selection" class="mt-4 hidden">
+                            <label class="block text-gray-700 font-medium mb-2">대상 반 선택</label>
+                            <div id="course-checkboxes" class="space-y-2 max-h-60 overflow-y-auto border rounded p-3 bg-gray-50">
+                                <!-- 동적으로 채워짐 -->
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="flex gap-2">
                         <button type="button" onclick="saveNotice()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
                             <i class="fas fa-save mr-2"></i>저장
@@ -15751,9 +15782,40 @@ function renderNotices() {
     `;
 }
 
-window.showNoticeForm = function(noticeId = null) {
+// 공지사항용 과정 목록 로드
+window.loadCoursesForNotice = async function() {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/courses`);
+        const courses = response.data;
+        
+        const checkboxContainer = document.getElementById('course-checkboxes');
+        if (!checkboxContainer) return;
+        
+        if (courses.length === 0) {
+            checkboxContainer.innerHTML = '<p class="text-gray-500">등록된 과정이 없습니다</p>';
+            return;
+        }
+        
+        checkboxContainer.innerHTML = courses.map(course => `
+            <label class="flex items-center p-2 hover:bg-gray-100 rounded cursor-pointer">
+                <input type="checkbox" name="course-checkbox" value="${course.id}" class="mr-3">
+                <div class="flex-1">
+                    <div class="font-medium">${course.name}</div>
+                    <div class="text-xs text-gray-500">${course.start_date} ~ ${course.end_date}</div>
+                </div>
+            </label>
+        `).join('');
+    } catch (error) {
+        console.error('과정 목록 로드 실패:', error);
+    }
+};
+
+window.showNoticeForm = async function(noticeId = null) {
     const formDiv = document.getElementById('notice-form');
     const formTitle = document.getElementById('form-title');
+    
+    // 과정 목록 로드
+    await loadCoursesForNotice();
     
     if (noticeId) {
         formTitle.textContent = '공지사항 수정';
@@ -15764,6 +15826,20 @@ window.showNoticeForm = function(noticeId = null) {
             document.getElementById('notice-content').value = notice.content;
             document.getElementById('notice-start-date').value = notice.start_date;
             document.getElementById('notice-end-date').value = notice.end_date;
+            
+            // 대상 설정 복원
+            if (notice.target_type === 'courses' && notice.target_courses) {
+                document.getElementById('target-courses').checked = true;
+                document.getElementById('course-selection').classList.remove('hidden');
+                const targetList = JSON.parse(notice.target_courses);
+                targetList.forEach(courseId => {
+                    const checkbox = document.querySelector(`input[name="course-checkbox"][value="${courseId}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            } else {
+                document.getElementById('target-all').checked = true;
+                document.getElementById('course-selection').classList.add('hidden');
+            }
         }
     } else {
         formTitle.textContent = '공지사항 추가';
@@ -15775,7 +15851,24 @@ window.showNoticeForm = function(noticeId = null) {
         endDate.setDate(endDate.getDate() + 30);
         document.getElementById('notice-start-date').value = today.toISOString().split('T')[0];
         document.getElementById('notice-end-date').value = endDate.toISOString().split('T')[0];
+        
+        // 기본값: 전체 공지
+        document.getElementById('target-all').checked = true;
+        document.getElementById('course-selection').classList.add('hidden');
     }
+    
+    // 라디오 버튼 이벤트 리스너 설정
+    document.getElementById('target-all').addEventListener('change', function() {
+        if (this.checked) {
+            document.getElementById('course-selection').classList.add('hidden');
+        }
+    });
+    
+    document.getElementById('target-courses').addEventListener('change', function() {
+        if (this.checked) {
+            document.getElementById('course-selection').classList.remove('hidden');
+        }
+    });
     
     formDiv.classList.remove('hidden');
     formDiv.scrollIntoView({ behavior: 'smooth' });
@@ -15824,12 +15917,28 @@ window.saveNotice = async function() {
         return;
     }
     
+    // 대상 설정 가져오기
+    const targetType = document.getElementById('target-courses').checked ? 'courses' : 'all';
+    let targetCourses = [];
+    
+    if (targetType === 'courses') {
+        const checkedBoxes = document.querySelectorAll('input[name="course-checkbox"]:checked');
+        targetCourses = Array.from(checkedBoxes).map(cb => cb.value);
+        
+        if (targetCourses.length === 0) {
+            await window.showError('특정 반 공지를 선택하셨습니다.\n최소 1개 이상의 반을 선택해주세요.', '대상 선택 필요');
+            return;
+        }
+    }
+    
     const instructor = JSON.parse(sessionStorage.getItem('instructor'));
     const data = {
         title: title.trim(),
         content: content.trim(),
         start_date: startDate,
         end_date: endDate,
+        target_type: targetType,
+        target_courses: targetCourses,
         created_by: instructor?.name || null
     };
     

@@ -6810,6 +6810,8 @@ def ensure_notices_table(cursor):
                 content TEXT NOT NULL,
                 start_date DATE NOT NULL,
                 end_date DATE NOT NULL,
+                target_type VARCHAR(20) DEFAULT 'all' COMMENT '대상: all(전체), courses(특정반)',
+                target_courses TEXT COMMENT '대상 반 목록 (JSON)',
                 created_by VARCHAR(50),
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -6821,8 +6823,9 @@ def ensure_notices_table(cursor):
         print(f"[WARN] notices 테이블 생성 실패: {e}")
 
 @app.get("/api/notices")
-async def get_notices(active_only: bool = False):
-    """공지사항 목록 조회"""
+async def get_notices(active_only: bool = False, course_id: str = None):
+    """공지사항 목록 조회 (반별 필터링 지원)"""
+    import json
     conn = get_db_connection()
     try:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -6841,6 +6844,23 @@ async def get_notices(active_only: bool = False):
             cursor.execute("SELECT * FROM notices ORDER BY created_at DESC")
         
         notices = cursor.fetchall()
+        
+        # 반별 필터링
+        if course_id:
+            filtered_notices = []
+            for notice in notices:
+                # target_type이 'all'이면 모두에게 표시
+                if notice.get('target_type') == 'all' or not notice.get('target_type'):
+                    filtered_notices.append(notice)
+                # target_type이 'courses'이면 target_courses 체크
+                elif notice.get('target_type') == 'courses' and notice.get('target_courses'):
+                    try:
+                        target_list = json.loads(notice['target_courses'])
+                        if course_id in target_list:
+                            filtered_notices.append(notice)
+                    except:
+                        pass
+            notices = filtered_notices
         
         # datetime 변환
         for notice in notices:
@@ -6876,21 +6896,28 @@ async def get_notice(notice_id: int):
 @app.post("/api/notices")
 async def create_notice(data: dict):
     """공지사항 생성"""
+    import json
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         ensure_notices_table(cursor)
         conn.commit()
         
+        # target_courses를 JSON 문자열로 변환
+        target_courses = data.get('target_courses', [])
+        target_courses_json = json.dumps(target_courses) if target_courses else None
+        
         query = """
-            INSERT INTO notices (title, content, start_date, end_date, created_by)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO notices (title, content, start_date, end_date, target_type, target_courses, created_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(query, (
             data['title'],
             data['content'],
             data['start_date'],
             data['end_date'],
+            data.get('target_type', 'all'),
+            target_courses_json,
             data.get('created_by')
         ))
         conn.commit()

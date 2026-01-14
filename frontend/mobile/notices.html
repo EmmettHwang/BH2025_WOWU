@@ -373,7 +373,14 @@
         async function loadNotices() {
             try {
                 showLoading("공지사항 불러오는 중...", "");
-                const response = await axios.get(`${API_BASE_URL}/api/notices`);
+                
+                // 학생인 경우 course_id를 포함하여 요청
+                let url = `${API_BASE_URL}/api/notices`;
+                if (userType === 'student' && currentUser.course_id) {
+                    url += `?course_id=${currentUser.course_id}`;
+                }
+                
+                const response = await axios.get(url);
                 allNotices = response.data || [];
                 
                 console.log('✅ 공지사항 로드 완료:', allNotices.length, '건');
