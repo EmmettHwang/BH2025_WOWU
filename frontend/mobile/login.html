@@ -84,13 +84,13 @@
         <!-- 로고 및 타이틀 -->
         <div class="text-center mb-8">
             <div class="inline-block bg-white rounded-3xl p-6 shadow-2xl mb-6">
-                <img src="/woosong-logo.png" alt="우송대학교 로고" class="h-24 w-auto mx-auto">
+                <img id="mobile-logo" src="/woosong-logo.png" alt="우송대학교 로고" class="h-24 w-auto mx-auto">
             </div>
-            <h1 class="text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center">
+            <h1 id="mobile-system-title" class="text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center">
                 <i class="fas fa-school mr-3 text-blue-600"></i>
                 바이오헬스교육관리시스템
             </h1>
-            <p class="text-gray-600">모바일 통합 관리 시스템</p>
+            <p id="mobile-system-subtitle" class="text-gray-600">모바일 통합 관리 시스템</p>
         </div>
         
         <!-- 로그인 폼 -->
@@ -134,7 +134,7 @@
                     <input type="checkbox" id="rememberMe" checked
                            class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
                     <label for="rememberMe" class="ml-3 text-sm font-semibold text-gray-700 cursor-pointer">
-                        <i class="fas fa-save mr-2 text-blue-600"></i>로그인 정보 저장 (이름 + 비밀번호)
+                        <i class="fas fa-save mr-2 text-blue-600"></i>로그인 정보 저장
                     </label>
                 </div>
                 
@@ -224,6 +224,28 @@
                 // 페이지 타이틀 업데이트
                 if (settings.system_title) {
                     document.title = `로그인 - ${settings.system_title}`;
+                }
+                
+                // 헤더 제목 업데이트
+                const titleElement = document.getElementById('mobile-system-title');
+                if (titleElement && settings.system_title) {
+                    titleElement.innerHTML = `<i class="fas fa-school mr-3 text-blue-600"></i>${settings.system_title}`;
+                }
+                
+                // 헤더 부제목 업데이트
+                const subtitleElement = document.getElementById('mobile-system-subtitle');
+                if (subtitleElement && settings.system_subtitle1) {
+                    subtitleElement.textContent = settings.system_subtitle1;
+                }
+                
+                // 로고 업데이트
+                const logoImg = document.getElementById('mobile-logo');
+                if (logoImg && settings.logo_url) {
+                    if (settings.logo_url.startsWith('ftp://')) {
+                        logoImg.src = API_BASE_URL + '/api/download-image?url=' + encodeURIComponent(settings.logo_url);
+                    } else {
+                        logoImg.src = settings.logo_url;
+                    }
                 }
                 
                 console.log('✅ 모바일 로그인 페이지 시스템 설정 로드 완료');

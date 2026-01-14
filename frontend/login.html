@@ -279,12 +279,23 @@
                     document.title = `${settings.system_title} - 로그인`;
                 }
                 
-                // 제목 업데이트 - 기본값 고정 (시스템 설정 무시)
-                // document.getElementById('system-title-login').textContent = settings.system_title || '바이오헬스교육관리시스템';
+                // 헤더 제목 업데이트
+                const titleElement = document.getElementById('system-title-login');
+                if (titleElement) {
+                    titleElement.textContent = settings.system_title || '바이오헬스교육관리시스템';
+                }
                 
-                // 부제목 업데이트 - 기본값 고정 (시스템 설정 무시)
-                // document.getElementById('system-subtitle1-login').textContent = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
-                // document.getElementById('system-subtitle2-login').textContent = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
+                // 부제목 1 업데이트
+                const subtitle1Element = document.getElementById('system-subtitle1-login');
+                if (subtitle1Element) {
+                    subtitle1Element.textContent = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
+                }
+                
+                // 부제목 2 업데이트
+                const subtitle2Element = document.getElementById('system-subtitle2-login');
+                if (subtitle2Element) {
+                    subtitle2Element.textContent = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
+                }
                 
                 // 로고 업데이트
                 const logoImg = document.querySelector('img[alt*="로고"]');
