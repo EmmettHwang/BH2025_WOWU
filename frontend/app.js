@@ -20602,7 +20602,7 @@ async function showResetDatabaseModal() {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
-// DB 초기화 최종 확인 모달
+// DB 초기화 최종 확인 모달 (비밀번호 + 텍스트 입력)
 window.showResetConfirmModal = function() {
     document.getElementById('reset-warning-modal').remove();
     
@@ -20611,14 +20611,34 @@ window.showResetConfirmModal = function() {
             <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform" style="animation: slideUp 0.3s;">
                 <div class="text-center mb-6">
                     <div class="w-20 h-20 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-keyboard text-white text-4xl"></i>
+                        <i class="fas fa-user-shield text-white text-4xl"></i>
                     </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-3">최종 확인</h3>
-                    <p class="text-gray-600 mb-4">초기화를 계속하려면 아래에 "<strong class="text-red-600">초기화</strong>"를 입력하세요:</p>
-                    <input type="text" id="reset-confirm-input" placeholder="초기화" 
-                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-lg font-semibold focus:border-red-500 focus:outline-none"
-                        onkeypress="if(event.key==='Enter') confirmResetDatabase()">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3">관리자 인증</h3>
+                    <p class="text-gray-600 mb-4">DB 초기화는 관리자만 실행할 수 있습니다</p>
                 </div>
+                
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">강사 이름</label>
+                        <input type="text" id="reset-operator-name" placeholder="이름을 입력하세요" 
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-red-500 focus:outline-none"
+                            onkeypress="if(event.key==='Enter') document.getElementById('reset-password').focus()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">비밀번호</label>
+                        <input type="password" id="reset-password" placeholder="비밀번호를 입력하세요" 
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-red-500 focus:outline-none"
+                            onkeypress="if(event.key==='Enter') document.getElementById('reset-confirm-input').focus()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">확인 문구</label>
+                        <p class="text-sm text-gray-600 mb-2">아래에 "<strong class="text-red-600">초기화</strong>"를 입력하세요:</p>
+                        <input type="text" id="reset-confirm-input" placeholder="초기화" 
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-lg font-semibold focus:border-red-500 focus:outline-none"
+                            onkeypress="if(event.key==='Enter') confirmResetDatabase()">
+                    </div>
+                </div>
+                
                 <div class="flex space-x-3">
                     <button onclick="document.getElementById('reset-confirm-modal').remove()" 
                         class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105">
@@ -20634,15 +20654,31 @@ window.showResetConfirmModal = function() {
     `;
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    setTimeout(() => document.getElementById('reset-confirm-input').focus(), 100);
+    setTimeout(() => document.getElementById('reset-operator-name').focus(), 100);
 }
 
 // DB 초기화 실행
 window.confirmResetDatabase = async function() {
-    const input = document.getElementById('reset-confirm-input');
-    if (input && input.value !== '초기화') {
+    const operatorName = document.getElementById('reset-operator-name')?.value?.trim();
+    const password = document.getElementById('reset-password')?.value?.trim();
+    const input = document.getElementById('reset-confirm-input')?.value?.trim();
+    
+    // 유효성 검증
+    if (!operatorName) {
+        showBeautifulError('입력 오류', '강사 이름을 입력해주세요');
+        document.getElementById('reset-operator-name').focus();
+        return;
+    }
+    
+    if (!password) {
+        showBeautifulError('입력 오류', '비밀번호를 입력해주세요');
+        document.getElementById('reset-password').focus();
+        return;
+    }
+    
+    if (input !== '초기화') {
         showBeautifulError('입력 오류', '"초기화"를 정확히 입력해주세요');
-        input.focus();
+        document.getElementById('reset-confirm-input').focus();
         return;
     }
     
@@ -20651,12 +20687,15 @@ window.confirmResetDatabase = async function() {
     try {
         showLoading('데이터베이스 초기화 중...\n\n자동 백업을 생성하고 있습니다\n잠시만 기다려주세요');
         
-        const response = await axios.post(`${API_BASE_URL}/api/backup/reset`);
+        const response = await axios.post(`${API_BASE_URL}/api/backup/reset`, {
+            operator_name: operatorName,
+            password: password
+        });
         
         hideLoading();
         
         if (response.data.success) {
-            const message = `백업 파일: ${response.data.backup_file}\n삭제된 레코드: ${response.data.total_deleted.toLocaleString()}개\n\n3초 후 페이지가 새로고침됩니다`;
+            const message = `작업자: ${response.data.operator}\n백업 파일: ${response.data.backup_file}\n삭제된 레코드: ${response.data.total_deleted.toLocaleString()}개\n\n3초 후 페이지가 새로고침됩니다`;
             showBeautifulSuccess('초기화 완료!', message);
             
             // 백업 목록 새로고침
@@ -20667,6 +20706,9 @@ window.confirmResetDatabase = async function() {
     } catch (error) {
         hideLoading();
         console.error('DB 초기화 실패:', error);
+        showBeautifulError('초기화 실패', 'DB 초기화에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+    }
+}
         showBeautifulError('초기화 실패', 'DB 초기화에 실패했습니다: ' + (error.response?.data?.detail || error.message));
     }
 }

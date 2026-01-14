@@ -8048,18 +8048,46 @@ async def import_database(file: UploadFile = File(...)):
         conn.close()
 
 @app.post("/api/backup/reset")
-async def reset_database():
-    """DB 초기화 (자동 백업 후 진행)"""
+async def reset_database(request: Request, data: dict):
+    """DB 초기화 (자동 백업 후 진행, 비밀번호 확인 + 로그 기록)"""
     import os
     from datetime import datetime
+    
+    # 작업자 정보 확인
+    operator_name = data.get('operator_name', '').strip()
+    password = data.get('password', '').strip()
+    
+    if not operator_name or not password:
+        raise HTTPException(status_code=400, detail="작업자 이름과 비밀번호가 필요합니다")
+    
+    client_ip = request.client.host if request.client else 'unknown'
     
     conn = get_db_connection()
     if not conn:
         raise HTTPException(status_code=503, detail="데이터베이스 연결 실패")
     
-    cursor = conn.cursor()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
     
     try:
+        # 0단계: 강사 인증 확인
+        cursor.execute("SELECT code, name, password FROM instructor_codes WHERE name = %s", (operator_name,))
+        instructor = cursor.fetchone()
+        
+        if not instructor:
+            raise HTTPException(status_code=401, detail="등록되지 않은 강사입니다")
+        
+        if instructor['password'] != password:
+            # 실패 로그 기록
+            cursor.execute("""
+                INSERT INTO db_management_logs
+                (action_type, operator_name, action_result, backup_file, details, ip_address)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, ('reset', f"{operator_name} ({instructor['code']})", 'fail', '', '비밀번호 불일치', client_ip))
+            conn.commit()
+            raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다")
+        
+        print(f"✅ 강사 인증 완료: {operator_name} ({instructor['code']})")
+        
         # 1단계: 자동 백업 생성
         print("📦 DB 초기화 전 자동 백업 생성 중...")
         backup_response = await create_backup()
@@ -8092,7 +8120,7 @@ async def reset_database():
             try:
                 # 현재 레코드 수 확인
                 cursor.execute(f"SELECT COUNT(*) as count FROM {table}")
-                count = cursor.fetchone()[0]
+                count = cursor.fetchone()['count']
                 
                 # 테이블 데이터 삭제
                 cursor.execute(f"DELETE FROM {table}")
@@ -8103,17 +8131,58 @@ async def reset_database():
                 
             except Exception as table_error:
                 print(f"⚠️ {table} 초기화 오류: {str(table_error)}")
+                deleted_records[table] = 0
                 continue
         
         conn.commit()
+        
+        # 4단계: 성공 로그 기록
+        cursor.execute("""
+            INSERT INTO db_management_logs
+            (action_type, operator_name, action_result, backup_file, details, ip_address)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
+            'reset',
+            f"{operator_name} ({instructor['code']})",
+            'success',
+            backup_file,
+            f"총 {total_deleted}개 레코드 삭제. 테이블: {', '.join(tables_to_clear)}",
+            client_ip
+        ))
+        conn.commit()
+        
+        print(f"✅ DB 초기화 완료: 총 {total_deleted}개 레코드 삭제")
         
         return {
             "success": True,
             "backup_file": backup_file,
             "deleted_records": deleted_records,
             "total_deleted": total_deleted,
+            "operator": f"{operator_name} ({instructor['code']})",
             "message": f"DB 초기화 완료: {total_deleted}개 레코드 삭제"
         }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        
+        # 실패 로그 기록
+        try:
+            cursor.execute("""
+                INSERT INTO db_management_logs
+                (action_type, operator_name, action_result, backup_file, details, ip_address)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, ('reset', operator_name, 'fail', backup_file if 'backup_file' in locals() else '', str(e), client_ip))
+            conn.commit()
+        except:
+            pass
+        
+        raise HTTPException(status_code=500, detail=f"DB 초기화 실패: {str(e)}")
+    
+    finally:
+        cursor.close()
+        conn.close()
         
     except Exception as e:
         conn.rollback()
@@ -8174,6 +8243,39 @@ async def get_tables_info():
     finally:
         cursor.close()
         conn.close()
+
+# ==================== DB 관리 로그 테이블 ====================
+def ensure_db_management_logs_table():
+    """DB 관리 로그 테이블 생성 (없으면)"""
+    conn = get_db_connection()
+    if not conn:
+        return
+    
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS db_management_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                action_type VARCHAR(50) NOT NULL COMMENT '작업 유형 (reset/restore/backup)',
+                operator_name VARCHAR(100) NOT NULL COMMENT '작업자 이름',
+                action_result VARCHAR(20) NOT NULL COMMENT '결과 (success/fail)',
+                backup_file VARCHAR(255) COMMENT '백업 파일명',
+                details TEXT COMMENT '상세 내용',
+                ip_address VARCHAR(45) COMMENT 'IP 주소',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '작업 시간',
+                INDEX idx_action_type (action_type),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='DB 관리 로그'
+        """)
+        conn.commit()
+        print("[OK] db_management_logs 테이블 확인/생성 완료")
+    except Exception as e:
+        print(f"[WARN] db_management_logs 테이블 생성 오류: {e}")
+    finally:
+        conn.close()
+
+# 서버 시작 시 테이블 확인
+ensure_db_management_logs_table()
 
 if __name__ == "__main__":
     import uvicorn
