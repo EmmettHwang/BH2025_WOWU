@@ -6216,6 +6216,8 @@ async def get_system_settings():
             settings_dict['system_subtitle2'] = '바이오헬스아카데미 올인원테크 이노베이터'
         if 'logo_url' not in settings_dict:
             settings_dict['logo_url'] = '/woosong-logo.png'
+        if 'favicon_url' not in settings_dict:
+            settings_dict['favicon_url'] = '/favicon.ico'
         
         return settings_dict
     except Exception as e:
@@ -6231,6 +6233,7 @@ async def update_system_settings(
     system_subtitle1: Optional[str] = Form(None),
     system_subtitle2: Optional[str] = Form(None),
     logo_url: Optional[str] = Form(None),
+    favicon_url: Optional[str] = Form(None),
     youtube_api_key: Optional[str] = Form(None),
     groq_api_key: Optional[str] = Form(None),
     gemini_api_key: Optional[str] = Form(None),
@@ -6244,6 +6247,7 @@ async def update_system_settings(
     print(f"  - system_subtitle1: {system_subtitle1}")
     print(f"  - system_subtitle2: {system_subtitle2}")
     print(f"  - logo_url: {logo_url}")
+    print(f"  - favicon_url: {favicon_url}")
     print(f"  - youtube_api_key: {youtube_api_key}")
     print(f"  - groq_api_key: {'설정됨' if groq_api_key else '미설정'}")
     print(f"  - gemini_api_key: {'설정됨' if gemini_api_key else '미설정'}")
@@ -6263,6 +6267,7 @@ async def update_system_settings(
             'system_subtitle1': system_subtitle1,
             'system_subtitle2': system_subtitle2,
             'logo_url': logo_url,
+            'favicon_url': favicon_url,
             'youtube_api_key': youtube_api_key,
             'groq_api_key': groq_api_key,
             'gemini_api_key': gemini_api_key,

@@ -14295,6 +14295,33 @@ function renderSystemSettings(settings) {
                         <input type="hidden" id="logo-url">
                     </div>
                     
+                    <!-- 파비콘 URL -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-star mr-2 text-yellow-500"></i>파비콘 (Favicon)
+                        </label>
+                        <div class="flex items-center gap-4">
+                            <img id="current-favicon" src="/favicon.ico" alt="현재 파비콘" 
+                                 class="w-16 h-16 object-contain border-2 border-gray-200 rounded-lg p-2 bg-white"
+                                 onerror="this.src='/favicon.ico'">
+                            <div class="flex-1">
+                                <input type="file" id="favicon-upload" accept="image/*" class="hidden"
+                                       onchange="window.handleFaviconUpload(event)">
+                                <button type="button" 
+                                        onclick="document.getElementById('favicon-upload').click()"
+                                        class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-all">
+                                    <i class="fas fa-upload mr-2"></i>파비콘 업로드
+                                </button>
+                                <p class="text-sm text-gray-600 mt-2">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    권장: ICO 또는 PNG, 16x16 ~ 512x512px
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="favicon-url">
+                    </div>
+                    
                     <!-- 대시보드 자동 새로고침 시간 -->
                     <div>
                         <label class="block text-gray-700 font-semibold mb-2">
@@ -14660,13 +14687,25 @@ function renderSystemSettings(settings) {
         const subtitle1Input = document.getElementById('system-subtitle1');
         const subtitle2Input = document.getElementById('system-subtitle2');
         const logoUrlInput = document.getElementById('logo-url');
+        const faviconUrlInput = document.getElementById('favicon-url');
         const logoImg = document.getElementById('current-logo');
+        const faviconImg = document.getElementById('current-favicon');
         const refreshIntervalInput = document.getElementById('refresh-interval');
         
         if (titleInput) titleInput.value = settings.system_title || DEFAULT_SYSTEM_TITLE;
         if (subtitle1Input) subtitle1Input.value = settings.system_subtitle1 || '보건복지부(한국보건산업진흥원), KDT, 우송대학교산학협력단';
         if (subtitle2Input) subtitle2Input.value = settings.system_subtitle2 || '바이오헬스아카데미 올인원테크 이노베이터';
         if (logoUrlInput) logoUrlInput.value = settings.logo_url || '/woosong-logo.png';
+        if (faviconUrlInput) faviconUrlInput.value = settings.favicon_url || '/favicon.ico';
+        
+        // 현재 파비콘 표시
+        if (faviconImg && settings.favicon_url) {
+            if (settings.favicon_url.startsWith('ftp://')) {
+                faviconImg.src = API_BASE_URL + '/api/download-image?url=' + encodeURIComponent(settings.favicon_url);
+            } else {
+                faviconImg.src = settings.favicon_url;
+            }
+        }
         
         // YouTube API 키 로드 (서버 우선, 없으면 localStorage)
         const youtubeApiKeyInput = document.getElementById('youtube-api-key');
@@ -14919,6 +14958,98 @@ window.handleLogoUpload = async function(event) {
     }
 }
 
+// 파비콘 업로드 핸들러
+window.handleFaviconUpload = async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // 파일 형식 검증
+    if (!file.type.startsWith('image/')) {
+        window.showAlert('이미지 파일만 업로드 가능합니다.');
+        return;
+    }
+    
+    // 파일 크기 검증 (2MB - 파비콘은 작게)
+    if (file.size > 2 * 1024 * 1024) {
+        window.showAlert('파일 크기는 2MB 이하여야 합니다.');
+        return;
+    }
+    
+    // 프로그레스바 생성
+    const progressContainer = document.createElement('div');
+    progressContainer.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    progressContainer.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+            <div class="text-center">
+                <div class="mb-4">
+                    <i class="fas fa-star text-6xl text-yellow-500 animate-pulse"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">파비콘 업로드 중...</h3>
+                <p class="text-gray-600 mb-4">${file.name}</p>
+                
+                <!-- 프로그레스바 -->
+                <div class="w-full bg-gray-200 rounded-full h-3 mb-4 overflow-hidden">
+                    <div id="favicon-upload-progress" class="bg-gradient-to-r from-yellow-500 to-orange-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="favicon-upload-percent" class="text-sm font-semibold text-gray-700">0%</p>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(progressContainer);
+    
+    try {
+        // 이미지 압축 (파비콘은 작게 유지)
+        let processedFile = file;
+        try {
+            processedFile = await window.compressImage(file, { maxWidth: 512, maxHeight: 512, quality: 0.9 });
+            console.log(`파비콘 이미지 압축: ${(file.size / 1024).toFixed(1)}KB → ${(processedFile.size / 1024).toFixed(1)}KB`);
+        } catch (error) {
+            console.error('이미지 압축 실패, 원본 사용:', error);
+            processedFile = file;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', processedFile);
+        
+        // teacher 카테고리로 업로드
+        const response = await axios.post(`${API_BASE_URL}/api/upload-image?category=teacher`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: (progressEvent) => {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                const progressBar = document.getElementById('favicon-upload-progress');
+                const progressText = document.getElementById('favicon-upload-percent');
+                if (progressBar) progressBar.style.width = percentCompleted + '%';
+                if (progressText) progressText.textContent = percentCompleted + '%';
+            }
+        });
+        
+        const faviconUrl = response.data.url;
+        document.getElementById('favicon-url').value = faviconUrl;
+        
+        // FTP URL인 경우 download-image API 사용
+        if (faviconUrl.startsWith('ftp://')) {
+            document.getElementById('current-favicon').src = API_BASE_URL + '/api/download-image?url=' + encodeURIComponent(faviconUrl);
+        } else {
+            document.getElementById('current-favicon').src = faviconUrl;
+        }
+        
+        // 프로그레스바 제거
+        document.body.removeChild(progressContainer);
+        
+        window.showAlert('✅ 파비콘이 업로드되었습니다! 저장 버튼을 눌러 적용하세요.');
+    } catch (error) {
+        console.error('❌ 파비콘 업로드 실패:', error);
+        
+        // 프로그레스바 제거
+        if (document.body.contains(progressContainer)) {
+            document.body.removeChild(progressContainer);
+        }
+        
+        const errorMsg = error.response?.data?.detail || error.message;
+        window.showAlert('파비콘 업로드에 실패했습니다: ' + errorMsg);
+    }
+}
+
 // 시스템 설정 저장
 window.saveSystemSettings = async function() {
     // DOM 요소 존재 확인
@@ -14926,6 +15057,7 @@ window.saveSystemSettings = async function() {
     const subtitle1Element = document.getElementById('system-subtitle1');
     const subtitle2Element = document.getElementById('system-subtitle2');
     const logoElement = document.getElementById('logo-url');
+    const faviconElement = document.getElementById('favicon-url');
     const aiModelElement = document.getElementById('ai-model');
     const refreshIntervalElement = document.getElementById('refresh-interval');
     
@@ -14934,6 +15066,7 @@ window.saveSystemSettings = async function() {
         subtitle1Element: subtitle1Element ? '존재' : '없음',
         subtitle2Element: subtitle2Element ? '존재' : '없음',
         logoElement: logoElement ? '존재' : '없음',
+        faviconElement: faviconElement ? '존재' : '없음',
         aiModelElement: aiModelElement ? '존재' : '없음',
         refreshIntervalElement: refreshIntervalElement ? '존재' : '없음'
     });
@@ -14948,12 +15081,15 @@ window.saveSystemSettings = async function() {
     const systemSubtitle1 = subtitle1Element.value;
     const systemSubtitle2 = subtitle2Element.value;
     const logoUrl = logoElement.value;
+    const faviconUrl = faviconElement ? faviconElement.value : '/favicon.ico';
 
     // 시스템 설정을 localStorage에 저장 (즉시 로딩용)
     localStorage.setItem('system_title', systemTitle);
     localStorage.setItem('logo_url', logoUrl);
+    localStorage.setItem('favicon_url', faviconUrl);
     console.log('💾 시스템 타이틀 저장:', systemTitle);
     console.log('💾 로고 URL 저장:', logoUrl);
+    console.log('💾 파비콘 URL 저장:', faviconUrl);
 
     // YouTube API 키 저장
     const youtubeApiKey = document.getElementById('youtube-api-key')?.value || '';
@@ -15011,6 +15147,7 @@ window.saveSystemSettings = async function() {
     formData.append('system_subtitle1', systemSubtitle1);
     formData.append('system_subtitle2', systemSubtitle2);
     formData.append('logo_url', logoUrl);
+    formData.append('favicon_url', faviconUrl);
     formData.append('youtube_api_key', youtubeApiKey);
     formData.append('groq_api_key', groqApiKey);
     formData.append('gemini_api_key', geminiApiKey);
@@ -15086,6 +15223,27 @@ async function updateHeader() {
         // 페이지 타이틀 업데이트
         if (settings.system_title) {
             document.title = settings.system_title;
+        }
+        
+        // 파비콘 동적 변경
+        if (settings.favicon_url) {
+            let faviconHref = settings.favicon_url;
+            
+            // FTP URL인 경우 프록시를 통해 접근
+            if (faviconHref.startsWith('ftp://')) {
+                faviconHref = `${API_BASE_URL}/api/download-image?url=${encodeURIComponent(faviconHref)}`;
+            }
+            
+            // 기존 파비콘 링크 찾기 또는 생성
+            let link = document.querySelector("link[rel*='icon']");
+            if (!link) {
+                link = document.createElement('link');
+                link.rel = 'shortcut icon';
+                document.getElementsByTagName('head')[0].appendChild(link);
+            }
+            link.href = faviconHref;
+            
+            console.log('✅ 파비콘 동적 로드:', faviconHref);
         }
         
         // 제목 업데이트 (버전은 별도로 관리)
