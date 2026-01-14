@@ -374,12 +374,25 @@
             try {
                 showLoading("공지사항 불러오는 중...", "");
                 
-                // 학생인 경우 course_id를 포함하여 요청
+                // 디버깅: 현재 사용자 정보 확인
+                console.log('🔍 현재 사용자:', currentUser);
+                console.log('🔍 사용자 타입:', userType);
+                console.log('🔍 course_id:', currentUser?.course_id);
+                console.log('🔍 course_code:', currentUser?.course_code);
+                
+                // 학생인 경우 course_id를 포함하여 요청 (course_code를 대체로 사용)
                 let url = `${API_BASE_URL}/api/notices`;
-                if (userType === 'student' && currentUser.course_id) {
-                    url += `?course_id=${currentUser.course_id}`;
+                if (userType === 'student') {
+                    const courseId = currentUser.course_id || currentUser.course_code;
+                    if (courseId) {
+                        url += `?course_id=${courseId}`;
+                        console.log('🎯 반별 공지 필터링 적용:', courseId);
+                    } else {
+                        console.warn('⚠️ 학생이지만 course_id가 없습니다!');
+                    }
                 }
                 
+                console.log('📡 요청 URL:', url);
                 const response = await axios.get(url);
                 allNotices = response.data || [];
                 
@@ -402,7 +415,7 @@
                 renderNotices(activeNotices);
                 hideLoading();
             } catch (error) {
-                console.error('Failed to load notices:', error);
+                console.error('❌ 공지사항 로드 실패:', error);
                 hideLoading();
                 document.getElementById('emptyState').classList.remove('hidden');
             }
@@ -426,6 +439,14 @@
 
             container.innerHTML = notices.map(notice => {
                 const isNew = (new Date() - new Date(notice.created_at)) < 24 * 60 * 60 * 1000; // 24 hours
+                
+                // 공지 대상 표시
+                let targetBadge = '';
+                if (notice.target_type === 'all' || !notice.target_type) {
+                    targetBadge = '<span class="px-2 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-bold">🌐 전체</span>';
+                } else if (notice.target_type === 'courses') {
+                    targetBadge = '<span class="px-2 py-1 bg-purple-100 text-purple-600 rounded-full text-xs font-bold">👥 우리 반</span>';
+                }
 
                 return `
                     <div class="notice-card bg-white rounded-2xl shadow-md p-5 cursor-pointer hover:shadow-lg"
@@ -433,6 +454,7 @@
                         <div class="flex items-start justify-between mb-3">
                             <div class="flex items-center space-x-2">
                                 ${isNew ? '<span class="badge-new px-2 py-1 bg-purple-500 text-white rounded-full text-xs font-bold">NEW</span>' : ''}
+                                ${targetBadge}
                             </div>
                         </div>
                         <h3 class="text-lg font-bold text-gray-800 mb-2">${notice.title}</h3>

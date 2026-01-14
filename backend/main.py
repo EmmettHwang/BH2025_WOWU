@@ -6878,19 +6878,27 @@ async def get_notices(active_only: bool = False, course_id: str = None):
         
         # 반별 필터링
         if course_id:
+            print(f"🎯 [반별 필터링] course_id: {course_id}, 전체 공지: {len(notices)}건")
             filtered_notices = []
             for notice in notices:
                 # target_type이 'all'이면 모두에게 표시
                 if notice.get('target_type') == 'all' or not notice.get('target_type'):
                     filtered_notices.append(notice)
+                    print(f"  ✅ 전체 공지: {notice.get('title')}")
                 # target_type이 'courses'이면 target_courses 체크
                 elif notice.get('target_type') == 'courses' and notice.get('target_courses'):
                     try:
                         target_list = json.loads(notice['target_courses'])
+                        print(f"  🔍 반별 공지: {notice.get('title')} -> 대상: {target_list}")
                         if course_id in target_list:
                             filtered_notices.append(notice)
-                    except:
+                            print(f"    ✅ 매칭됨!")
+                        else:
+                            print(f"    ❌ 매칭 안됨")
+                    except Exception as e:
+                        print(f"    ⚠️ JSON 파싱 오류: {e}")
                         pass
+            print(f"📊 필터링 결과: {len(filtered_notices)}건")
             notices = filtered_notices
         
         # datetime 변환
