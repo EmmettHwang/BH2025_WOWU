@@ -8289,6 +8289,37 @@ async def get_tables_info():
         cursor.close()
         conn.close()
 
+@app.get("/api/backup/logs")
+async def get_management_logs(limit: int = 50):
+    """DB 관리 로그 조회"""
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=503, detail="데이터베이스 연결 실패")
+    
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+    
+    try:
+        cursor.execute("""
+            SELECT * FROM db_management_logs 
+            ORDER BY created_at DESC 
+            LIMIT %s
+        """, (limit,))
+        
+        logs = cursor.fetchall()
+        
+        return {
+            "success": True,
+            "logs": logs,
+            "total": len(logs)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"로그 조회 실패: {str(e)}")
+    
+    finally:
+        cursor.close()
+        conn.close()
+
 # ==================== DB 관리 로그 테이블 ====================
 def ensure_db_management_logs_table():
     """DB 관리 로그 테이블 생성 (없으면)"""

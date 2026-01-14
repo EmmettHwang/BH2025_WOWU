@@ -19876,11 +19876,111 @@ async function loadBackupManager() {
                     </div>
                 </div>
             </div>
+            
+            <!-- DB 관리 로그 -->
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-200 mt-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">
+                        <i class="fas fa-history mr-2 text-purple-600"></i>
+                        DB 관리 로그
+                    </h3>
+                    <button onclick="refreshManagementLogs()" 
+                        class="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition">
+                        <i class="fas fa-sync-alt mr-1"></i>새로고침
+                    </button>
+                </div>
+                <div id="management-logs" class="overflow-x-auto">
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-spinner fa-spin text-4xl mb-3"></i>
+                        <p>로그를 불러오는 중...</p>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
 
     // 백업 목록 로드
     await refreshBackupList();
+    
+    // DB 관리 로그 로드
+    await refreshManagementLogs();
+}
+
+// DB 관리 로그 새로고침
+window.refreshManagementLogs = async function() {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/backup/logs?limit=30`);
+        const logs = response.data.logs;
+        
+        const logsContainer = document.getElementById('management-logs');
+        
+        if (logs.length === 0) {
+            logsContainer.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-inbox text-4xl mb-3"></i>
+                    <p>관리 로그가 없습니다</p>
+                </div>
+            `;
+            return;
+        }
+        
+        logsContainer.innerHTML = `
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">시간</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">작업</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">작업자</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">결과</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">상세</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    ${logs.map(log => {
+                        const date = new Date(log.created_at);
+                        const dateStr = date.toLocaleString('ko-KR');
+                        
+                        const actionTypeMap = {
+                            'backup': '백업',
+                            'reset': '초기화',
+                            'restore': '복원'
+                        };
+                        
+                        const resultClass = log.action_result === 'success' ? 'text-green-600' : 'text-red-600';
+                        const resultIcon = log.action_result === 'success' ? 'check-circle' : 'times-circle';
+                        const resultText = log.action_result === 'success' ? '성공' : '실패';
+                        
+                        return `
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3 text-sm text-gray-600">${dateStr}</td>
+                                <td class="px-4 py-3 text-sm">
+                                    <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">${actionTypeMap[log.action_type] || log.action_type}</span>
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-800">${log.operator_name}</td>
+                                <td class="px-4 py-3 text-sm">
+                                    <span class="${resultClass}">
+                                        <i class="fas fa-${resultIcon} mr-1"></i>${resultText}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" title="${log.details || ''}">${log.details || '-'}</td>
+                                <td class="px-4 py-3 text-sm text-gray-500">${log.ip_address || '-'}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        `;
+        
+    } catch (error) {
+        console.error('로그 로드 실패:', error);
+        document.getElementById('management-logs').innerHTML = `
+            <div class="text-center py-8 text-red-500">
+                <i class="fas fa-exclamation-triangle text-4xl mb-3"></i>
+                <p>로그를 불러오지 못했습니다</p>
+            </div>
+        `;
+    }
 }
 
 async function refreshBackupList() {
