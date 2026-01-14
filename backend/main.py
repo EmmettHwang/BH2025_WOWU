@@ -8156,7 +8156,7 @@ async def reset_database(request: Request, data: dict):
             'timetables',           # 시간표
             'training_logs',        # 훈련일지
             'class_notes',          # 수업노트
-            'counselings',          # 상담
+            'consultations',        # 상담 (counselings 아님!)
             'notices',              # 공지사항
             'projects',             # 프로젝트
             'team_activity_logs',   # 팀활동일지
@@ -8199,6 +8199,13 @@ async def reset_database(request: Request, data: dict):
         # 3단계: 각 테이블 초기화
         for table in tables_to_clear:
             try:
+                # 테이블 존재 여부 확인
+                cursor.execute(f"SHOW TABLES LIKE '{table}'")
+                if not cursor.fetchone():
+                    print(f"⚠️ {table}: 테이블이 존재하지 않음 (스킵)")
+                    deleted_records[table] = 0
+                    continue
+                
                 # 현재 레코드 수 확인
                 cursor.execute(f"SELECT COUNT(*) as count FROM {table}")
                 count = cursor.fetchone()['count']
