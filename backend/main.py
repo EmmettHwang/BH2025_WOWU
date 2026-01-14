@@ -2178,22 +2178,12 @@ async def delete_course(code: str):
         cursor.execute("SELECT COUNT(*) as count FROM training_logs WHERE course_code = %s", (code,))
         training_log_count = cursor.fetchone()['count']
         
-        # 모든 과정 삭제 차단 (데이터 보호)
-        raise HTTPException(
-            status_code=403, 
-            detail=f"[ERROR] 과정 삭제 기능이 비활성화되었습니다. 데이터 손실 방지를 위해 관리자에게 문의하세요. (과정: {code}, 영향: 시간표 {timetable_count}건, 훈련일지 {training_log_count}건)"
-        )
-        
-        # 삭제가 정말 필요한 경우, 아래 주석을 해제하고 위 raise를 주석 처리
-        # if code in ['C-001', 'C-002']:
-        #     raise HTTPException(
-        #         status_code=403, 
-        #         detail=f"[ERROR] 주요 과정({code})은 삭제할 수 없습니다. 관리자에게 문의하세요."
-        #     )
+        cursor.execute("SELECT COUNT(*) as count FROM students WHERE course_id = %s", (code,))
+        student_count = cursor.fetchone()['count']
         
         # 데이터가 많을 경우 경고 로그
-        if timetable_count > 0 or training_log_count > 0:
-            print(f"[WARN] 과정 삭제 경고: {code} - 시간표 {timetable_count}건, 훈련일지 {training_log_count}건 함께 삭제됨!")
+        if timetable_count > 0 or training_log_count > 0 or student_count > 0:
+            print(f"[WARN] 과정 삭제: {code} - 시간표 {timetable_count}건, 훈련일지 {training_log_count}건, 학생 {student_count}명 함께 삭제됨!")
         
         # 1. 시간표 삭제
         cursor.execute("DELETE FROM timetables WHERE course_code = %s", (code,))
@@ -2204,7 +2194,10 @@ async def delete_course(code: str):
         # 3. 과정-교과목 연결 삭제
         cursor.execute("DELETE FROM course_subjects WHERE course_code = %s", (code,))
         
-        # 4. 과정 삭제
+        # 4. 학생 데이터 처리 (course_id를 NULL로 설정하거나 삭제)
+        cursor.execute("UPDATE students SET course_id = NULL WHERE course_id = %s", (code,))
+        
+        # 5. 과정 삭제
         cursor.execute("DELETE FROM courses WHERE code = %s", (code,))
         
         conn.commit()
@@ -2212,7 +2205,8 @@ async def delete_course(code: str):
             "message": "과정 및 관련 데이터가 삭제되었습니다",
             "deleted": {
                 "timetables": timetable_count,
-                "training_logs": training_log_count
+                "training_logs": training_log_count,
+                "students_affected": student_count
             }
         }
     except Exception as e:

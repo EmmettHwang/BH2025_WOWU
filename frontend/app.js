@@ -9630,12 +9630,34 @@ window.editCourse = function(code) {
 window.deleteCourse = async function(code) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
-    const confirmed = await window.showConfirm('⚠️ 이 과정을 삭제하시겠습니까?\n\n삭제된 데이터는 복구할 수 없습니다.');
+    // 과정 정보 가져오기
+    const course = courses.find(c => c.code === code);
+    const courseName = course ? course.name : code;
+    
+    const confirmed = await window.showConfirm(
+        `⚠️ 과정을 삭제하시겠습니까?\n\n` +
+        `과정: ${courseName} (${code})\n\n` +
+        `📌 주의: 다음 데이터가 함께 삭제됩니다:\n` +
+        `- 시간표 데이터\n` +
+        `- 훈련일지 데이터\n` +
+        `- 과정-교과목 연결\n` +
+        `- 학생의 과정 정보 (학생은 삭제되지 않음)\n\n` +
+        `삭제된 데이터는 복구할 수 없습니다.`
+    );
     if (!confirmed) return;
     
     try {
-        await axios.delete(`${API_BASE_URL}/api/courses/${code}`);
-        window.showAlert('✅ 과정이 삭제되었습니다!', 'success');
+        const response = await axios.delete(`${API_BASE_URL}/api/courses/${code}`);
+        
+        // 삭제된 데이터 정보 표시
+        const deleted = response.data?.deleted || {};
+        const message = `✅ 과정이 삭제되었습니다!\n\n` +
+            `삭제된 데이터:\n` +
+            `- 시간표: ${deleted.timetables || 0}건\n` +
+            `- 훈련일지: ${deleted.training_logs || 0}건\n` +
+            `- 영향받은 학생: ${deleted.students_affected || 0}명`;
+        
+        await window.showSuccess(message, '삭제 완료');
         
         // 선택된 과정 코드 초기화
         selectedCourseCode = null;
@@ -9643,7 +9665,8 @@ window.deleteCourse = async function(code) {
         await loadCourses();
     } catch (error) {
         console.error('삭제 실패:', error);
-        window.showAlert('❌ 삭제 실패: ' + (error.response?.data?.detail || error.message), 'error');
+        const errorMsg = error.response?.data?.detail || error.message || '알 수 없는 오류';
+        await window.showError(`❌ 삭제 실패\n\n${errorMsg}`, '오류');
     }
 }
 
