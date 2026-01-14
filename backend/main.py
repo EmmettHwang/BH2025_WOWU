@@ -8047,6 +8047,134 @@ async def import_database(file: UploadFile = File(...)):
         cursor.close()
         conn.close()
 
+@app.post("/api/backup/reset")
+async def reset_database():
+    """DB 초기화 (자동 백업 후 진행)"""
+    import os
+    from datetime import datetime
+    
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=503, detail="데이터베이스 연결 실패")
+    
+    cursor = conn.cursor()
+    
+    try:
+        # 1단계: 자동 백업 생성
+        print("📦 DB 초기화 전 자동 백업 생성 중...")
+        backup_response = await create_backup()
+        
+        if not backup_response.get('success'):
+            raise HTTPException(status_code=500, detail="백업 생성 실패로 초기화를 중단합니다")
+        
+        backup_file = backup_response.get('filename', '')
+        print(f"✅ 백업 완료: {backup_file}")
+        
+        # 2단계: 초기화할 테이블 목록 (시스템 설정, 강사, 백업은 유지)
+        tables_to_clear = [
+            'students',              # 학생
+            'timetables',           # 시간표
+            'training_logs',        # 훈련일지
+            'class_notes',          # 수업노트
+            'counselings',          # 상담
+            'notices',              # 공지사항
+            'projects',             # 프로젝트
+            'team_activity_logs',   # 팀활동일지
+            'course_subjects',      # 과목
+            'student_registrations' # 신규가입신청
+        ]
+        
+        deleted_records = {}
+        total_deleted = 0
+        
+        # 3단계: 각 테이블 초기화
+        for table in tables_to_clear:
+            try:
+                # 현재 레코드 수 확인
+                cursor.execute(f"SELECT COUNT(*) as count FROM {table}")
+                count = cursor.fetchone()[0]
+                
+                # 테이블 데이터 삭제
+                cursor.execute(f"DELETE FROM {table}")
+                
+                deleted_records[table] = count
+                total_deleted += count
+                print(f"🗑️ {table}: {count}개 삭제")
+                
+            except Exception as table_error:
+                print(f"⚠️ {table} 초기화 오류: {str(table_error)}")
+                continue
+        
+        conn.commit()
+        
+        return {
+            "success": True,
+            "backup_file": backup_file,
+            "deleted_records": deleted_records,
+            "total_deleted": total_deleted,
+            "message": f"DB 초기화 완료: {total_deleted}개 레코드 삭제"
+        }
+        
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ DB 초기화 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"초기화 실패: {str(e)}")
+    
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.get("/api/backup/tables-info")
+async def get_tables_info():
+    """현재 DB 테이블 정보 조회"""
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=503, detail="데이터베이스 연결 실패")
+    
+    cursor = conn.cursor()
+    
+    try:
+        tables_info = []
+        
+        # 초기화 가능한 테이블 목록
+        tables = [
+            ('students', '학생'),
+            ('timetables', '시간표'),
+            ('training_logs', '훈련일지'),
+            ('class_notes', '수업노트'),
+            ('counselings', '상담'),
+            ('notices', '공지사항'),
+            ('projects', '프로젝트'),
+            ('team_activity_logs', '팀활동일지'),
+            ('course_subjects', '과목'),
+            ('student_registrations', '신규가입신청')
+        ]
+        
+        for table_name, korean_name in tables:
+            try:
+                cursor.execute(f"SELECT COUNT(*) as count FROM {table_name}")
+                count = cursor.fetchone()[0]
+                
+                tables_info.append({
+                    "table": table_name,
+                    "name": korean_name,
+                    "count": count
+                })
+            except:
+                continue
+        
+        return {
+            "success": True,
+            "tables": tables_info
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"테이블 정보 조회 실패: {str(e)}")
+    
+    finally:
+        cursor.close()
+        conn.close()
+
 if __name__ == "__main__":
     import uvicorn
     # 파일 업로드 크기 제한 100MB로 증가

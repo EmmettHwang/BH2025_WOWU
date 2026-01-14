@@ -19841,6 +19841,9 @@ async function loadBackupManager() {
                         <button onclick="showImportModal()" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition">
                             <i class="fas fa-upload mr-2"></i>불러오기
                         </button>
+                        <button onclick="showResetDatabaseModal()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition">
+                            <i class="fas fa-trash-restore mr-2"></i>DB 초기화
+                        </button>
                     </div>
                 </div>
 
@@ -20520,6 +20523,152 @@ function showBeautifulError(title, message) {
     `;
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// DB 초기화 모달
+async function showResetDatabaseModal() {
+    // 테이블 정보 조회
+    let tablesInfo = [];
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/backup/tables-info`);
+        tablesInfo = response.data.tables || [];
+    } catch (error) {
+        console.error('테이블 정보 조회 실패:', error);
+    }
+    
+    // 테이블 목록 HTML 생성
+    const tablesHtml = tablesInfo.map(table => `
+        <div class="flex justify-between py-2 border-b border-gray-200">
+            <span class="text-gray-700">${table.name}</span>
+            <span class="font-semibold ${table.count > 0 ? 'text-red-600' : 'text-gray-400'}">${table.count.toLocaleString()}개</span>
+        </div>
+    `).join('');
+    
+    const totalRecords = tablesInfo.reduce((sum, t) => sum + t.count, 0);
+    
+    // 예쁜 DB 초기화 경고 모달
+    const modalHtml = `
+        <div id="reset-warning-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="animation: fadeIn 0.2s;">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full mx-4 transform" style="animation: slideUp 0.3s; max-height: 90vh; overflow-y: auto;">
+                <div class="text-center mb-6">
+                    <div class="w-24 h-24 bg-gradient-to-br from-red-500 via-red-600 to-red-700 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                        <i class="fas fa-exclamation-triangle text-white text-5xl"></i>
+                    </div>
+                    <h3 class="text-3xl font-bold text-red-600 mb-3">🚨 위험: 데이터베이스 초기화</h3>
+                    <p class="text-gray-600 text-lg mb-4">다음 데이터가 <strong class="text-red-600">영구적으로 삭제</strong>됩니다</p>
+                </div>
+                
+                <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-4">
+                    <div class="flex items-start mb-3">
+                        <i class="fas fa-shield-alt text-green-600 text-2xl mr-3 mt-1"></i>
+                        <div>
+                            <p class="font-bold text-green-700 mb-1">✅ 자동 보호 기능</p>
+                            <p class="text-sm text-gray-700">초기화 전 자동으로 백업이 생성됩니다</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mb-4">
+                    <p class="font-bold text-red-600 mb-3 text-lg">🔴 삭제될 데이터 (총 ${totalRecords.toLocaleString()}개)</p>
+                    <div class="space-y-1 max-h-60 overflow-y-auto">
+                        ${tablesHtml || '<p class="text-gray-500">데이터가 없습니다</p>'}
+                    </div>
+                </div>
+                
+                <div class="bg-green-50 border border-green-300 rounded-lg p-4 mb-6">
+                    <p class="font-bold text-green-700 mb-2">✅ 유지되는 데이터</p>
+                    <ul class="text-sm text-gray-700 space-y-1 ml-4">
+                        <li>• 시스템 설정 (system_settings)</li>
+                        <li>• 강사 정보 (instructor_codes)</li>
+                        <li>• 백업 파일 (backups 폴더)</li>
+                        <li>• 과정 정보 (courses)</li>
+                    </ul>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button onclick="document.getElementById('reset-warning-modal').remove()" 
+                        class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105">
+                        취소
+                    </button>
+                    <button onclick="showResetConfirmModal()" 
+                        class="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                        <i class="fas fa-arrow-right mr-2"></i>계속
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// DB 초기화 최종 확인 모달
+window.showResetConfirmModal = function() {
+    document.getElementById('reset-warning-modal').remove();
+    
+    const modalHtml = `
+        <div id="reset-confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="animation: fadeIn 0.2s;">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform" style="animation: slideUp 0.3s;">
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-keyboard text-white text-4xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3">최종 확인</h3>
+                    <p class="text-gray-600 mb-4">초기화를 계속하려면 아래에 "<strong class="text-red-600">초기화</strong>"를 입력하세요:</p>
+                    <input type="text" id="reset-confirm-input" placeholder="초기화" 
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-lg font-semibold focus:border-red-500 focus:outline-none"
+                        onkeypress="if(event.key==='Enter') confirmResetDatabase()">
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="document.getElementById('reset-confirm-modal').remove()" 
+                        class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105">
+                        취소
+                    </button>
+                    <button onclick="confirmResetDatabase()" 
+                        class="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-3 px-6 rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                        <i class="fas fa-trash-restore mr-2"></i>초기화 실행
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    setTimeout(() => document.getElementById('reset-confirm-input').focus(), 100);
+}
+
+// DB 초기화 실행
+window.confirmResetDatabase = async function() {
+    const input = document.getElementById('reset-confirm-input');
+    if (input && input.value !== '초기화') {
+        showBeautifulError('입력 오류', '"초기화"를 정확히 입력해주세요');
+        input.focus();
+        return;
+    }
+    
+    document.getElementById('reset-confirm-modal').remove();
+    
+    try {
+        showLoading('데이터베이스 초기화 중...\n\n자동 백업을 생성하고 있습니다\n잠시만 기다려주세요');
+        
+        const response = await axios.post(`${API_BASE_URL}/api/backup/reset`);
+        
+        hideLoading();
+        
+        if (response.data.success) {
+            const message = `백업 파일: ${response.data.backup_file}\n삭제된 레코드: ${response.data.total_deleted.toLocaleString()}개\n\n3초 후 페이지가 새로고침됩니다`;
+            showBeautifulSuccess('초기화 완료!', message);
+            
+            // 백업 목록 새로고침
+            setTimeout(() => {
+                window.location.reload();
+            }, 3000);
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('DB 초기화 실패:', error);
+        showBeautifulError('초기화 실패', 'DB 초기화에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+    }
 }
 
 // ==================== Web Speech API 음성 인식 ====================
