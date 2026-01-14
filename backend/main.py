@@ -8104,7 +8104,7 @@ async def reset_database(request: Request, data: dict):
         
         # 2단계: 초기화할 테이블 목록
         if complete_reset:
-            # 완전 초기화: 과정 정보만 추가 삭제 (시스템 설정, Root 계정은 유지)
+            # 완전 초기화: Root 계정 제외한 모든 강사 정보 + 과정 정보 삭제
             tables_to_clear = [
                 'students',              # 학생
                 'timetables',           # 시간표
@@ -8116,10 +8116,20 @@ async def reset_database(request: Request, data: dict):
                 'team_activity_logs',   # 팀활동일지
                 'course_subjects',      # 과목
                 'student_registrations',# 신규가입신청
-                'courses'               # 과정 정보 (완전 초기화만)
+                'courses',              # 과정 정보
+                'instructors'           # 강사 정보 (완전 초기화만)
             ]
             reset_type = '완전 초기화'
-            print(f"🔴 완전 초기화 모드: 과정 정보 포함 삭제 (시스템 설정/Root 계정 유지)")
+            print(f"🔴 완전 초기화 모드: 강사 정보(Root 제외) + 과정 정보 삭제 (시스템 설정 유지)")
+            
+            # Root 계정 제외하고 instructor_codes 삭제
+            print("🗑️ instructor_codes: Root 계정 제외하고 삭제 중...")
+            cursor.execute("SELECT COUNT(*) as count FROM instructor_codes WHERE name != 'root'")
+            ic_count = cursor.fetchone()['count']
+            cursor.execute("DELETE FROM instructor_codes WHERE name != 'root'")
+            deleted_records['instructor_codes'] = ic_count
+            total_deleted += ic_count
+            print(f"🗑️ instructor_codes: {ic_count}개 삭제 (Root 계정 유지)")
         else:
             # 일반 초기화: 시스템 설정, 강사, 과정 정보는 유지
             tables_to_clear = [

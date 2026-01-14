@@ -20639,8 +20639,9 @@ window.showResetConfirmModal = function() {
                             <div class="ml-3">
                                 <span class="font-bold text-red-700">⚠️ 완전 초기화</span>
                                 <p class="text-sm text-gray-700 mt-1">
-                                    <strong class="text-red-600">과정 정보(courses)까지 삭제</strong>합니다.
-                                    <br>✅ 유지: 시스템 설정, Root 계정, 강사 정보
+                                    <strong class="text-red-600">Root 계정을 제외한 모든 강사 정보 + 과정 정보 삭제</strong>
+                                    <br>❌ 삭제: instructor_codes (Root 제외), instructors, courses
+                                    <br>✅ 유지: 시스템 설정, Root 계정
                                 </p>
                             </div>
                         </label>
