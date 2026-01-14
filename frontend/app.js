@@ -20728,9 +20728,6 @@ window.confirmResetDatabase = async function() {
         showBeautifulError('초기화 실패', 'DB 초기화에 실패했습니다: ' + (error.response?.data?.detail || error.message));
     }
 }
-        showBeautifulError('초기화 실패', 'DB 초기화에 실패했습니다: ' + (error.response?.data?.detail || error.message));
-    }
-}
 
 // ==================== Web Speech API 음성 인식 ====================
 // 브라우저 내장 음성 인식 (무료, 서버 불필요)
