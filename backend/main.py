@@ -8059,7 +8059,11 @@ async def reset_database(request: Request, data: dict):
     # 작업자 정보 확인
     operator_name = data.get('operator_name', '').strip()
     password = data.get('password', '').strip()
-    complete_reset = data.get('complete_reset', False)  # 완전 초기화 옵션
+    
+    # 체크박스 옵션
+    delete_instructors = data.get('delete_instructors', False)
+    delete_backups = data.get('delete_backups', False)
+    delete_courses = data.get('delete_courses', False)
     
     if not operator_name or not password:
         raise HTTPException(status_code=400, detail="작업자 이름과 비밀번호가 필요합니다")
@@ -8103,26 +8107,43 @@ async def reset_database(request: Request, data: dict):
         print(f"✅ 백업 완료: {backup_file}")
         
         # 2단계: 초기화할 테이블 목록
-        if complete_reset:
-            # 완전 초기화: Root 계정 제외한 모든 강사 정보 + 과정 정보 삭제
-            tables_to_clear = [
-                'students',              # 학생
-                'timetables',           # 시간표
-                'training_logs',        # 훈련일지
-                'class_notes',          # 수업노트
-                'counselings',          # 상담
-                'notices',              # 공지사항
-                'projects',             # 프로젝트
-                'team_activity_logs',   # 팀활동일지
-                'course_subjects',      # 과목
-                'student_registrations',# 신규가입신청
-                'courses',              # 과정 정보
-                'instructors'           # 강사 정보 (완전 초기화만)
-            ]
-            reset_type = '완전 초기화'
-            print(f"🔴 완전 초기화 모드: 강사 정보(Root 제외) + 과정 정보 삭제 (시스템 설정 유지)")
-            
-            # Root 계정 제외하고 instructor_codes 삭제
+        tables_to_clear = [
+            'students',              # 학생
+            'timetables',           # 시간표
+            'training_logs',        # 훈련일지
+            'class_notes',          # 수업노트
+            'counselings',          # 상담
+            'notices',              # 공지사항
+            'projects',             # 프로젝트
+            'team_activity_logs',   # 팀활동일지
+            'course_subjects',      # 과목
+            'student_registrations' # 신규가입신청
+        ]
+        
+        reset_details = []
+        
+        # 강사 정보 삭제 옵션
+        if delete_instructors:
+            tables_to_clear.extend(['instructors'])
+            reset_details.append('강사 정보 삭제 (Root 제외)')
+        
+        # 과정 정보 삭제 옵션
+        if delete_courses:
+            tables_to_clear.append('courses')
+            reset_details.append('과정 정보 삭제')
+        
+        # 백업 삭제 옵션 (DB가 아닌 파일 시스템)
+        if delete_backups:
+            reset_details.append('백업 파일 삭제')
+        
+        reset_type = '일반 초기화' if not reset_details else f"맞춤 초기화 ({', '.join(reset_details)})"
+        print(f"⚠️ 초기화 모드: {reset_type}")
+        
+        deleted_records = {}
+        total_deleted = 0
+        
+        # 강사 정보 삭제 (Root 제외)
+        if delete_instructors:
             print("🗑️ instructor_codes: Root 계정 제외하고 삭제 중...")
             cursor.execute("SELECT COUNT(*) as count FROM instructor_codes WHERE name != 'root'")
             ic_count = cursor.fetchone()['count']
@@ -8130,25 +8151,6 @@ async def reset_database(request: Request, data: dict):
             deleted_records['instructor_codes'] = ic_count
             total_deleted += ic_count
             print(f"🗑️ instructor_codes: {ic_count}개 삭제 (Root 계정 유지)")
-        else:
-            # 일반 초기화: 시스템 설정, 강사, 과정 정보는 유지
-            tables_to_clear = [
-                'students',              # 학생
-                'timetables',           # 시간표
-                'training_logs',        # 훈련일지
-                'class_notes',          # 수업노트
-                'counselings',          # 상담
-                'notices',              # 공지사항
-                'projects',             # 프로젝트
-                'team_activity_logs',   # 팀활동일지
-                'course_subjects',      # 과목
-                'student_registrations' # 신규가입신청
-            ]
-            reset_type = '일반 초기화'
-            print(f"⚠️ 일반 초기화 모드: 시스템 설정/강사/과정 정보 유지")
-        
-        deleted_records = {}
-        total_deleted = 0
         
         # 3단계: 각 테이블 초기화
         for table in tables_to_clear:
@@ -8168,6 +8170,22 @@ async def reset_database(request: Request, data: dict):
                 print(f"⚠️ {table} 초기화 오류: {str(table_error)}")
                 deleted_records[table] = 0
                 continue
+        
+        # 백업 파일 삭제
+        if delete_backups:
+            try:
+                backup_dir = 'backups'
+                if os.path.exists(backup_dir):
+                    backup_files = [f for f in os.listdir(backup_dir) if f.endswith('.json')]
+                    for f in backup_files:
+                        os.remove(os.path.join(backup_dir, f))
+                    deleted_records['backup_files'] = len(backup_files)
+                    print(f"🗑️ 백업 파일: {len(backup_files)}개 삭제")
+                else:
+                    deleted_records['backup_files'] = 0
+            except Exception as backup_error:
+                print(f"⚠️ 백업 파일 삭제 오류: {str(backup_error)}")
+                deleted_records['backup_files'] = 0
         
         conn.commit()
         

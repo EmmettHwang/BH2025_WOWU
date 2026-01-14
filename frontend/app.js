@@ -20576,13 +20576,31 @@ async function showResetDatabaseModal() {
                 </div>
                 
                 <div class="bg-green-50 border border-green-300 rounded-lg p-4 mb-6">
-                    <p class="font-bold text-green-700 mb-2">✅ 유지되는 데이터</p>
-                    <ul class="text-sm text-gray-700 space-y-1 ml-4">
-                        <li>• 시스템 설정 (system_settings)</li>
-                        <li>• 강사 정보 (instructor_codes)</li>
-                        <li>• 백업 파일 (backups 폴더)</li>
-                        <li>• 과정 정보 (courses)</li>
-                    </ul>
+                    <p class="font-bold text-green-700 mb-3">✅ 유지되는 데이터</p>
+                    <div class="space-y-2">
+                        <label class="flex items-center cursor-pointer hover:bg-green-100 p-2 rounded">
+                            <input type="checkbox" id="delete-instructors-checkbox" 
+                                class="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                            <span class="ml-2 text-sm text-gray-700">강사 정보 (instructor_codes, instructors) 삭제</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-green-100 p-2 rounded">
+                            <input type="checkbox" id="delete-backups-checkbox" 
+                                class="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                            <span class="ml-2 text-sm text-gray-700">백업 파일 (backups) 삭제</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-green-100 p-2 rounded">
+                            <input type="checkbox" id="delete-courses-checkbox" 
+                                class="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                            <span class="ml-2 text-sm text-gray-700">과정 정보 (courses) 삭제</span>
+                        </label>
+                        <div class="mt-3 p-2 bg-white rounded border border-green-200">
+                            <p class="text-xs text-gray-600">
+                                <i class="fas fa-info-circle text-blue-500 mr-1"></i>
+                                체크하지 않은 항목은 유지됩니다<br>
+                                <strong class="text-green-700">• 시스템 설정</strong>과 <strong class="text-green-700">Root 계정</strong>은 항상 유지
+                            </p>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="flex space-x-3">
@@ -20631,22 +20649,6 @@ window.showResetConfirmModal = function() {
                             onkeypress="if(event.key==='Enter') document.getElementById('reset-confirm-input').focus()">
                     </div>
                     
-                    <!-- 완전 초기화 옵션 -->
-                    <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4">
-                        <label class="flex items-start cursor-pointer">
-                            <input type="checkbox" id="complete-reset-checkbox" 
-                                class="mt-1 w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-500">
-                            <div class="ml-3">
-                                <span class="font-bold text-red-700">⚠️ 완전 초기화</span>
-                                <p class="text-sm text-gray-700 mt-1">
-                                    <strong class="text-red-600">Root 계정을 제외한 모든 강사 정보 + 과정 정보 삭제</strong>
-                                    <br>❌ 삭제: instructor_codes (Root 제외), instructors, courses
-                                    <br>✅ 유지: 시스템 설정, Root 계정
-                                </p>
-                            </div>
-                        </label>
-                    </div>
-                    
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">확인 문구</label>
                         <p class="text-sm text-gray-600 mb-2">아래에 "<strong class="text-red-600">초기화</strong>"를 입력하세요:</p>
@@ -20679,7 +20681,11 @@ window.confirmResetDatabase = async function() {
     const operatorName = document.getElementById('reset-operator-name')?.value?.trim();
     const password = document.getElementById('reset-password')?.value?.trim();
     const input = document.getElementById('reset-confirm-input')?.value?.trim();
-    const completeReset = document.getElementById('complete-reset-checkbox')?.checked || false;
+    
+    // 체크박스 값 읽기
+    const deleteInstructors = document.getElementById('delete-instructors-checkbox')?.checked || false;
+    const deleteBackups = document.getElementById('delete-backups-checkbox')?.checked || false;
+    const deleteCourses = document.getElementById('delete-courses-checkbox')?.checked || false;
     
     // 유효성 검증
     if (!operatorName) {
@@ -20703,13 +20709,14 @@ window.confirmResetDatabase = async function() {
     document.getElementById('reset-confirm-modal').remove();
     
     try {
-        const resetMode = completeReset ? '완전 초기화' : '일반 초기화';
-        showLoading(`데이터베이스 ${resetMode} 중...\n\n자동 백업을 생성하고 있습니다\n잠시만 기다려주세요`);
+        showLoading(`데이터베이스 초기화 중...\n\n자동 백업을 생성하고 있습니다\n잠시만 기다려주세요`);
         
         const response = await axios.post(`${API_BASE_URL}/api/backup/reset`, {
             operator_name: operatorName,
             password: password,
-            complete_reset: completeReset
+            delete_instructors: deleteInstructors,
+            delete_backups: deleteBackups,
+            delete_courses: deleteCourses
         });
         
         hideLoading();
