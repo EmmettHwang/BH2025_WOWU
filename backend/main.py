@@ -6255,7 +6255,9 @@ async def update_system_settings(
     gemini_api_key: Optional[str] = Form(None),
     bgm_genre: Optional[str] = Form(None),
     bgm_volume: Optional[str] = Form(None),
-    dashboard_refresh_interval: Optional[str] = Form(None)
+    dashboard_refresh_interval: Optional[str] = Form(None),
+    open_courses: Optional[str] = Form(None),
+    interest_keywords: Optional[str] = Form(None)
 ):
     """시스템 설정 업데이트"""
     print(f"📝 시스템 설정 업데이트 요청:")
@@ -6270,6 +6272,8 @@ async def update_system_settings(
     print(f"  - bgm_genre: {bgm_genre}")
     print(f"  - bgm_volume: {bgm_volume}")
     print(f"  - dashboard_refresh_interval: {dashboard_refresh_interval}")
+    print(f"  - open_courses: {open_courses}")
+    print(f"  - interest_keywords: {interest_keywords}")
     
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -6289,7 +6293,9 @@ async def update_system_settings(
             'gemini_api_key': gemini_api_key,
             'bgm_genre': bgm_genre,
             'bgm_volume': bgm_volume,
-            'dashboard_refresh_interval': dashboard_refresh_interval
+            'dashboard_refresh_interval': dashboard_refresh_interval,
+            'open_courses': open_courses,
+            'interest_keywords': interest_keywords
         }
         
         update_count = 0
