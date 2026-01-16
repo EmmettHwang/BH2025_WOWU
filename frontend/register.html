@@ -418,12 +418,36 @@
                     courseSelect.appendChild(option);
                 });
 
-                // 모집중인 과정이 1개일 때 자동 선택
+                // 모집중인 과정이 1개일 때 자동 선택, 2개 이상일 때는 필수 선택
                 if (filteredCourses.length === 1) {
                     courseSelect.value = filteredCourses[0].code;
+                    courseSelect.required = false; // 자동 선택이므로 필수 아님
+                    courseSelect.disabled = true; // 자동 선택된 경우 변경 불가
+                    courseSelect.classList.add('bg-gray-100'); // 회색 배경으로 비활성화 표시
+                } else if (filteredCourses.length >= 2) {
+                    courseSelect.value = ''; // "선택하세요"가 기본값
+                    courseSelect.required = true; // 필수 선택
+                    courseSelect.disabled = false;
+                    courseSelect.classList.remove('bg-gray-100');
+                    // 필수 표시를 더 명확하게
+                    const label = document.querySelector('label[for="courseCode"]');
+                    if (!label) {
+                        // label 요소가 없으면 courseCode select의 이전 label을 찾음
+                        const courseLabel = courseSelect.closest('div').querySelector('label');
+                        if (courseLabel && !courseLabel.querySelector('.required-badge')) {
+                            const badge = document.createElement('span');
+                            badge.className = 'required-badge ml-2 text-xs bg-red-500 text-white px-2 py-1 rounded';
+                            badge.textContent = '필수 선택';
+                            courseLabel.appendChild(badge);
+                        }
+                    }
+                } else {
+                    courseSelect.required = false; // 과정이 없으면 필수 아님
+                    courseSelect.disabled = false;
+                    courseSelect.classList.remove('bg-gray-100');
                 }
 
-                console.log('모집중인 과정 로드 완료:', filteredCourses.length + '개');
+                console.log('모집중인 과정 로드 완료:', filteredCourses.length + '개', filteredCourses.length >= 2 ? '(필수 선택)' : filteredCourses.length === 1 ? '(자동 선택)' : '');
             } catch (error) {
                 console.error('과정 로드 실패:', error);
             }
